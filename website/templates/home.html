@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gymnastics Club</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(100px); }
+        to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+        animation: fadeIn 1.6s ease-out forwards;
+        }
+
+    </style>
+
+
+
+</head>
+<body>
+    
+    {% include 'base_up_menu.html' %}
+      
+    <main class="container text-center my-5 animate-fade-in">
+        <h2 class="display-4 text-white  mb-3">Discover the Art of Movement</h2>
+        <p class="lead text-white mb-4">
+            Join our gymnastics club to experience the thrill of athleticism, discipline, and grace.
+        </p>
+
+        {% if not user.is_authenticated %}
+        <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+            <a class="btn btn-primary btn-lg px-5 shadow-sm" href="/sign-up" style="border-radius: 20px; padding: 6px 18px;">
+                Register
+            </a>
+            <a class="btn btn-primary btn-lg px-5 shadow-sm" href="/login" style="border-radius: 20px; padding: 6px 18px;">
+                Log in
+            </a>
+        </div>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+        <div class="mt-5 p-4 bg-light rounded shadow-sm d-inline-block">
+            <h2 class="h1 fw-bold text-secondary mb-2">
+                👋 Welcome, <span class="text-primary">{{ user.name_last }}</span>
+            </h2>
+            <p class="fs-5 text-muted">Glad to have you back!</p>
+        </div>
+        {% endif %}   
+
+    </main>
+
+    
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,20 @@
+{% for date in date_list %}
+<div class="col-md-4 col-lg-3">
+    <div class="card shadow-sm">
+        <div class="card-body text-center">
+            <h5 class="card-title">{{ date.date.strftime('%A') }}</h5>
+            <p class="card-text text-muted">{{ date.date.strftime('%d %B %Y') }}</p>
+            <button
+                class="btn btn-toggle {% if date.date_bookable %}btn-success{% else %}btn-danger{% endif %}"
+                id="btn-{{ date.id }}"
+                onclick="toggleBookDay({{ date.id }})"
+                {% if date.date < current_date %}disabled{% endif %}>
+                <span class="label">
+                    {% if date.date_bookable %}✔ Active{% else %}✖ Inactive{% endif %}
+                </span>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endfor %}

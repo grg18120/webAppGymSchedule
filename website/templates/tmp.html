@@ -1,0 +1,32 @@
+{% extends "base.html" %} {% block title %}Login{% endblock %}
+ 
+{% block content %}
+
+<br>
+<h1>This is the login page</h1>
+
+<br>
+Text Variable = {{ text_var }}
+<br>
+
+{% if boolean_var == True %}
+IF Boolean Variable = {{ boolean_var }}
+{% endif %}
+
+<br>
+{% if boolean_var == False %}
+IF_ELSE Boolean Variable = {{ boolean_var }}
+{% else %}
+IF_ELSE Test
+{% endif %}
+
+<br>
+{% if boolean_var == False %}
+IF_ELSEIF Boolean Variable = {{ boolean_var }}
+{% elif boolean_var == True %}
+IF_ELSEIF Boolean Variable = {{ boolean_var }}
+{% endif %}
+
+
+{% endblock %}
+

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/home_button.css">
+
+  <style>
+
+  </style>
+</head>
+<body>
+
+  {% include 'base_up_menu.html' %}
+
+ 
+    <div class="inputs-card">
+      <h3 class="text-center mb-4">Sign Up</h3>
+      <form method="POST">
+        <div class="mb-3">
+          <input
+            type="email"
+            class="form-control"
+            id="email"
+            name="email"
+            placeholder="Enter email"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <input
+            type="text"
+            class="form-control"
+            id="name_first"
+            name="name_first"
+            placeholder="Enter first name"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <input
+            type="text"
+            class="form-control"
+            id="name_last"
+            name="name_last"
+            placeholder="Enter last name"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <input
+            type="password"
+            class="form-control"
+            id="passwd"
+            name="passwd"
+            placeholder="Enter password"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <input
+            type="password"
+            class="form-control"
+            id="passwdconf"
+            name="passwdconf"
+            placeholder="Confirm password"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <input
+            type="date"
+            class="form-control"
+            id="date_birth"
+            name="date_birth"
+            placeholder="Enter Birth Date"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <input
+            type="text"
+            class="form-control"
+            id="address"
+            name="address"
+            placeholder="Enter Address"
+            required
+          />
+        </div>
+        <div class="text-center">
+          <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+      </form>
+    </div>
+
+      <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+        <br>
+          <a href="/" title="Return Home">
+              <button class="btn_home">← Home</button>
+          </a>
+      </div>
+    
+ 
+</body>
+</html>

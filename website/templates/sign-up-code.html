@@ -1,0 +1,33 @@
+{% extends "base.html" %} {% block title %}Login{% endblock %} {% block content%}
+    <form>
+        <div class="container mt-5">
+            <h2 class="mb-4">Codes List</h2>
+            <table class="table table-striped">
+                <thead>
+                        <th>ID</th>
+                        <th>Code</th>
+                        <th>Date Created</th>
+                        <th>is Valid</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for code in sign_up_code_list %}
+                    <tr {% if not code.is_valid %} class="table-danger" {% else %} class="table-success" {% endif %}>
+                        <td>{{ code.id }}</td>
+                        <td>{{ code.code }}</td>
+                        <td>{{ code.date_created }}</td>
+                        <td>{{ code.is_valid}}</td>
+                        <td><button onclick="{{ deleteCode() }}">Delete</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+    <form method="POST">
+        <div class="container mt-5">
+            <button type="submit" class="btn btn-primary">Create Code</button>
+        </div> 
+    </form>
+    {% endblock %}
+
