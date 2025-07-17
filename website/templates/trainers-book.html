@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trainers</title>
+    <link rel="stylesheet" href="/static/css/trainers_book.css">
+
+</head>
+
+<body>
+    {% include 'base_up_menu.html' %}
+
+    <form method="POST" id="date-form" action="/trainers-book" class="container my-4">
+
+        <div class="row align-items-end g-3">
+            <div class="col-md-6 col-sm-12">
+                <label for="month-select" class="form-label">Select Month</label>
+                <select name="month" class="form-select" id="month-select" required>
+                    {% set months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+                    {% for i in range(1, 13) %}
+                        <option value="{{ i }}" {% if selected_month == i %}selected{% endif %}>
+                            {{ months[i - 1] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-6 col-sm-12">
+                <label for="year-select" class="form-label">Select Year</label>
+                <select name="year" class="form-select" id="year-select" required>
+                    {% for y in range(current_date.year - 2, current_date.year + 2) %}
+                        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+    </form>
+
+
+
+    {% if days %}
+    <div class="calendar-container">
+        <div class="calendar-header">
+            {% for weekday in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+            <div class="weekday">{{ weekday }}</div>
+            {% endfor %}
+        </div>
+        <div class="calendar-grid">
+            {# Add empty cells for alignment before the 1st day #}
+            {% set first_weekday = days[0].weekday() %}
+            {% set adjusted = first_weekday %}
+            {% for _ in range(adjusted) %}
+            <div class="day empty"></div>
+            {% endfor %}
+
+            {% for day in days %}
+                {% set is_today = (day.date() == now.date()) %}
+                {% set is_passed = (day.date() < now.date()) %}
+                
+                    <form method="POST" action="/trainers-book-select-date">
+                        <input type="hidden" name="year" value="{{ day.year }}">
+                        <input type="hidden" name="month" value="{{ day.month }}">
+                        <input type="hidden" name="day" value="{{ day.day }}">
+                        <button type="submit" class="day
+                            {% if day.weekday() >= 5 %} weekend {% endif %}
+                            {% if is_today %} today {% endif %}
+                            {% if is_passed %} passed {% endif %}
+                        ">
+                            <span class="day-number">{{ day.day }}</span>
+                            <span class="day-full">{{ day.strftime('%d-%m-%Y') }}</span>
+                        </button>
+                    </form>
+                
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+
+
+   
+
+    <!-- Προβολή ημερομηνίας -->
+    <!-- <div class="mt-3">
+        <strong>Επιλεγμένη ημερομηνία:</strong>
+        <span id="display-date"></span>
+    </div> -->
+
+    <!-- <script>
+        const monthSelect = document.getElementById("month-select");
+        const yearSelect = document.getElementById("year-select");
+        const display = document.getElementById("display-date");
+
+        function updateDateDisplay() {
+            const month = monthSelect.value;
+            const year = yearSelect.value;
+            if (month && year) {
+                const date = new Date(year, month - 1, 1);  // JS months are 0-indexed
+                const formatter = new Intl.DateTimeFormat('el-GR', { month: 'long', year: 'numeric' });
+                display.textContent = formatter.format(date);
+            } else {
+                display.textContent = "No choosed";
+            }
+        }
+
+        monthSelect.addEventListener("change", updateDateDisplay);
+        yearSelect.addEventListener("change", updateDateDisplay);
+
+        // Αρχική εμφάνιση
+        updateDateDisplay();
+    </script> -->
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("date-form");
+            const monthSelect = document.getElementById("month-select");
+            const yearSelect = document.getElementById("year-select");
+
+            function submitIfValid() {
+                if (monthSelect.value && yearSelect.value) {
+                    form.submit();
+                }
+            }
+
+            monthSelect.addEventListener("change", submitIfValid);
+            yearSelect.addEventListener("change", submitIfValid);
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".day").forEach(button => {
+                button.addEventListener("click", () => {
+                    const year = button.getAttribute("data-year");
+                    const month = button.getAttribute("data-month");
+                    const day = button.getAttribute("data-day");
+                });
+            });
+        });
+    </script>
+
+
+
+</body>
+
+
+</html>

@@ -8,7 +8,7 @@ import calendar
 import datetime
 
 from .models import User
-from website.utils import security
+from website.utils import security, datetime_utils
 
 
 
@@ -61,7 +61,6 @@ def edit_user():
         except ValueError:
             return None
     
-
     users_list = User.query.all()
     user_id = request.form.get('user_id')
     new_last = request.form.get('name_last')
@@ -114,9 +113,9 @@ def reset_password():
 
 
 
-@app.route('/trainers', methods=['GET', 'POST'])
+@app.route('/trainers-book', methods=['GET', 'POST'])
 @login_required
-def trainers():
+def trainers_book():
     current_date = datetime.datetime.now()
 
     if request.method == "POST":
@@ -128,10 +127,32 @@ def trainers():
         selected_year = current_date.year
         selected_date = current_date
 
-    return render_template("trainers.html",
+    days = datetime_utils.get_days_in_month(selected_year, selected_month)
+
+    return render_template("trainers-book.html",
                            user=current_user,
                            selected_month=selected_month,
                            selected_year=selected_year,
-                           current_date=current_date)
+                           current_date=current_date,
+                           days=days,
+                           now=current_date
+                           )
            
 
+
+@login_required
+@app.route('/trainers-book-select-date', methods=['GET', 'POST'])
+def trainers_book_select_date():
+    year = request.form.get('year')
+    month = request.form.get('month')
+    day = request.form.get('day')
+    
+    print(f"Selected date: {year}-{month}-{day}")
+    
+    # Do something with the date (e.g., redirect, process)
+    return render_template("trainers-book-select-date.html",
+                           user=current_user,
+                           year = year,
+                           month = month,
+                           day = day
+                           )

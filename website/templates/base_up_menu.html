@@ -160,7 +160,7 @@
                 <i class="fas fa-users"></i> Users
             </a>
 
-            <a class="nav-link btn btn-outline-primary" href="/trainers" style="border-radius: 20px; padding: 6px 18px;">
+            <a class="nav-link btn btn-outline-primary" href="/trainers-book" style="border-radius: 20px; padding: 6px 18px;">
                 <i class="fas fa-running"></i><i class="fas fa-dumbbell"></i> Trainers
             </a>
         </div>
@@ -177,8 +177,8 @@
             </a>
 
             {% if  user.is_authenticated %}
-            <a class="nav-link btn btn-outline-primary" href="/logout" style="border-radius: 20px; padding: 6px 18px;">
-                <i class="fas fa-sign-out-alt"></i> Logout
+            <a class="nav-link btn btn-outline-danger" href="/logout" style="border-radius: 20px; padding: 6px 18px;">
+                <i class="fas fa-sign-out-alt"></i> Logout ({{ user.email}}) 
             </a>
             {% endif %}
 

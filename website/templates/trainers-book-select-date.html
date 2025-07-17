@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trainers</title>
+    <!-- <link rel="stylesheet" href="/static/css/style.css"> -->
+
+    <style>
+
+    body {
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed; 
+        background-color: aliceblue;
+    }
+
+    .calendar {
+        margin-top: 20px;
+    }
+
+    .calendar-header, .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+    }
+
+    .weekday {
+        font-weight: bold;
+        text-align: center;
+        padding: 5px 0;
+    }
+
+    .day {
+        all: unset; /* reset browser button styles */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        background-color: #e0e0e0;
+        border-radius: 6px;
+        padding: 10px;
+        text-align: center;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        min-height: 60px;
+    }
+
+    .day:hover {
+        background-color: #ccc;
+    }
+
+    .day-number {
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .day-full {
+        display: block;
+        font-size: 12px;
+        color: #555;
+    }
+
+    .day.today {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .day.weekend {
+        background-color: #f0dada;
+    }
+
+    .day.passed {
+        background-color: #d3d3d3;
+        color: #777;
+        opacity: 0.7;
+        text-decoration: line-through;
+    }
+
+
+
+    </style>
+
+</head>
+
+<body>
+    {% include 'base_up_menu.html' %}
+
+    <div class="mt-3">
+        <strong>{{day}} - {{month}} - {{year}}</strong>
+        <span id="display-date"></span>
+    </div>
+
+</body>
+
+
+</html>
