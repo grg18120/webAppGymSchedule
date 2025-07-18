@@ -6,8 +6,10 @@ import sqlite3
 from random import randint
 import calendar
 import datetime
+from sqlalchemy import extract
 
-from .models import User
+
+from .models import User, ScheduleTrainning
 from website.utils import security, datetime_utils
 
 
@@ -121,20 +123,32 @@ def trainers_book():
     if request.method == "POST":
         selected_month = int(request.form.get("month", current_date.month))
         selected_year = int(request.form.get("year", current_date.year))
-        selected_date = datetime.datetime(selected_year, selected_month, 1)  # always day 1
     else:
         selected_month = current_date.month
         selected_year = current_date.year
-        selected_date = current_date
 
-    days = datetime_utils.get_days_in_month(selected_year, selected_month)
+
+    dates = datetime_utils.get_days_in_month(selected_year, selected_month)
+
+    scheduled_trainning_query_list = ScheduleTrainning.query.filter(
+        extract('month', ScheduleTrainning.datetime_start) == selected_month,
+        extract('year', ScheduleTrainning.datetime_start) == selected_year
+    ).order_by(
+        ScheduleTrainning.datetime_start  # or just ScheduleTrainning.datetime_start
+    ).all()
+    trainers_dates_scheduled = set([datetime_utils.datetime_zero_time(s.datetime_start) for s in scheduled_trainning_query_list])
+    users_dates_scheduled = set([datetime_utils.datetime_zero_time(s.datetime_start) for s in scheduled_trainning_query_list if s.user_id is not None])
+
+
 
     return render_template("trainers-book.html",
                            user=current_user,
                            selected_month=selected_month,
                            selected_year=selected_year,
                            current_date=current_date,
-                           days=days,
+                           days=dates,
+                           trainers_dates_scheduled = trainers_dates_scheduled,
+                           users_dates_scheduled = users_dates_scheduled,
                            now=current_date
                            )
            

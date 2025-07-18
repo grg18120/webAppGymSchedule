@@ -50,36 +50,74 @@
             {# Add empty cells for alignment before the 1st day #}
             {% set first_weekday = days[0].weekday() %}
             {% set adjusted = first_weekday %}
+
             {% for _ in range(adjusted) %}
-            <div class="day empty"></div>
+                <div class="day empty"></div>
             {% endfor %}
 
             {% for day in days %}
                 {% set is_today = (day.date() == now.date()) %}
                 {% set is_passed = (day.date() < now.date()) %}
-                
-                    <form method="POST" action="/trainers-book-select-date">
-                        <input type="hidden" name="year" value="{{ day.year }}">
-                        <input type="hidden" name="month" value="{{ day.month }}">
-                        <input type="hidden" name="day" value="{{ day.day }}">
-                        <button type="submit" class="day
-                            {% if day.weekday() >= 5 %} weekend {% endif %}
-                            {% if is_today %} today {% endif %}
-                            {% if is_passed %} passed {% endif %}
-                        ">
-                            <span class="day-number">{{ day.day }}</span>
-                            <span class="day-full">{{ day.strftime('%d-%m-%Y') }}</span>
-                        </button>
-                    </form>
-                
-            {% endfor %}
+
+                <form method="POST" action="/trainers-book-select-date">
+                    <input type="hidden" name="year" value="{{ day.year }}">
+                    <input type="hidden" name="month" value="{{ day.month }}">
+                    <input type="hidden" name="day" value="{{ day.day }}">
+
+                    
+                    <button type="submit" class="day
+                        {% if is_today %} today{% endif %}
+                        {% if is_passed %} passed{% endif %}
+                        {% if day.weekday() >= 5 %} weekend{% endif %}
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <!-- Left side: day info -->
+                            <div style="text-align: center; align-items: center; width: 100%;">
+                                <span style="font-size: 1.75em; font-weight: bold;">
+                                    {{ day.day }}
+                                </span><br>
+
+                                <span style="font-size: 1.0em;">
+                                    {{ day.strftime('%d-%m-%Y') }}
+                                </span>
+                            </div>
+
+                            <!-- Right side: icon if not scheduled -->
+                            {% if day not in trainers_dates_scheduled %}
+                                <div>
+                                    <i class="fas fa-exclamation-circle{% if is_passed %} passed{% endif %} {% if not is_passed %} not_passed{% endif %}"
+                                    style="font-size: 1.2em;"
+                                    title="Trainer have NOT schedule trainning"></i>
+                                </div>
+                            {% endif %}
+                            {% if day in users_dates_scheduled %}
+                                <div>
+                                <i class="fas fa-user user-icon"
+                                    style="font-size: 1.2em;"
+                                    title="User have book"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </button>
+
+
+                    <!-- <button type="submit" class="day
+                        {% if day.weekday() >= 5 %} weekend {% endif %}
+                        {% if is_today %} today {% endif %}
+                        {% if is_passed %} passed {% endif %}
+                    ">
+                        {{ day.day }}
+                        {{ day.strftime('%d-%m-%Y') }}
+                    </button> -->
+                                
+                </form>
+        {% endfor %}
+
         </div>
     </div>
     {% endif %}
 
 
-
-   
 
     <!-- Προβολή ημερομηνίας -->
     <!-- <div class="mt-3">

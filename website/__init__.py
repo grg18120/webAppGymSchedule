@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from os import path, remove
 import time, datetime
+from website.models_utils.init_models import init_database
 
 
 DB_NAME = "database.db"
@@ -44,10 +45,11 @@ def create_app():
 
 
 
-def init_database(db):
-    from website.utils.init_models import init_User_table, init_Trainer_table
-    init_User_table(db)
-    init_Trainer_table(db)
+# def init_database(db):
+#     from website.models_utils.init_models import init_User_table, init_Trainer_table
+#     init_User_table(db)
+#     init_Trainer_table(db)
+#     init_ScheduleTrainning_table(db)
 
 def create_database(app):
     with app.app_context():

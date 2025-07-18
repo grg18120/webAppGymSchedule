@@ -30,11 +30,11 @@ class User(db.Model, UserMixin):
     # training_schedules = db.relationship('ScheduleTrain', backref='user', lazy=True)
 
 
-class Body(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    weight_kg = db.Column(db.Float)
-    muscle_mass_kg = db.Column(db.Float)
-    datetime_report = db.Column(db.DateTime(timezone=True), default=func.now())
+# class Body(db.Model, UserMixin):
+#     id = db.Column(db.Integer, primary_key=True)
+#     weight_kg = db.Column(db.Float)
+#     muscle_mass_kg = db.Column(db.Float)
+#     datetime_report = db.Column(db.DateTime(timezone=True), default=func.now())
 
 
     # user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -51,25 +51,25 @@ class Trainer(db.Model, UserMixin):
 
     # trainings = db.relationship('TrainerTraining', backref='trainer', lazy=True)
     # locations = db.relationship('TrainLocation', backref='trainer', lazy=True)
-    # schedule_trains = db.relationship('ScheduleTrain', backref='trainer', lazy=True)
+    schedule_trains = db.relationship('ScheduleTrainning', backref='trainer', lazy=True)
 
 
-class Training(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    desc = db.Column(db.String)
-    status = db.Column(db.Integer, default=1)
-    duration_hours = db.Column(db.Float)
-    cost_hourly = db.Column(db.Float)
+# class Training(db.Model, UserMixin):
+#     id = db.Column(db.Integer, primary_key=True)
+#     desc = db.Column(db.String)
+#     status = db.Column(db.Integer, default=1)
+#     duration_hours = db.Column(db.Float)
+#     cost_hourly = db.Column(db.Float)
 
     # trainers = db.relationship('TrainerTraining', backref='training', lazy=True)
     # locations = db.relationship('TrainLocation', backref='training', lazy=True)
     # schedule_trains = db.relationship('ScheduleTrain', backref='training', lazy=True)
 
 
-class TrainerTraining(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    trainer_id = db.Column(db.Integer, db.ForeignKey('trainer.id'), nullable=False)
-    training_id = db.Column(db.Integer, db.ForeignKey('training.id'), nullable=False)
+# class TrainerTraining(db.Model, UserMixin):
+#     id = db.Column(db.Integer, primary_key=True)
+#     trainer_id = db.Column(db.Integer, db.ForeignKey('trainer.id'), nullable=False)
+#     training_id = db.Column(db.Integer, db.ForeignKey('training.id'), nullable=False)
 
 
 # class TrainLocation(db.Model, UserMixin):
@@ -91,14 +91,14 @@ class TrainerTraining(db.Model, UserMixin):
     # training_location_id = db.Column(db.Integer, db.ForeignKey('train_location.id'), nullable=False)
 
 
-class ScheduleTrain(db.Model, UserMixin):
+class ScheduleTrainning(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     datetime_created = db.Column(db.DateTime, default=datetime.utcnow)
-    datetime_end = db.Column(db.DateTime)
+    datetime_start = db.Column(db.DateTime, nullable=False)
+    datetime_end = db.Column(db.DateTime, nullable=False)
 
-
-    # trainer_id = db.Column(db.Integer, db.ForeignKey('trainer.id'), nullable=False)
-    # user_id = db.Column(db.Integer, db.ForeignKey('user.id'), default=None)
+    trainer_id = db.Column(db.Integer, db.ForeignKey('trainer.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), default=None)
     # training_id = db.Column(db.Integer, db.ForeignKey('training.id'), nullable=False)
     # location_id = db.Column(db.Integer, db.ForeignKey('train_location.id'), nullable=False)
 

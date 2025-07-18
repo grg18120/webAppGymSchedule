@@ -53,6 +53,7 @@
     color: white;
 }
 
+
 .day.today:hover {
     background-color: #1b641c;
     color: white;
@@ -63,7 +64,7 @@
 }
 
 .day.weekend:hover {
-    background-color: #403d43;
+    background-color: #050248;
     color: white;
 }
 
@@ -84,3 +85,16 @@
     background-color: transparent;
     visibility: hidden;
 }
+
+
+
+
+
+.fas.passed {
+    color: rgba(214, 138, 138, 0.4); /* transparent red */
+}
+
+.fas.not_passed {
+    color: rgba(245, 6, 6, 0.88); /* transparent red */
+}
+
