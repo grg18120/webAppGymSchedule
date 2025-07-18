@@ -6,17 +6,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css">
+    
 
-    <style>
-        .row-disabled {
-            background-color: #ffecec;
-            color: #a94442;
-        }
-        .row-enabled:hover {
-            background-color: #e8f5e9;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/tables.css">
+
 
 </head>
 <body>
@@ -45,10 +38,10 @@
     </div>
   </div>
  
-  <!-- User Table -->
-  <div>
-    <table class="table table-striped align-middle mb-0" id="userTable">
-      <thead class="table-light">
+  <!-- Users Table -->
+<div class="table-responsive shadow-sm rounded">
+  <table class="table table-hover align-middle mb-0" id="userTable">
+    <thead class="table-dark sticky-top">
         <tr>
           <th>ID</th>
           <th>Last Name</th>

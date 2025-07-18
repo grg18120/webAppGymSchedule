@@ -49,14 +49,16 @@
 }
 
 .day.today {
-    background-color: #4caf4e;
+    background-color: #27cf4bbc;
     color: white;
+    animation: pulse-glow 1.8s infinite;
 }
 
 
 .day.today:hover {
     background-color: #1b641c;
     color: white;
+    animation: pulse-glow 1.8s infinite;
 }
 
 .day.weekend {
@@ -96,5 +98,19 @@
 
 .fas.not_passed {
     color: rgba(245, 6, 6, 0.88); /* transparent red */
+}
+
+
+/* Animation */
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
 }
 

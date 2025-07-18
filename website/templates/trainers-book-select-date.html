@@ -3,86 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Trainers</title>
-    <!-- <link rel="stylesheet" href="/static/css/style.css"> -->
-
-    <style>
-
-    body {
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed; 
-        background-color: aliceblue;
-    }
-
-    .calendar {
-        margin-top: 20px;
-    }
-
-    .calendar-header, .calendar-grid {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: 10px;
-    }
-
-    .weekday {
-        font-weight: bold;
-        text-align: center;
-        padding: 5px 0;
-    }
-
-    .day {
-        all: unset; /* reset browser button styles */
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-
-        background-color: #e0e0e0;
-        border-radius: 6px;
-        padding: 10px;
-        text-align: center;
-        font-size: 14px;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-        min-height: 60px;
-    }
-
-    .day:hover {
-        background-color: #ccc;
-    }
-
-    .day-number {
-        font-weight: bold;
-        font-size: 16px;
-    }
-
-    .day-full {
-        display: block;
-        font-size: 12px;
-        color: #555;
-    }
-
-    .day.today {
-        background-color: #4CAF50;
-        color: white;
-    }
-
-    .day.weekend {
-        background-color: #f0dada;
-    }
-
-    .day.passed {
-        background-color: #d3d3d3;
-        color: #777;
-        opacity: 0.7;
-        text-decoration: line-through;
-    }
-
-
-
-    </style>
-
+    <link rel="stylesheet" href="/static/css/timelines.css">
+    
 </head>
 
 <body>
@@ -91,6 +13,31 @@
     <div class="mt-3">
         <strong>{{day}} - {{month}} - {{year}}</strong>
         <span id="display-date"></span>
+    </div>
+
+    <div class="timeline-vertical">
+    <div class="timeline-track">
+        {% for hour in range(6, 25) %}
+        <div class="time-label" style="top: calc({{ hour * 100/ 18 }}%)">
+            {{ "%02d:00" % hour }}
+        </div>
+        {% endfor %}
+
+        {% for event in events %}
+        {% set s = event.start.split(':') %}
+        {% set e = event.end.split(':') %}
+        {% set start_min = (s[0]|int) * 60 + (s[1]|int) %}
+        {% set end_min = (e[0]|int) * 60 + (e[1]|int) %}
+        {% set duration = end_min - start_min %}
+        {% set top = (start_min / 1440 * 100) %}
+        {% set height = (duration / 1440 * 100) %}
+        <div class="event-block" style="top: {{ top }}%; height: {{ height }}%">
+            <strong>{{ event.title }}</strong><br>
+            <small>{{ event.start }} – {{ event.end }}</small>
+            <div class="desc">{{ event.description }}</div>
+        </div>
+        {% endfor %}
+    </div>
     </div>
 
 </body>

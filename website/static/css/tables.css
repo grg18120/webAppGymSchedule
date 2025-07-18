@@ -1,0 +1,21 @@
+
+
+
+tbody tr:hover {
+  background-color: #f8f9fa;
+  transition: background-color 0.3s ease;
+}
+
+.table-responsive {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+
+.row-disabled {
+    background-color: #ffecec;
+    color: #a94442;
+}
+.row-enabled:hover {
+    background-color: #e8f5e9;
+}

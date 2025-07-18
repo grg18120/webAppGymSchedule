@@ -1,0 +1,46 @@
+
+.timeline-vertical {
+  position: relative;
+  height: 500px;
+  width: 1000px;
+  margin: 0 auto;
+  border-left: 3px solid #ccc;
+  background: white;
+  overflow-y: scroll;
+  padding-left: 60px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+.timeline-track {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.time-label {
+  position: absolute;
+  left: -50px;
+  font-size: 0.75rem;
+  color: #444;
+  transform: translateY(-50%);
+}
+
+.event-block {
+  position: absolute;
+  left: 0;
+  width: 500px;
+  background: #4f46e5;
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+
+.event-block .desc {
+  font-size: 0.75rem;
+  color: #e0e0e0;
+  margin-top: 2px;
+}
