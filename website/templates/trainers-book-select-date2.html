@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>One-Day Timeline (30min Ranges)</title>
+
+  <!-- Icon Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+  /* Base & Navbar styles from your stack */
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f8f9fa; }
+  .navbar { display:flex; justify-content:space-between; align-items:center; background-color:#333; padding:10px 20px; }
+  .navbar ul { list-style-type:none; margin:0; padding:0; display:flex; gap:15px; }
+  .navbar ul li { position:relative; }
+  .navbar a { color:#fff; text-decoration:none; font-size:16px; padding:8px 16px; }
+  .navbar a:hover { background-color:#555; border-radius:5px; }
+  .navbar .brand { font-size:20px; color:#fff; text-decoration:none; font-weight:bold; }
+  .dropdown-content { display:none; position:absolute; background-color:#444; min-width:160px; z-index:1; border-radius:5px; }
+  .dropdown-content a { color:#fff; padding:10px 16px; display:block; text-decoration:none; }
+  .dropdown-content a:hover { background-color:#555; }
+  .navbar ul li:hover .dropdown-content { display:block; }
+  .hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; }
+  .hamburger div { width:25px; height:3px; background-color:#fff; }
+  @media (max-width:768px){
+    .navbar ul { display:none; flex-direction:column; width:100%; }
+    .navbar ul li { width:100%; text-align:center; }
+    .navbar ul li a { display:block; width:100%; }
+    .hamburger { display:flex; }
+  }
+  .btn-outline-danger { transition: all .3s ease; }
+  .btn-outline-danger:hover { background-color:#dc3545; color:#fff; border-color:#dc3545; }
+
+  /* Timeline tweaks using Bootstrap utilities */
+  h1 { text-align:center; padding:1rem; margin:0; background:#fff; border-bottom:1px solid #e9ecef; }
+  .time { width:160px; font-family: ui-monospace, Menlo, monospace; color:#6c757d; }
+  .event-text.is-empty { color:#adb5bd; font-style:italic; }
+  .event-row.table-active .time { font-weight:600; }
+</style>
+</head>
+    {% include 'base_up_menu.html' %}
+    
+  <div class="container my-2">
+    <div class="d-flex flex-wrap gap-2" aria-label="Legend">
+      <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Φαγητό</span>
+      <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle">Συνάντηση</span>
+      <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Βαθιά Εργασία</span>
+      <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Project</span>
+      <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">1:1</span>
+      <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Γυμναστήριο</span>
+    </div>
+  </div>
+  <table class="table table-hover table-striped align-middle shadow-sm" style="max-width:900px; margin: 1rem auto; background:#fff;">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Event</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="time">00:00 – 00:30</td><td></td></tr>
+      <tr><td class="time">00:30 – 01:00</td><td></td></tr>
+      <tr><td class="time">01:00 – 01:30</td><td></td></tr>
+      <tr><td class="time">01:30 – 02:00</td><td></td></tr>
+      <tr><td class="time">02:00 – 02:30</td><td></td></tr>
+      <tr><td class="time">02:30 – 03:00</td><td></td></tr>
+      <tr><td class="time">03:00 – 03:30</td><td></td></tr>
+      <tr><td class="time">03:30 – 04:00</td><td></td></tr>
+      <tr><td class="time">04:00 – 04:30</td><td></td></tr>
+      <tr><td class="time">04:30 – 05:00</td><td></td></tr>
+      <tr><td class="time">05:00 – 05:30</td><td></td></tr>
+      <tr><td class="time">05:30 – 06:00</td><td></td></tr>
+      <tr><td class="time">06:00 – 06:30</td><td></td></tr>
+      <tr><td class="time">06:30 – 07:00</td><td></td></tr>
+      <tr><td class="time">07:00 – 07:30</td><td></td></tr>
+      <tr><td class="time">07:30 – 08:00</td><td></td></tr>
+      <tr><td class="time">08:00 – 08:30</td><td>Breakfast</td></tr>
+      <tr><td class="time">08:30 – 09:00</td><td></td></tr>
+      <tr><td class="time">09:00 – 09:30</td><td></td></tr>
+      <tr><td class="time">09:30 – 10:00</td><td>Standup Meeting</td></tr>
+      <tr><td class="time">10:00 – 10:30</td><td>Deep Work</td></tr>
+      <tr><td class="time">10:30 – 11:00</td><td>Deep Work</td></tr>
+      <tr><td class="time">11:00 – 11:30</td><td>Deep Work</td></tr>
+      <tr><td class="time">11:30 – 12:00</td><td></td></tr>
+      <tr><td class="time">12:00 – 12:30</td><td></td></tr>
+      <tr><td class="time">12:30 – 13:00</td><td>Lunch</td></tr>
+      <tr><td class="time">13:00 – 13:30</td><td>Lunch</td></tr>
+      <tr><td class="time">13:30 – 14:00</td><td></td></tr>
+      <tr><td class="time">14:00 – 14:30</td><td>1:1 Session</td></tr>
+      <tr><td class="time">14:30 – 15:00</td><td></td></tr>
+      <tr><td class="time">15:00 – 15:30</td><td>Project Block</td></tr>
+      <tr><td class="time">15:30 – 16:00</td><td>Project Block</td></tr>
+      <tr><td class="time">16:00 – 16:30</td><td>Project Block</td></tr>
+      <tr><td class="time">16:30 – 17:00</td><td>Project Block</td></tr>
+      <tr><td class="time">17:00 – 17:30</td><td></td></tr>
+      <tr><td class="time">17:30 – 18:00</td><td></td></tr>
+      <tr><td class="time">18:00 – 18:30</td><td></td></tr>
+      <tr><td class="time">18:30 – 19:00</td><td>Gym</td></tr>
+      <tr><td class="time">19:00 – 19:30</td><td>Gym</td></tr>
+      <tr><td class="time">19:30 – 20:00</td><td></td></tr>
+      <tr><td class="time">20:00 – 20:30</td><td></td></tr>
+      <tr><td class="time">20:30 – 21:00</td><td></td></tr>
+      <tr><td class="time">21:00 – 21:30</td><td></td></tr>
+      <tr><td class="time">21:30 – 22:00</td><td></td></tr>
+      <tr><td class="time">22:00 – 22:30</td><td></td></tr>
+      <tr><td class="time">22:30 – 23:00</td><td></td></tr>
+      <tr><td class="time">23:00 – 23:30</td><td></td></tr>
+      <tr><td class="time">23:30 – 00:00</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <script>
+(function(){
+  const KEY = 'timeline:v2:'; // prefix for localStorage
+  const rows = document.querySelectorAll('tbody tr');
+
+  // Parse range text to minutes from midnight
+  const toMin = (hhmm) => { const [h,m] = hhmm.split(':').map(Number); return h*60 + m; };
+  const slots = Array.from(rows, (row) => {
+    row.classList.add('event-row');
+    const range = row.querySelector('.time').textContent.trim();
+    const [start, end] = range.split('–').map(s => s.trim());
+    return { row, range, s: toMin(start), e: toMin(end) };
+  });
+
+  // Map category -> Bootstrap subtle badge classes
+  const tagClass = {
+    'focus':   'badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle',
+    'meeting': 'badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle',
+    'project': 'badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle',
+    'meal':    'badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle',
+    '1on1':    'badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle',
+    'fitness': 'badge rounded-pill bg-danger-subtle text-danger-emphasis border border-danger-subtle'
+  };
+
+  const categorize = (val) => {
+    const v = (val || '').toLowerCase();
+    if (!v) return null;
+    if (/deep\s*work|focus/.test(v)) return 'focus';
+    if (/(stand\s*up|standup|meeting|sync|review)/.test(v)) return 'meeting';
+    if (/(project|build|dev|code|block)/.test(v)) return 'project';
+    if (/(breakfast|lunch|dinner|meal|snack)/.test(v)) return 'meal';
+    if (/(1[:\- ]?1|one on one)/.test(v)) return '1on1';
+    if (/(gym|workout|run|jog|swim|yoga|fitness|train)/.test(v)) return 'fitness';
+    return null;
+  };
+
+  const highlightNow = () => {
+    const d = new Date();
+    const minutes = d.getHours()*60 + d.getMinutes();
+    slots.forEach(({row, s, e}) => row.classList.toggle('table-active', minutes >= s && minutes < e));
+  };
+
+  for (const { row } of slots) {
+    const timeCell = row.querySelector('.time');
+    const eventCell = row.cells[1];
+    const timeKey = timeCell?.textContent?.trim() || '';
+
+    let initialText = (eventCell.textContent || '').trim();
+    const saved = localStorage.getItem(KEY + timeKey);
+    if (saved !== null) initialText = saved;
+
+    // Build cell content using Bootstrap utilities
+    eventCell.textContent = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'd-flex align-items-center gap-2';
+
+    const text = document.createElement('span');
+    text.className = 'event-text flex-grow-1';
+    wrap.appendChild(text);
+
+    const btns = document.createElement('span');
+    btns.className = 'd-inline-flex gap-1';
+
+    const mkBtn = (title, icon, variant='btn-outline-secondary') => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `btn btn-sm ${variant}`;
+      b.title = title; b.setAttribute('aria-label', title);
+      b.innerHTML = `<i class="${icon}"></i>`;
+      return b;
+    };
+
+    const addBtn = mkBtn('Προσθήκη', 'fa-solid fa-plus');
+    const editBtn = mkBtn('Επεξεργασία', 'fa-solid fa-pen');
+    const clearBtn = mkBtn('Καθαρισμός', 'fa-solid fa-xmark', 'btn-outline-danger');
+
+    btns.append(addBtn, editBtn, clearBtn);
+    wrap.appendChild(btns);
+    eventCell.appendChild(wrap);
+
+    const applyTag = (tag, hasText) => {
+      // reset classes
+      text.className = 'event-text flex-grow-1';
+      if (hasText && tag && tagClass[tag]) {
+        text.className += ' ' + tagClass[tag];
+      }
+    };
+
+    const setText = (val) => {
+      const v = (val || '').trim();
+      text.textContent = v || '—';
+      text.classList.toggle('is-empty', !v);
+      addBtn.hidden = !!v; editBtn.hidden = !v; clearBtn.hidden = !v;
+      applyTag(categorize(v), !!v);
+      if (v) localStorage.setItem(KEY + timeKey, v); else localStorage.removeItem(KEY + timeKey);
+    };
+
+    // init
+    setText(initialText);
+
+    // handlers
+    addBtn.addEventListener('click', () => {
+      const v = prompt(`Τι συμβαίνει στο διάστημα ${timeKey};`);
+      if (v !== null) setText(v);
+    });
+    editBtn.addEventListener('click', () => {
+      const current = text.classList.contains('is-empty') ? '' : text.textContent;
+      const v = prompt(`Επεξεργασία συμβάντος για ${timeKey}:`, current);
+      if (v !== null) setText(v);
+    });
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Να διαγραφεί το συμβάν;')) setText('');
+    });
+
+    text.addEventListener('dblclick', () => editBtn.click());
+  }
+
+  // Highlight current slot
+  highlightNow();
+  setInterval(highlightNow, 60*1000);
+})();
+</script>
+</body>
+</html>

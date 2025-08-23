@@ -190,7 +190,7 @@ def trainers_book_select_date():
 
     
     # Do something with the date (e.g., redirect, process)
-    return render_template("trainers-book-select-date.html",
+    return render_template("trainers-book-select-date2.html",
                            user=current_user,
                            year = year,
                            month = month,
