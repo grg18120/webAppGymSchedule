@@ -63,8 +63,8 @@ def init_ScheduleTrainning_table(db):
     from website.models import ScheduleTrainning, Trainer, User
     
     schedule_trainning = ScheduleTrainning(
-        datetime_start = datetime(2026, 7, 20, 16, 0),
-        datetime_end = datetime(2026, 7, 20, 20, 0),
+        datetime_start = datetime(2025, 8, 24, 16, 0),
+        datetime_end = datetime(2025, 8, 24, 20, 0),
         trainer_id = Trainer.query.filter(Trainer.name_first == "pavlos").first().id,
         user_id = User.query.filter(User.name_first == "admin").first().id
     )

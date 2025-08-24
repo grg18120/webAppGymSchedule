@@ -163,31 +163,14 @@ def trainers_book_select_date():
     
     print(f"Selected date: {year}-{month}-{day}")
 
-    events = [
-        {
-            "start": datetime.datetime(2025, 7, 18, 1, 30),
-            "end": datetime.datetime(2025, 7, 18, 3, 0),
-            "title": "Maintenance Window",
-            "description": "System maintenance in data center."
-        },
-        {
-            "start": datetime.datetime(2025, 7, 18, 9, 0),
-            "end": datetime.datetime(2025, 7, 18, 10, 15),
-            "title": "Morning Standup",
-            "description": "Daily team sync meeting."
-        },
-    ]
+  
+    schedule_training_list = ScheduleTrainning.query.filter(
+        extract('year', ScheduleTrainning.datetime_start) == year,
+        extract('month', ScheduleTrainning.datetime_start) == month,
+        extract('day', ScheduleTrainning.datetime_start) == day
+    ).all()
 
-       # Convert times to strings like "HH:MM"
-    events = []
-    for event in events:
-        events.append({
-            "start": event["start"].strftime("%H:%M"),
-            "end": event["end"].strftime("%H:%M"),
-            "title": event["title"],
-            "description": event["description"]
-        })
-
+    print(schedule_training_list)
     
     # Do something with the date (e.g., redirect, process)
     return render_template("trainers-book-select-date2.html",
@@ -195,5 +178,5 @@ def trainers_book_select_date():
                            year = year,
                            month = month,
                            day = day,
-                           events = events
+                           schedule_trainning_list = schedule_training_list
                            )

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from website.utils import datetime_utils
 from werkzeug.security import generate_password_hash
 
 
@@ -50,6 +51,17 @@ def init_Trainer_table(db):
         name_last="papadakis",
     )
     db.session.add(trainer)
+    db.session.commit()
+
+def init_ScheduleTrainning_table(db):
+    from website.models import ScheduleTrainning
+    schedule_trainning = ScheduleTrainning(
+        datetime_start = datetime_utils.string_to_datetime("%2025-%2-1"),
+        datetime_end = datetime_utils.string_to_datetime("%2025-%2-2"),
+        trainer_id = 1,
+        user_id = 1,
+    )
+    db.session.add(schedule_trainning)
     db.session.commit()
 
 
