@@ -50,11 +50,23 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody>
-          {% for schedulke_tr in schedule_trainning_list %}
-          <tr><td>{{ schedulke_tr.datetime_start }} – {{ schedulke_tr.datetime_end }}</td><td>{{ schedulke_tr.trainer_id }}</td><td>{{ schedulke_tr.user_id }}</td><td>action</td></tr>
-          {% endfor %}
-        </tbody>
+<tbody>
+  {% for schedulke_tr in schedule_trainning_list %}
+    {% set row_class =
+        'table-success' if schedulke_tr.user
+        else ('table-warning' if (schedulke_tr.trainer and not schedulke_tr.user) else '') %}
+
+    <tr class="{{ row_class }}">
+      <td>
+        {{ schedulke_tr.datetime_start.strftime('%H:%M') }} – {{ schedulke_tr.datetime_end.strftime('%H:%M') }}
+      </td>
+      <td>{{ schedulke_tr.trainer.name_first if schedulke_tr.trainer else '' }}</td>
+      <td>{{ schedulke_tr.user.name_first if schedulke_tr.user else '' }}</td>
+      <td>action</td>
+    </tr>
+  {% endfor %}
+</tbody>
+
       </table>
     </div>
   </div>
