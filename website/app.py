@@ -163,16 +163,27 @@ def trainers_book_select_date():
     
     print(f"Selected date: {year}-{month}-{day}")
 
-  
     schedule_training_list = ScheduleTrainning.query.filter(
         extract('year', ScheduleTrainning.datetime_start) == year,
         extract('month', ScheduleTrainning.datetime_start) == month,
         extract('day', ScheduleTrainning.datetime_start) == day
     ).all()
 
-    print(schedule_training_list)
+
+    dts = [(x.datetime_start, x.datetime_end) for x in schedule_training_list]
+    print(dts)
+    # start_date = datetime.datetime(
+    #     year=int(year),
+    #     month=int(month),
+    #     day=int(day),   # <-- make sure day is int too
+    #     hour=0,
+    #     minute=0,
+    #     second=0
+    # )
+    # print(start_date)
     
-    # Do something with the date (e.g., redirect, process)
+
+
     return render_template("trainers-book-select-date2.html",
                            user=current_user,
                            year = year,

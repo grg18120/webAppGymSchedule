@@ -51,7 +51,7 @@ class Trainer(db.Model, UserMixin):
 
     # trainings = db.relationship('TrainerTraining', backref='trainer', lazy=True)
     # locations = db.relationship('TrainLocation', backref='trainer', lazy=True)
-    schedule_trains = db.relationship('ScheduleTrainning', backref='trainer', lazy=True)
+    # schedule_trains = db.relationship('ScheduleTrainning', backref='trainer', lazy=True)
 
 
 # class Training(db.Model, UserMixin):
@@ -101,6 +101,9 @@ class ScheduleTrainning(db.Model, UserMixin):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), default=None)
     # training_id = db.Column(db.Integer, db.ForeignKey('training.id'), nullable=False)
     # location_id = db.Column(db.Integer, db.ForeignKey('train_location.id'), nullable=False)
+
+    user = db.relationship('User')
+    trainer = db.relationship('Trainer')
 
 
 
