@@ -19,3 +19,6 @@ def datetime_zero_time(datetime_obj, hour = 0, min= 0, sec= 0, micro_sec= 0):
 
 def datetime_days_delta(dt1, dt2):
     return (datetime_zero_time(dt1) - datetime_zero_time(dt2)).days
+
+def datetime_hours_delta(dt1, dt2):
+    return (dt1- dt2)

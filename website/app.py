@@ -7,6 +7,7 @@ from random import randint
 import calendar
 import datetime
 from sqlalchemy import extract
+from math import fabs
 
 
 from .models import User, ScheduleTrainning
@@ -167,21 +168,43 @@ def trainers_book_select_date():
         extract('year', ScheduleTrainning.datetime_start) == year,
         extract('month', ScheduleTrainning.datetime_start) == month,
         extract('day', ScheduleTrainning.datetime_start) == day
-    ).all()
+    ).order_by(ScheduleTrainning.datetime_start).all()
 
+    start_date = datetime.datetime(year=int(year), month=int(month), day=int(day), hour=0, minute=0, second=0)
+    end_date = datetime.datetime(year=int(year), month=int(month), day=int(day), hour=23, minute=59, second=0)
 
-    dts = [(x.datetime_start, x.datetime_end) for x in schedule_training_list]
-    print(dts)
-    # start_date = datetime.datetime(
-    #     year=int(year),
-    #     month=int(month),
-    #     day=int(day),   # <-- make sure day is int too
-    #     hour=0,
-    #     minute=0,
-    #     second=0
-    # )
-    # print(start_date)
-    
+    schedule_training_list_all = []
+    for i,schedule_time in enumerate(schedule_training_list):
+        if i == 0:
+            first_time_line = start_date
+            second_time_line = schedule_training_list[i].datetime_start
+        elif i == len(schedule_training_list) - 1:
+            first_time_line = schedule_training_list[i].datetime_end
+            second_time_line = end_date
+        else:
+            first_time_line = schedule_training_list[i].datetime_end
+            second_time_line = schedule_training_list[i+1].datetime_start
+
+        
+
+        if (fabs((second_time_line - first_time_line).total_seconds())/3600.0 >= 1.0):
+            
+            schedule_trainning_extra = ScheduleTrainning(
+                datetime_start = first_time_line,
+                datetime_end = second_time_line
+            )
+            if ((schedule_time.datetime_start - schedule_trainning_extra.datetime_start).total_seconds()/3600.0 <  0.0):
+                schedule_training_list_all.append(schedule_time)
+                schedule_training_list_all.append(schedule_trainning_extra)
+            else:
+                schedule_training_list_all.append(schedule_trainning_extra)
+                schedule_training_list_all.append(schedule_time)
+        else:
+            schedule_training_list_all.append(schedule_time)
+
+            # db.session.add(schedule_trainning_extra)
+            # db.session.commit()
+
 
 
     return render_template("trainers-book-select-date.html",
@@ -189,5 +212,5 @@ def trainers_book_select_date():
                            year = year,
                            month = month,
                            day = day,
-                           schedule_trainning_list = schedule_training_list
+                           schedule_trainning_list = schedule_training_list_all
                            )
