@@ -164,11 +164,23 @@
   }
   .btn-primary:hover{ background:#2a93e1; }
 
+  .btn-work{
+    background:#179303;
+    border-color:#156706;
+  }
+  .btn-work:hover{ background:#15a009; }
+
   .btn-danger{
     background:#b93b3b;
     border-color:#9e3131;
   }
   .btn-danger:hover{ background:#c64949; }
+
+  .btn-warning{
+    background:#d38e0f;
+    border-color:#e89908;
+  }
+  .btn-warning:hover{ background:#daaf07; }
 
     /* Buttons wrap nicely on small screens */
 .actions-buttons{
@@ -212,20 +224,39 @@
                   <!-- ACTIONS: two buttons -->
                   <td class="actions-cell" data-label="Actions">
                     <div class="actions-buttons">
+
+                      
+                      {% if  not schedulke_tr.trainer and not schedulke_tr.user %}
                       <button type="button"
-                              class="btn btn-primary"
+                              class="btn btn-work"
                               aria-label="Edit this schedule"
                               data-action="edit"
                               {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
-                        Edit
+                        Enable Booking
                       </button>
+                      {% endif %}
+                      
+
+                      {% if  schedulke_tr.trainer and not schedulke_tr.user %}
                       <button type="button"
-                              class="btn btn-danger"
+                              class="btn btn-warning"
                               aria-label="Delete this schedule"
                               data-action="delete"
                               {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
-                        Delete
+                        Disable Booking
                       </button>
+                      {% endif %}
+
+                      {% if  schedulke_tr.user %}
+                      <button type="button"
+                              class="btn btn-danger"
+                              aria-label="Edit this schedule"
+                              data-action="edit"
+                              {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
+                        Cancel Book
+                      </button>
+                      {% endif %}
+
                     </div>
                   </td>
                 </tr>
