@@ -97,7 +97,7 @@ class ScheduleTrainning(db.Model, UserMixin):
     datetime_start = db.Column(db.DateTime, nullable=False)
     datetime_end = db.Column(db.DateTime, nullable=False)
 
-    trainer_id = db.Column(db.Integer, db.ForeignKey('trainer.id'), nullable=False)
+    trainer_id = db.Column(db.Integer, db.ForeignKey('trainer.id'), default=None)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), default=None)
     # training_id = db.Column(db.Integer, db.ForeignKey('training.id'), nullable=False)
     # location_id = db.Column(db.Integer, db.ForeignKey('train_location.id'), nullable=False)

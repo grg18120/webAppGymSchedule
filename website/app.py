@@ -184,7 +184,7 @@ def trainers_book_select_date():
     
 
 
-    return render_template("trainers-book-select-date2.html",
+    return render_template("trainers-book-select-date.html",
                            user=current_user,
                            year = year,
                            month = month,
