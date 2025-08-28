@@ -58,20 +58,23 @@
 .btn-primary, .btn-enable { 
   background: #2a93e1; 
   border-color: #1b7ac7;
+  font-size: small;
 }
 
 .btn-disable {
   background: rgba(0, 150, 136, 0.9);
+  font-size: small;
 }
 
 .btn-danger, .btn-cancel { 
   background: #c64949; 
-  border-color: #a33434; 
+  border-color: #a33434;
+  font-size: small;
 }
 
 .btn-warning { 
   background: #daaf07; 
-  border-color: #c79706; 
+  border-color: #c79706;
 }
 
 .btn-primary, .btn-enable:hover {

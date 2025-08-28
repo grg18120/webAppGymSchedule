@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+
+
+<link rel="stylesheet" href="/static/css/global.css">
+<link rel="stylesheet" href="/static/css/tables.css">
+<link rel="stylesheet" href="/static/css/buttons.css">
+<link rel="stylesheet" href="/static/css/timelines.css">
+
+
+
+<title>Scheduler</title>
+<style>
+
+  body {
+    background:#252827;           
+  }
+
+
+  /* --------------- TABLE STYLES ----------------- */
+  .schedule-table{
+    background:rgba(49,53,52,.6);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:8px;
+    overflow:hidden;               /* keeps the radius around header */
+    color:#e6e6e6;
+  }
+
+  /* Static column widths */
+  .schedule-table col.col-static  { 
+    width:5rem;
+  }
+  
+  .schedule-table thead th{
+    background:#1f2221;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    font-size:.8rem;
+    padding:.75rem 1rem;
+    text-align:left;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+
+  .schedule-table td {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    white-space: nowrap;        /* keep cell content on one line */
+    overflow: hidden;           /* clip overflow */
+    text-overflow: ellipsis;    /* add … when clipped */
+    height: 3rem;               /* fixed row height */
+    vertical-align: middle;     /* aligns text in middle */
+  }
+
+  .schedule-table td {
+      color: orange;
+  }
+
+
+
+  
+</style>
+</head>
+
+
+
+<body>
+
+  
+    <ul class="timeline">
+      {% for schedulke_tr in schedule_trainning_list %}
+        <li class="event" data-date="{{ schedulke_tr.datetime_start.strftime('%H:%M') }} – {{ schedulke_tr.datetime_end.strftime('%H:%M') }}">
+          <div class="member-infos">
+            <table class="table schedule-table">
+              <colgroup>
+                <col class="col-static">
+                <col class="col-static">
+                <col class="col-static">
+              </colgroup>
+              <tbody>
+                <tr class="
+                  {% if schedulke_tr.trainer and schedulke_tr.user %}row-status-booked
+                  {% elif schedulke_tr.trainer %}row-status-available
+                  {% else %}row-status-not-available
+                  {% endif %}
+                  ">
+                  <td title="{{ schedulke_tr.trainer.name_first if schedulke_tr.trainer else '' }}">
+                    {{ schedulke_tr.trainer.name_first if schedulke_tr.trainer else '' }}
+                  </td>
+
+                  <td title="{{ schedulke_tr.user.name_first if schedulke_tr.user else '' }}">
+                    {{ schedulke_tr.user.name_first if schedulke_tr.user else '' }}
+                  </td>
+
+                  
+                  <td class="actions-cell" data-label="Actions">
+                    <div class="actions-buttons">
+                      {% if  not schedulke_tr.trainer and not schedulke_tr.user %}
+                      <button type="button"
+                              class="btn btn-enable"
+                              aria-label="Edit this schedule"
+                              data-action="edit"
+                              {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
+                        Enable Booking
+                      </button>
+                      {% endif %}
+                      
+
+                      {% if  schedulke_tr.trainer and not schedulke_tr.user %}
+                      <button type="button"
+                              class="btn btn-disable"
+                              aria-label="Delete this schedule"
+                              data-action="delete"
+                              {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
+                        Disable Booking
+                      </button>
+                      {% endif %}
+
+                      {% if  schedulke_tr.user %}
+                      <button type="button"
+                              class="btn btn-cancel aria-right"
+                              aria-label="Edit this schedule"
+                              data-action="edit"
+                              {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
+                        Cancel Book
+                      </button>
+                      {% endif %}
+
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+
+</body>
+</html>

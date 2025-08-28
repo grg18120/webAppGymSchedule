@@ -156,6 +156,12 @@ def trainers_book():
 
 
 @login_required
+@app.route('/base', methods=['GET', 'POST'])
+def base():
+    return render_template("base.html", user=current_user,)
+
+
+@login_required
 @app.route('/trainers-book-select-date', methods=['GET', 'POST'])
 def trainers_book_select_date():
     year = request.form.get('year')
