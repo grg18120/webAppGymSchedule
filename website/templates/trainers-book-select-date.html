@@ -3,64 +3,28 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Weekly Time Scheduler</title>
+
+
+
+
+
+<link rel="stylesheet" href="/static/css/global.css">
+<link rel="stylesheet" href="/static/css/tables.css">
+<link rel="stylesheet" href="/static/css/buttons.css">
+<link rel="stylesheet" href="/static/css/timelines.css">
+
+
+
+<title>Scheduler</title>
 <style>
-  [class*="entypo-"]:before { font-family:'entypo',sans-serif; }
-  [class*="entypo-"]{ width:1em; height:1em; }
 
-  body{ background:#252827; font-family:'Raleway',sans-serif; }
-  a, span, h1, h2, h3{ text-decoration:none; color:#999; }
-  a:hover{ color:#777; }
-
-  h1{ letter-spacing:1.5px; color:#ccc; font-weight:200; font-size:2.2em; margin:0; border-bottom:1px solid #777; padding-bottom:.2em; }
-  h2{ letter-spacing:1.5px; color:#aaa; font-weight:200; font-size:1em; }
-
-  #content{ margin-top:50px; text-align:center; }
-
-  .timeline{
-    border-left:.25em solid #2085ba;
-    background:rgba(228, 220, 220, 0.08);
-    margin:2em auto;
-    line-height:1.4;
-    padding:1em 1em 1em 3em;
-    list-style:none;
-    text-align:left;
-    margin-left:10em;
-    margin-right:3em;
-    border-radius:.5em;
-    min-width:22em;
+  body {
+    background:#252827;           
   }
 
-  .event{ width:100%; position:relative; box-sizing:border-box; }
-  .timeline .event:before,
-  .timeline .event:after{ position:absolute; display:block; top:1em; }
-
-  .timeline .event:before{
-    left:-15em; color:rgba(255,255,255,.9);
-    content:attr(data-date);
-    text-align:right; font-weight:300; font-size:.95em; min-width:9em;
-  }
-
-  .timeline .event:after{
-    box-shadow:0 0 0 .2em #1b86d7;
-    left:-3.5em; background:#313534; border-radius:50%;
-    height:.75em; width:.75em; content:"";
-  }
-
-  .member-infos{ padding:10px; position:relative; }
-
-  /* ------- Accessible hidden text utility ------- */
-  .sr-only{
-    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-    overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
-  }
 
   /* --------------- TABLE STYLES ----------------- */
   .schedule-table{
-    width:100%;
-    table-layout:fixed;            /* make widths predictable */
-    border-collapse:separate;
-    border-spacing:0;
     background:rgba(49,53,52,.6);
     border:1px solid rgba(255,255,255,.08);
     border-radius:8px;
@@ -69,10 +33,10 @@
   }
 
   /* Static column widths */
-  .schedule-table col.col-trainer  { width:12rem; }
-  .schedule-table col.col-client   { width:12rem; }
-  .schedule-table col.col-location { width:16rem; } /* tweak as needed */
-
+  .schedule-table col.col-static  { 
+    width:5rem;
+  }
+  
   .schedule-table thead th{
     background:#1f2221;
     font-weight:600;
@@ -84,151 +48,62 @@
     border-bottom:1px solid rgba(255,255,255,.08);
   }
 
-  .schedule-table td{
-    padding:.75rem 1rem;
-    border-bottom:1px solid rgba(255,255,255,.06);
-    white-space:nowrap;            /* keep cell content on one line */
-    overflow:hidden;               /* clip overflow */
-    text-overflow:ellipsis;        /* add … when clipped */
-    height:3rem;                   /* fixed row height */
-    vertical-align:middle;
+  .schedule-table td {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    white-space: nowrap;        /* keep cell content on one line */
+    overflow: hidden;           /* clip overflow */
+    text-overflow: ellipsis;    /* add … when clipped */
+    height: 3rem;               /* fixed row height */
+    vertical-align: middle;     /* aligns text in middle */
   }
 
-  /* Zebra + hover (will be overridden by status colors using !important) */
-  .schedule-table tbody tr:nth-child(even){ background:rgba(255,255,255,.03); }
-  .schedule-table tbody tr:hover{ background:rgba(66,152,195,.15); }
-
-  /* ---- ROW-WIDE STATUS COLORS (entire row) ---- */
-  .schedule-table tbody tr.status-both    { background: rgba(76,175,80,.22) !important; }  /* trainer + user */
-  .schedule-table tbody tr.status-trainer  { background: rgba(255,193,7,.18) !important; }  /* user only */
-  .schedule-table tbody tr.status-none    { background: rgba(244,67,54,.14) !important; }  /* none */
-
-  .schedule-table tbody tr.status-both:hover    { background: rgba(76,175,80,.28) !important; }
-  .schedule-table tbody tr.status-trainer:hover    { background: rgba(255,193,7,.24) !important; }
-  .schedule-table tbody tr.status-none:hover    { background: rgba(244,67,54,.20) !important; }
-
-  /* Label-on-mobile pattern */
-  @media (max-width: 640px){
-    .timeline{ margin-left:1.5em; margin-right:1.5em; }
-    .timeline .event:before{ left:-9.5em; font-size:.85em; min-width:7.5em; }
-
-    .schedule-table thead{ display:none; }
-    .schedule-table, .schedule-table tbody, .schedule-table tr, .schedule-table td{ display:block; width:100%; }
-    .schedule-table tr{ padding:.25rem 0; }
-    .schedule-table td{
-      border-bottom:1px solid rgba(255,255,255,.06);
-      display:flex; justify-content:space-between; gap:1rem;
-      white-space:normal;           /* allow wrapping on phones */
-      height:auto;                  /* let height grow on phones */
-    }
-    .schedule-table td::before{
-      content:attr(data-label);
-      font-weight:600; color:#c7c7c7;
-    }
+  .schedule-table td {
+      color: orange;
   }
 
-  /* Actions cell: keep buttons visible (no ellipsis on the container) */
-  .schedule-table td.actions-cell{
-    overflow:visible;              /* so button focus ring isn't clipped */
-  }
-  .actions-buttons{
-    display:flex;
-    gap:.5rem;
-    align-items:center;
-    justify-content:flex-start;
-  }
 
-  /* Buttons */
-  .btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:.45rem .8rem;
-    font-size:.85rem;
-    border-radius:6px;
-    border:1px solid transparent;
-    background:#2f3332;
-    color:#eaeaea;
-    cursor:pointer;
-    text-decoration:none;
-    line-height:1;
-    user-select:none;
-    transition:background .15s ease, border-color .15s ease, transform .02s ease;
-    white-space:nowrap;
-  }
-  .btn:active{ transform:translateY(1px); }
 
-  .btn-primary{
-    background:#1b86d7;
-    border-color:#1572b7;
-  }
-  .btn-primary:hover{ background:#2a93e1; }
-
-  .btn-work{
-    background:#179303;
-    border-color:#156706;
-  }
-  .btn-work:hover{ background:#15a009; }
-
-  .btn-danger{
-    background:#b93b3b;
-    border-color:#9e3131;
-  }
-  .btn-danger:hover{ background:#c64949; }
-
-  .btn-warning{
-    background:#d38e0f;
-    border-color:#e89908;
-  }
-  .btn-warning:hover{ background:#daaf07; }
-
-    /* Buttons wrap nicely on small screens */
-.actions-buttons{
-    flex-wrap:wrap;
-    justify-content:flex-end;
-}
-.actions-buttons .btn{
-    padding:.5rem .75rem;
-    margin-top:.25rem;
-}
   
 </style>
 </head>
+
+
+
 <body>
-  <div id="content">
+
+  
     <ul class="timeline">
       {% for schedulke_tr in schedule_trainning_list %}
         <li class="event" data-date="{{ schedulke_tr.datetime_start.strftime('%H:%M') }} – {{ schedulke_tr.datetime_end.strftime('%H:%M') }}">
           <div class="member-infos">
-            <table class="schedule-table">
+            <table class="table schedule-table">
               <colgroup>
-                <col class="col-trainer">
-                <col class="col-client">
-                <col class="col-location">
+                <col class="col-static">
+                <col class="col-static">
+                <col class="col-static">
               </colgroup>
               <tbody>
                 <tr class="
-                  {% if schedulke_tr.trainer and schedulke_tr.user %}status-both
-                  {% elif schedulke_tr.trainer %}status-trainer
-                  {% elif schedulke_tr.user %}status-user
-                  {% else %}status-none{% endif %}
-                ">
-                  <td data-label="Trainer"
-                      title="{{ schedulke_tr.trainer.name_first if schedulke_tr.trainer else '' }}">
+                  {% if schedulke_tr.trainer and schedulke_tr.user %}row-status-booked
+                  {% elif schedulke_tr.trainer %}row-status-available
+                  {% else %}row-status-not-available
+                  {% endif %}
+                  ">
+                  <td title="{{ schedulke_tr.trainer.name_first if schedulke_tr.trainer else '' }}">
                     {{ schedulke_tr.trainer.name_first if schedulke_tr.trainer else '' }}
                   </td>
-                  <td data-label="Client"
-                      title="{{ schedulke_tr.user.name_first if schedulke_tr.user else '' }}">
+
+                  <td title="{{ schedulke_tr.user.name_first if schedulke_tr.user else '' }}">
                     {{ schedulke_tr.user.name_first if schedulke_tr.user else '' }}
                   </td>
-                  <!-- ACTIONS: two buttons -->
+
+                  
                   <td class="actions-cell" data-label="Actions">
                     <div class="actions-buttons">
-
-                      
                       {% if  not schedulke_tr.trainer and not schedulke_tr.user %}
                       <button type="button"
-                              class="btn btn-work"
+                              class="btn btn-enable"
                               aria-label="Edit this schedule"
                               data-action="edit"
                               {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
@@ -239,7 +114,7 @@
 
                       {% if  schedulke_tr.trainer and not schedulke_tr.user %}
                       <button type="button"
-                              class="btn btn-warning"
+                              class="btn btn-disable"
                               aria-label="Delete this schedule"
                               data-action="delete"
                               {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
@@ -249,7 +124,7 @@
 
                       {% if  schedulke_tr.user %}
                       <button type="button"
-                              class="btn btn-danger"
+                              class="btn btn-cancel aria-right"
                               aria-label="Edit this schedule"
                               data-action="edit"
                               {% if schedulke_tr.id %}data-id="{{ schedulke_tr.id }}"{% endif %}>
@@ -266,6 +141,6 @@
         </li>
       {% endfor %}
     </ul>
-  </div>
+
 </body>
 </html>

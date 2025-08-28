@@ -1,4 +1,66 @@
 
+
+.timeline{
+  background:#252827;
+  border-left:.25em solid #2085ba;
+  line-height:2.5;
+  padding:1em 1em 1em 3em;
+  list-style:none;
+  text-align:left;
+  margin-left:15em;
+  margin-right:30em;
+  border-radius:2.5em;
+  min-width:18em;
+}
+
+.event{
+  width:100%;
+  position:relative;
+  box-sizing:border-box;
+}
+
+.event:before{
+  position:absolute;
+  display:block;
+  left:-15em; color:#1b86d7;
+  content:attr(data-date);
+  text-align:right; font-weight:300; font-size:.95em; min-width:9em;
+  top:2.0em;   /* Move dates */
+}
+
+.event:after{
+  position:absolute;
+  display:block;
+  box-shadow:0 0 0 .2em #1b86d7;
+  left:-3.5em; background:#252827; border-radius:90%;
+  height:.75em; width:.75em; content:"";
+  top:2.7em;   /* Move circles */
+}
+
+.member-infos{
+  padding:10px;  /* Move boxes right */
+  position:relative;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .timeline-vertical {
   position: relative;
   height: 500px;

@@ -1,0 +1,7 @@
+  body {
+    background: #ffffff;                 /* pure black */
+    color: #000000;                   /* light text for readability */
+    font-family: "Poppins", sans-serif; /* your chosen font */
+    margin: 0;                        /* remove default spacing */
+    padding: 0;
+  }

@@ -1,0 +1,105 @@
+
+/* *************************** BUTTONS BASE *************************** */
+.btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:.45rem .8rem;
+    border-radius:6px;
+    border:1px solid transparent;
+    color:#ffffff;
+    cursor:pointer;
+    text-decoration:none;
+    user-select:none;
+    font-family: "Poppins", sans-serif;
+}
+
+.btn:active { 
+  transform:translateY(1px); 
+}
+
+/* *************************** MENU BUTTONS *************************** */
+.btn-menu {
+  gap: 6px;                        /* space between icon and text */
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: #fff !important;
+  font-size: 16x;
+  font-weight: 500;
+}
+
+.btn-menu:hover{
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* *************************** ACTION BUTTONS *************************** */
+.actions-buttons {
+    display:flex;
+    gap:.5rem;
+    align-items:center;
+    justify-content: flex-end; 
+    flex-wrap:wrap;
+    padding:.5rem .75rem;
+    margin-top:.25rem;
+}
+
+/* *************************** CUSTOM BUTTONS *************************** */
+.btn-logout {
+    transition: all 0.3s ease;
+}
+
+.btn-logout:hover {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.btn-primary, .btn-enable { 
+  background: #2a93e1; 
+  border-color: #1b7ac7;
+}
+
+.btn-disable {
+  background: rgba(0, 150, 136, 0.9);
+}
+
+.btn-danger, .btn-cancel { 
+  background: #c64949; 
+  border-color: #a33434; 
+}
+
+.btn-warning { 
+  background: #daaf07; 
+  border-color: #c79706; 
+}
+
+.btn-primary, .btn-enable:hover {
+  background: rgba(33, 150, 243, 1);
+  transform: translateY(-2px);
+}
+
+.btn-disable:hover {
+  background: rgba(0, 150, 136, 1);
+  transform: translateY(-2px);
+}
+
+.btn-danger,.btn-cancel:hover { 
+  background: #c64949; 
+  border-color: #a33434; 
+  transform: translateY(-2px);
+}
+
+.btn-warning:hover { 
+  background: #daaf07; 
+  border-color: #c79706;
+  transform: translateY(-2px);
+}
+
+
+
+
+
+
+
+
