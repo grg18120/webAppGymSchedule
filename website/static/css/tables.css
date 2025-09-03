@@ -1,48 +1,62 @@
-
-
-
-
-
+/* Base table */
 .table {
-  width:100%;
-  table-layout:fixed;            
-  border-collapse:separate;
-  border-spacing:0;
-  border-radius:8px;
-  overflow:hidden;               
-  color:#e6e6e6;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  color: #e6e6e6;
   font-family: "Poppins", sans-serif;
+  --bs-table-bg: #e6e6e6;
+  border: 1px solid rgb(186, 32, 186);
 }
 
-.row-disabled {
-    background-color: #ffecec;
-    color: #a94442;
+/* Optional: unify text color inside table cells */
+.table td, .table th {
+  color: inherit;
 }
 
-.row-enabled:hover {
-    background-color: #e8f5e9;
+/* Disabled / enabled rows */
+.row-disabled > * {
+  background-color: #ffecec;
+  color: #a94442;
+}
+.row-enabled:hover > * {
+  background-color: #e8f5e9;
 }
 
-  /* ---- ROW-WIDE STATUS COLORS (entire row) ---- */
-.row-status-booked {
-  background: rgba(33, 150, 243, 0.22) !important;   /* blue */
-}
-.row-status-available {
-  background: rgba(0, 150, 136, 0.20) !important;    /* teal */
-}
-.row-status-not-available {
-  background: rgba(49,53,52,.2)!important;    /* teal */
-}
-
-.row-status-booked:hover {
-  background: rgba(33, 150, 243, 0.30) !important;
-}
-.row-status-available:hover {
-  background: rgba(0, 150, 136, 0.28) !important;
+/* ------------------------------
+   Row status colors (entire row)
+   Target cells to ensure coverage
+--------------------------------*/
+:root {
+  --row-booked-bg: rgba(33, 150, 243, 0.22);     /* blue */
+  --row-available-bg: rgba(0, 150, 136, 0.20);   /* teal */
+  --row-unavailable-bg: rgba(49, 53, 52, 0.20);  /* gray/teal-ish */
+  --row-booked-bg-hover: rgba(33, 150, 243, 0.30);
+  --row-available-bg-hover: rgba(0, 150, 136, 0.28);
+  --row-unavailable-bg-hover: rgba(49, 53, 52, 0.35);
 }
 
-.row-status-not-available:hover {
-  background: rgba(49,53,52,1.1) !important;
+/* Base states */
+.table tr.row-status-booked > * {
+  background: var(--row-booked-bg);
+}
+.table tr.row-status-available > * {
+  background: var(--row-available-bg);
+}
+.table tr.row-status-not-available > * {
+  background: var(--row-unavailable-bg);
 }
 
-
+/* Hover states */
+.table tr.row-status-booked:hover > * {
+  background: var(--row-booked-bg-hover);
+}
+.table tr.row-status-available:hover > * {
+  background: var(--row-available-bg-hover);
+}
+.table tr.row-status-not-available:hover > * {
+  background: var(--row-unavailable-bg-hover);
+}

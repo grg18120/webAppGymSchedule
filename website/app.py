@@ -140,8 +140,6 @@ def trainers_book():
     trainers_dates_scheduled = set([datetime_utils.datetime_zero_time(s.datetime_start) for s in scheduled_trainning_query_list])
     users_dates_scheduled = set([datetime_utils.datetime_zero_time(s.datetime_start) for s in scheduled_trainning_query_list if s.user_id is not None])
 
-
-
     return render_template("trainers-book.html",
                            user=current_user,
                            selected_month=selected_month,
@@ -212,11 +210,17 @@ def trainers_book_select_date():
             # db.session.commit()
 
 
+    timedeltas_minutes_list = [datetime_utils.datetime_hours_delta(sch.datetime_end, sch.datetime_start).total_seconds() / 60  for sch in schedule_training_list_all]
+    schedule_data = zip(schedule_training_list_all, timedeltas_minutes_list)
+
+    for x, y in schedule_data:
+        print(x.datetime_start, y)
 
     return render_template("trainers-book-select-date.html",
                            user=current_user,
                            year = year,
                            month = month,
                            day = day,
-                           schedule_trainning_list = schedule_training_list_all
+                           schedule_trainning_list = schedule_training_list_all,
+                           schedule_data = schedule_data
                            )

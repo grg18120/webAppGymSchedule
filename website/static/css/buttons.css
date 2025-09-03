@@ -12,11 +12,15 @@
     text-decoration:none;
     user-select:none;
     font-family: "Poppins", sans-serif;
+
 }
 
 .btn:active { 
   transform:translateY(1px); 
 }
+
+
+
 
 /* *************************** MENU BUTTONS *************************** */
 .btn-menu {
@@ -80,23 +84,27 @@
 .btn-primary, .btn-enable:hover {
   background: rgba(33, 150, 243, 1);
   transform: translateY(-2px);
+  color: white;
 }
 
 .btn-disable:hover {
   background: rgba(0, 150, 136, 1);
   transform: translateY(-2px);
+  color: white;
 }
 
 .btn-danger,.btn-cancel:hover { 
   background: #c64949; 
   border-color: #a33434; 
   transform: translateY(-2px);
+  color: white;
 }
 
 .btn-warning:hover { 
   background: #daaf07; 
   border-color: #c79706;
   transform: translateY(-2px);
+  color: white;
 }
 
 

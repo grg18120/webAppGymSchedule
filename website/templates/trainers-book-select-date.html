@@ -8,13 +8,11 @@
   body { background:#252827; }
 
   /* --------------- TABLE STYLES ----------------- */
-  .schedule-table{
-    background:rgba(49,53,52,.6);
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:8px;
-    overflow:hidden; /* keeps the radius around header */
-    color:#e6e6e6;
-  }
+.table.schedule-table {
+  border: 1px solid rgba(32, 133, 186, 1);
+  --bs-table-bg: #2085ba;
+
+}
 
   /* Static column widths */
   .schedule-table col.col-static { 
@@ -31,6 +29,7 @@
     text-align:left;
     border-bottom:1px solid rgba(255,255,255,.08);
     color: #de0f0f;
+    
   }
 
   .schedule-table td {
@@ -47,9 +46,10 @@
 
 {% block content %}
 <ul class="timeline">
-  {% for schedule_tr in schedule_trainning_list %}
-    <li class="event"
-        data-date="{{ schedule_tr.datetime_start.strftime('%H:%M') }} – {{ schedule_tr.datetime_end.strftime('%H:%M') }}">
+  {% for schedule_tr, timedeltas_minutes in schedule_data %}
+  <li class="event"
+       
+        data-date="{{ schedule_tr.datetime_start.strftime('%H:%M') }} – {{ schedule_tr.datetime_end.strftime('%H:%M') }}  {{ timedeltas_minutes }}">
       <div class="member-infos">
         <table class="table schedule-table">
           <colgroup>
@@ -58,13 +58,13 @@
             <col class="col-static">
           </colgroup>
           <tbody>
-            <!-- <tr class="
+            <tr class="
               {% if schedule_tr.trainer and schedule_tr.user %}row-status-booked
               {% elif schedule_tr.trainer %}row-status-available
               {% else %}row-status-not-available
               {% endif %}
-            "> -->
-            <tr>
+            ">
+            
               <td title="{{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}">
                 {{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}
               </td>
