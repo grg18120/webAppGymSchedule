@@ -4,108 +4,68 @@
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    padding:.45rem .8rem;
-    border-radius:6px;
+    border-radius:24px;
     border:1px solid transparent;
     color:#ffffff;
     cursor:pointer;
     text-decoration:none;
     user-select:none;
-    font-family: "Poppins", sans-serif;
-
 }
-
-.btn:active { 
-  transform:translateY(1px); 
-}
-
-
 
 
 /* *************************** MENU BUTTONS *************************** */
-.btn-menu {
+.btn.btn-menu {
   gap: 6px;                        /* space between icon and text */
-  padding: 10px 16px;
-  border-radius: 6px;
-  color: #fff !important;
-  font-size: 16x;
-  font-weight: 500;
+  padding: 10px 12px;
+  color: white;
+  font-size: 6x;
 }
 
-.btn-menu:hover{
-    background-color: #0d6efd;
+.btn.btn-menu:hover {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.btn.btn-menu-logout:hover {
+    background-color: rgb(218, 18, 18);
     color: white;
 }
+
+
 
 /* *************************** ACTION BUTTONS *************************** */
-.actions-buttons {
-    display:flex;
-    gap:.5rem;
-    align-items:center;
-    justify-content: flex-end; 
-    flex-wrap:wrap;
-    padding:.5rem .75rem;
-    margin-top:.25rem;
+.btn.actions-buttons {
+    font-size: medium;
+    font-weight: 700;
 }
 
-/* *************************** CUSTOM BUTTONS *************************** */
-.btn-logout {
-    transition: all 0.3s ease;
+.btn.actions-buttons:hover {
+  transform: translateY(-1px);
 }
 
-.btn-logout:hover {
-    background-color: #dc3545;
-    color: white;
-    border-color: #dc3545;
+.btn.actions-buttons:active {
+  transform: translateY(0);
 }
 
-.btn-primary, .btn-enable { 
-  background: #2a93e1; 
-  border-color: #1b7ac7;
-  font-size: small;
+/* Booking buttons */
+.btn.actions-buttons.btn-booking-available,
+.btn.actions-buttons.btn-booking-available:hover {
+  background: #2a93e1; /* blue → available to book */
 }
 
-.btn-disable {
-  background: rgba(0, 150, 136, 0.9);
-  font-size: small;
+.btn.actions-buttons.btn-booking-unavailable,
+.btn.actions-buttons.btn-booking-unavailable:hover {
+  background: #ff9800; /* orange → not bookable */
 }
 
-.btn-danger, .btn-cancel { 
-  background: #c64949; 
-  border-color: #a33434;
-  font-size: small;
+.btn.actions-buttons.btn-booking-cancel,
+.btn.actions-buttons.btn-booking-cancel:hover {
+  background: #e53935; /* strong red → cancel */
 }
 
-.btn-warning { 
-  background: #daaf07; 
-  border-color: #c79706;
-}
 
-.btn-primary, .btn-enable:hover {
-  background: rgba(33, 150, 243, 1);
-  transform: translateY(-2px);
-  color: white;
-}
 
-.btn-disable:hover {
-  background: rgba(0, 150, 136, 1);
-  transform: translateY(-2px);
-  color: white;
-}
 
-.btn-danger,.btn-cancel:hover { 
-  background: #c64949; 
-  border-color: #a33434; 
-  transform: translateY(-2px);
-  color: white;
-}
-
-.btn-warning:hover { 
-  background: #daaf07; 
-  border-color: #c79706;
-  transform: translateY(-2px);
-  color: white;
-}
 
 
 

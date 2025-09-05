@@ -62,15 +62,16 @@ def init_Trainer_table(db):
 def init_ScheduleTrainning_table(db):
     from website.models import ScheduleTrainning, Trainer, User
 
-    for x in range(21,22):
-        schedule_trainning = ScheduleTrainning(
-            datetime_start = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x, 0),
-            datetime_end = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x+1, 0),
-        )
-        db.session.add(schedule_trainning)
-        db.session.commit()
+    schedule_trainning = ScheduleTrainning(
+        datetime_start = datetime(datetime.now().year, datetime.now().month, datetime.now().day, 20, 0),
+        datetime_end = datetime(datetime.now().year, datetime.now().month, datetime.now().day, 21, 55),
+        trainer_id = Trainer.query.filter(Trainer.name_first == "pavlos").first().id,
+    )
+    db.session.add(schedule_trainning)
+    db.session.commit()
+
     
-    for x in range(15,18):
+    for x in range(15,16):
         schedule_trainning = ScheduleTrainning(
             datetime_start = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x, 0),
             datetime_end = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x+1, 0),
@@ -80,14 +81,6 @@ def init_ScheduleTrainning_table(db):
         db.session.add(schedule_trainning)
         db.session.commit()
 
-    for x in range(19,21):
-        schedule_trainning = ScheduleTrainning(
-            datetime_start = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x, 0),
-            datetime_end = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x+1, 0),
-            trainer_id = Trainer.query.filter(Trainer.name_first == "pavlos").first().id,
-        )
-        db.session.add(schedule_trainning)
-        db.session.commit()
 
 
 

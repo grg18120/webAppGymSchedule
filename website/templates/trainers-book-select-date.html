@@ -1,70 +1,29 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/timelines.css') }}">
-
-<style>
-  body { background:#252827; }
-
-  /* --------------- TABLE STYLES ----------------- */
-.table.schedule-table {
-  border: 1px solid rgba(32, 133, 186, 1);
-  --bs-table-bg: #2085ba;
-
-}
-
-  /* Static column widths */
-  .schedule-table col.col-static { 
-    width:5rem;
-  }
-
-  .schedule-table thead th{
-    background:#1f2221;
-    font-weight:600;
-    text-transform:uppercase;
-    letter-spacing:.04em;
-    font-size:.8rem;
-    padding:.75rem 1rem;
-    text-align:left;
-    border-bottom:1px solid rgba(255,255,255,.08);
-    color: #de0f0f;
-    
-  }
-
-  .schedule-table td {
-    padding:.75rem 1rem;
-    border-bottom:1px solid rgba(255,255,255,.06);
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    height:3rem;
-    vertical-align:middle;
-  }
-</style>
 {% endblock %}
 
 {% block content %}
 <ul class="timeline">
-  {% for schedule_tr, timedeltas_minutes in schedule_data %}
-  <li class="event"
-       
-        data-date="{{ schedule_tr.datetime_start.strftime('%H:%M') }} – {{ schedule_tr.datetime_end.strftime('%H:%M') }}  {{ timedeltas_minutes }}">
+{% for schedule_tr, delta in schedule_data %}
+    <li class="event"
+        data-date="{{ schedule_tr.datetime_start.strftime('%H:%M') }} – {{ schedule_tr.datetime_end.strftime('%H:%M') }}">
       <div class="member-infos">
-        <table class="table schedule-table">
+        <table class="table schedule-table" style="height: {{ delta }}px;">
           <colgroup>
+            <col class="col-static">
             <col class="col-static">
             <col class="col-static">
             <col class="col-static">
           </colgroup>
           <tbody>
             <tr class="
-              {% if schedule_tr.trainer and schedule_tr.user %}row-status-booked
-              {% elif schedule_tr.trainer %}row-status-available
-              {% else %}row-status-not-available
+              {% if schedule_tr.trainer and schedule_tr.user %}row-status-working 
+              {% elif schedule_tr.trainer %}row-status-available-work
+              {% else %}row-status-not-available-work
               {% endif %}
-            ">
-            
+            " style="height: {{ delta }}px;">
+
               <td title="{{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}">
                 {{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}
               </td>
@@ -73,12 +32,15 @@
                 {{ schedule_tr.user.name_first if schedule_tr.user else '' }}
               </td>
 
+              <td>
+                {{ delta }} min
+              </td>
+
               <td class="actions-cell" data-label="Actions">
                 <div class="actions-buttons">
                   {% if not schedule_tr.trainer and not schedule_tr.user %}
                     <button type="button"
-                            class="btn btn-enable"
-                            aria-label="Enable booking for this slot"
+                            class="btn actions-buttons btn-booking-available "
                             data-action="enable"
                             {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
                       Enable Booking
@@ -87,8 +49,7 @@
 
                   {% if schedule_tr.trainer and not schedule_tr.user %}
                     <button type="button"
-                            class="btn btn-disable"
-                            aria-label="Disable booking for this slot"
+                            class="btn actions-buttons btn-booking-unavailable"                           
                             data-action="disable"
                             {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
                       Disable Booking
@@ -97,8 +58,7 @@
 
                   {% if schedule_tr.user %}
                     <button type="button"
-                            class="btn btn-cancel"
-                            aria-label="Cancel booking for this slot"
+                            class="btn actions-buttons btn-booking-cancel"
                             data-action="cancel"
                             {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
                       Cancel Booking
@@ -116,26 +76,4 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-  // One listener for all buttons
-  document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.actions-buttons .btn');
-    if (!btn) return;
-
-    const action = btn.dataset.action;
-    const id = btn.dataset.id;
-
-    // Example placeholders — replace with your fetch/ajax calls
-    if (action === 'enable') {
-      // fetch(`/schedule/${id}/enable`, { method: 'POST' })
-      console.log('Enable booking', id);
-    }
-    if (action === 'disable') {
-      console.log('Disable booking', id);
-    }
-    if (action === 'cancel') {
-      console.log('Cancel booking', id);
-    }
-  });
-</script>
 {% endblock %}

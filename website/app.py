@@ -211,16 +211,14 @@ def trainers_book_select_date():
 
 
     timedeltas_minutes_list = [datetime_utils.datetime_hours_delta(sch.datetime_end, sch.datetime_start).total_seconds() / 60  for sch in schedule_training_list_all]
-    schedule_data = zip(schedule_training_list_all, timedeltas_minutes_list)
+    schedule_data = list(zip(schedule_training_list_all, timedeltas_minutes_list))
 
-    for x, y in schedule_data:
-        print(x.datetime_start, y)
-
-    return render_template("trainers-book-select-date.html",
-                           user=current_user,
-                           year = year,
-                           month = month,
-                           day = day,
-                           schedule_trainning_list = schedule_training_list_all,
-                           schedule_data = schedule_data
-                           )
+    return render_template(
+        "trainers-book-select-date.html",
+        user=current_user,
+        year = year,
+        month = month,
+        day = day,
+        schedule_trainning_list = schedule_training_list_all,
+        schedule_data = schedule_data
+    )

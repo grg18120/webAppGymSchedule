@@ -3,43 +3,61 @@
 .timeline{
   background:#252827;
   border-left:.25em solid #2085ba;
-  line-height:2.5;
+  line-height:5.5;
   padding:1em 1em 1em 3em;
   list-style:none;
   text-align:left;
-  margin-left:15em;
+  margin-left:10em;
   margin-right:30em;
   border-radius:2.5em;
   min-width:18em;
 }
 
-.event{
-  width:100%;
-  position:relative;
-  box-sizing:border-box;
+/* ---- TIMELINE / EVENT ---- */
+.event {
+  width: 100%;
+  position: relative;
+
+  display: flex;          /* για κάθετη στοίχιση του περιεχομένου */
+  align-items: center;    /* το table κάθεται στη μέση */
 }
 
-.event:before{
-  position:absolute;
-  display:block;
-  left:-15em; color:#1b86d7;
-  content:attr(data-date);
-  text-align:right; font-weight:300; font-size:.95em; min-width:9em;
-  top:2.0em;   /* Move dates */
+/* Η ημερομηνία/ώρα από data-date */
+.event:before {
+  position: absolute;
+  left: -15em;
+  color: #1b86d7;
+  content: attr(data-date);
+  text-align: right;
+  min-width: 10em;
+
+  /* Κεντράρισμα με δυνατότητα override */
+  top: var(--offset-before, 50%);
+  transform: translateY(-50%);
 }
 
-.event:after{
-  position:absolute;
-  display:block;
-  box-shadow:0 0 0 .2em #1b86d7;
-  left:-3.5em; background:#252827; border-radius:90%;
-  height:.75em; width:.75em; content:"";
-  top:2.7em;   /* Move circles */
+/* Το κυκλάκι στον timeline άξονα */
+.event:after {
+  position: absolute;
+  box-shadow: 0 0 0 .2em #1b86d7;
+  left: -2.5em;
+  background: #252827;
+  border-radius: 90%;
+  height: .75em;
+  width: .75em;
+  content: "";
+  font-size: 1.5em;
+
+  /* Κεντράρισμα με δυνατότητα override */
+  top: var(--offset-after, 50%);
+  transform: translateY(-50%);
 }
+
 
 .member-infos{
-  padding:10px;  /* Move boxes right */
+  padding:5px;  /* Move boxes right */
   position:relative;
+  flex: 1;
 }
 
 
