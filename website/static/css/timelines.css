@@ -17,10 +17,11 @@
 .event {
   width: 100%;
   position: relative;
-
   display: flex;          /* για κάθετη στοίχιση του περιεχομένου */
   align-items: center;    /* το table κάθεται στη μέση */
+  height: var(--event-h);  /* έτσι το :before κεντράρει στο ακριβές ύψος */
 }
+
 
 /* Η ημερομηνία/ώρα από data-date */
 .event:before {
@@ -31,8 +32,8 @@
   text-align: right;
   min-width: 10em;
 
-  /* Κεντράρισμα με δυνατότητα override */
-  top: var(--offset-before, 50%);
+  /* σταθερό κάθετο κέντρο στο ύψος του .event */
+  top: 50%;
   transform: translateY(-50%);
 }
 
@@ -40,24 +41,23 @@
 .event:after {
   position: absolute;
   box-shadow: 0 0 0 .2em #1b86d7;
-  left: -2.5em;
+  left: -3.5em;
   background: #252827;
   border-radius: 90%;
   height: .75em;
   width: .75em;
   content: "";
-  font-size: 1.5em;
 
-  /* Κεντράρισμα με δυνατότητα override */
-  top: var(--offset-after, 50%);
+  top: 50%;
   transform: translateY(-50%);
 }
 
 
 .member-infos{
-  padding:5px;  /* Move boxes right */
+  padding:5px;
   position:relative;
   flex: 1;
+  height: auto;  /* ή βγάλ’ το */
 }
 
 

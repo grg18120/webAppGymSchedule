@@ -71,7 +71,7 @@ def init_ScheduleTrainning_table(db):
     db.session.commit()
 
     
-    for x in range(15,16):
+    for x in range(12,16):
         schedule_trainning = ScheduleTrainning(
             datetime_start = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x, 0),
             datetime_end = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x+1, 0),

@@ -8,7 +8,7 @@
 
         <div class="row align-items-end g-3">
             <div class="col-md-6 col-sm-12">
-                <label for="month-select" class="form-label">Select Month</label>
+                <label for="month-select" class="form-label" style="color:white;">Select Month</label>
                 <select name="month" class="form-select" id="month-select" required>
                     {% set months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
                     {% for i in range(1, 13) %}
@@ -20,7 +20,7 @@
             </div>
 
             <div class="col-md-6 col-sm-12">
-                <label for="year-select" class="form-label">Select Year</label>
+                <label for="year-select" class="form-label" style="color:white";>Select Year</label>
                 <select name="year" class="form-select" id="year-select" required>
                     {% for y in range(current_date.year - 2, current_date.year + 2) %}
                         <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>

@@ -209,9 +209,16 @@ def trainers_book_select_date():
             # db.session.add(schedule_trainning_extra)
             # db.session.commit()
 
-
+    if len(schedule_training_list_all) == 0:
+        schedule_trainning_extra = ScheduleTrainning(
+            datetime_start = start_date,
+            datetime_end = end_date
+        )
+        schedule_training_list_all.append(schedule_trainning_extra)
+        
     timedeltas_minutes_list = [datetime_utils.datetime_hours_delta(sch.datetime_end, sch.datetime_start).total_seconds() / 60  for sch in schedule_training_list_all]
     schedule_data = list(zip(schedule_training_list_all, timedeltas_minutes_list))
+    print(schedule_data)
 
     return render_template(
         "trainers-book-select-date.html",
@@ -221,4 +228,4 @@ def trainers_book_select_date():
         day = day,
         schedule_trainning_list = schedule_training_list_all,
         schedule_data = schedule_data
-    )
+    )    

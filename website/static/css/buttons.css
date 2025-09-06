@@ -12,6 +12,10 @@
     user-select:none;
 }
 
+.btn:hover {
+  color:#ffffff;
+}
+
 
 /* *************************** MENU BUTTONS *************************** */
 .btn.btn-menu {
@@ -34,10 +38,17 @@
 
 
 /* *************************** ACTION BUTTONS *************************** */
-.btn.actions-buttons {
-    font-size: medium;
-    font-weight: 700;
+
+.btn.actions-cell .actions-buttons {
+  font-size: small;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  flex-wrap: wrap;
 }
+
 
 .btn.actions-buttons:hover {
   transform: translateY(-1px);

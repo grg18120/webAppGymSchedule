@@ -4,12 +4,22 @@
 {% endblock %}
 
 {% block content %}
+<br>
+<div class="schedule-header">
+  <div>Trainer</div>
+  <div>User</div>
+  <div>Time</div>
+  <div>Action</div>
+</div>
+
 <ul class="timeline">
 {% for schedule_tr, delta in schedule_data %}
     <li class="event"
-        data-date="{{ schedule_tr.datetime_start.strftime('%H:%M') }} – {{ schedule_tr.datetime_end.strftime('%H:%M') }}">
+        data-date="{{ schedule_tr.datetime_start.strftime('%H:%M') }} – {{ schedule_tr.datetime_end.strftime('%H:%M') }}"
+        style="--event-h: {{ 70 + 430.0 * delta / 1440.0 }}px;"
+        >
       <div class="member-infos">
-        <table class="table schedule-table" style="height: {{ delta }}px;">
+        <table class="table schedule-table" style="height: var(--event-h);">
           <colgroup>
             <col class="col-static">
             <col class="col-static">
@@ -17,13 +27,9 @@
             <col class="col-static">
           </colgroup>
           <tbody>
-            <tr class="
-              {% if schedule_tr.trainer and schedule_tr.user %}row-status-working 
-              {% elif schedule_tr.trainer %}row-status-available-work
-              {% else %}row-status-not-available-work
-              {% endif %}
-            " style="height: {{ delta }}px;">
-
+            <tr class="{% if schedule_tr.trainer and schedule_tr.user %}working
+                        {% elif schedule_tr.trainer %}available-work
+                        {% else %}not-available-work{% endif %}">
               <td title="{{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}">
                 {{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}
               </td>
@@ -36,11 +42,11 @@
                 {{ delta }} min
               </td>
 
-              <td class="actions-cell" data-label="Actions">
-                <div class="actions-buttons">
+              <td data-label="Actions" class="actions-cell">
+                <div class="btn actions-buttons">
                   {% if not schedule_tr.trainer and not schedule_tr.user %}
                     <button type="button"
-                            class="btn actions-buttons btn-booking-available "
+                            class="btn btn-booking-available"
                             data-action="enable"
                             {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
                       Enable Booking
@@ -49,7 +55,7 @@
 
                   {% if schedule_tr.trainer and not schedule_tr.user %}
                     <button type="button"
-                            class="btn actions-buttons btn-booking-unavailable"                           
+                            class="btn btn-booking-unavailable"
                             data-action="disable"
                             {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
                       Disable Booking
@@ -58,7 +64,7 @@
 
                   {% if schedule_tr.user %}
                     <button type="button"
-                            class="btn actions-buttons btn-booking-cancel"
+                            class="btn btn-booking-cancel"
                             data-action="cancel"
                             {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
                       Cancel Booking
@@ -67,6 +73,7 @@
                 </div>
               </td>
             </tr>
+
           </tbody>
         </table>
       </div>

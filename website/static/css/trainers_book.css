@@ -34,7 +34,7 @@
 }
 
 .day:hover {
-    background-color: #403d43;
+    background-color: #e0e0e057;
     color: white;
 }
 
@@ -62,11 +62,12 @@
 }
 
 .day.weekend {
-    background-color: #2187d557;
+    background-color: #2187d5d0;
 }
 
 .day.weekend:hover {
-    background-color: #050248;
+    background-color: #2187d538;
+     /* #050248; */
     color: white;
 }
 
