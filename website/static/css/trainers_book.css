@@ -20,8 +20,8 @@
 .day {
   min-height: 72px;
   min-width: 0;
-  background-color: #e9ecef;
-  color: #102a3a;
+  background-color: #c62828;
+  color: #ffffff;
   border-radius: 12px;
   padding: 8px;
   text-align: center;
@@ -30,19 +30,23 @@
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  border: 2px solid transparent;
+  border: 3px solid transparent;
+  position: relative;
 }
 
 .day:hover,
 .day:focus {
-  color: #102a3a;
-  border-color: #0d6efd;
+  color: #ffffff;
+  border-color: #ffffff;
   outline: none;
 }
 
 .day.empty {
   background: transparent;
   pointer-events: none;
+  color: inherit;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .day-number {
@@ -58,16 +62,21 @@
 }
 
 .day.today {
-  background-color: #198754;
-  color: #fff;
+  background-color: inherit;
+  color: inherit;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px #102a3a;
+  z-index: 1;
 }
 
-.day.has-open:not(.passed):not(.today) {
-  background-color: #cfe2ff;
+.day.has-open:not(.passed) {
+  background-color: #1565c0;
+  color: #ffffff;
 }
 
-.day.has-booked:not(.passed):not(.today):not(.has-open) {
-  background-color: #ffe69c;
+.day.has-booked:not(.passed):not(.has-open) {
+  background-color: #f9a825;
+  color: #102a3a;
 }
 
 .day.passed {
@@ -104,10 +113,15 @@
   vertical-align: middle;
 }
 
-.legend-swatch.today { background: #198754; }
-.legend-swatch.available { background: #cfe2ff; }
-.legend-swatch.booked { background: #ffe69c; }
-.legend-swatch.none { background: #e9ecef; }
+.legend-swatch.today {
+  background: transparent;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #102a3a;
+  box-sizing: border-box;
+}
+.legend-swatch.available { background: #1565c0; }
+.legend-swatch.booked { background: #f9a825; }
+.legend-swatch.none { background: #c62828; }
 .legend-swatch.past-booked { background: #e0c36a; }
 .legend-swatch.past-empty { background: #ced4da; }
 
