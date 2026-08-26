@@ -186,6 +186,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Publish a range of slots", html)
         self.assertIn(b"Publish range", html)
         self.assertIn(b"Delete all Available slots", html)
+        self.assertIn(b"btn-delete-available", html)
+        self.assertIn(b"publish-card--custom", html)
+        self.assertIn(b"publish-card--range", html)
         self.assertIn(b"Cancel all booked slots", html)
         self.assertIn(
             b"Cancel ALL booked slots on this day? Clients will lose those sessions.",
@@ -327,7 +330,8 @@ class BookingRolesTest(unittest.TestCase):
         self.login("instructor@gym.com", "instructor123")
         page = self.client.get("/book/2099/6/18")
         self.assertIn(b"Delete slot", page.data)
-        self.assertNotIn(b"btn-outline-light", page.data)
+        self.assertIn(b"btn-delete-slot", page.data)
+        self.assertIn(b"btn-delete-available", page.data)
 
         deleted = self.client.post(f"/sessions/{session_id}/remove", follow_redirects=True)
         self.assertIn(b"Availability removed", deleted.data)

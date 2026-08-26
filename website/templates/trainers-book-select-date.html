@@ -11,9 +11,9 @@
   <h1 class="h3 text-white">{{ day_date.strftime('%A %d %B %Y') }}</h1>
 
   {% if user.is_instructor or user.is_admin %}
-  <div class="availability-form mb-4">
+  <div class="day-staff-tools mb-4">
     {% if user.is_admin %}
-    <div class="mb-3">
+    <div class="staff-actions-card mb-3">
       <label for="day-instructor" class="form-label">Instructor</label>
       <select class="form-select tap-target" id="day-instructor" required>
         <option value="">Select instructor</option>
@@ -25,16 +25,19 @@
     {% endif %}
 
     {% if not is_past %}
-    <div class="publish-panel">
-      <section class="publish-panel__section" aria-labelledby="custom-slot-heading">
+    <div class="publish-panels">
+      <section class="publish-card publish-card--custom" aria-labelledby="custom-slot-heading">
         <form method="POST" action="{{ url_for('app.add_availability', year=year, month=month, day=day) }}">
           {% if user.is_admin %}
           <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
           {% endif %}
-          <h2 class="h5" id="custom-slot-heading">Publish a custom slot</h2>
+          <h2 class="publish-card__title" id="custom-slot-heading">
+            <i class="fa-solid fa-clock" aria-hidden="true"></i>
+            Publish a custom slot
+          </h2>
           <p class="mb-3">One 1-on-1 slot with your own start and end. 24-hour clock. Hour 24 is midnight at the end of the day.</p>
           <div class="row g-3 align-items-end">
-            <div class="col-12 col-md-5">
+            <div class="col-12">
               <fieldset class="clock-fieldset">
                 <legend class="form-label">Start</legend>
                 <div class="clock-selects">
@@ -54,7 +57,7 @@
                 </div>
               </fieldset>
             </div>
-            <div class="col-12 col-md-5">
+            <div class="col-12">
               <fieldset class="clock-fieldset">
                 <legend class="form-label">End</legend>
                 <div class="clock-selects">
@@ -74,22 +77,25 @@
                 </div>
               </fieldset>
             </div>
-            <div class="col-12 col-md-2">
-              <button type="submit" class="btn btn-primary tap-target w-100">Publish</button>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary tap-target">Publish</button>
             </div>
           </div>
         </form>
       </section>
 
-      <section class="publish-panel__section" aria-labelledby="range-slot-heading">
+      <section class="publish-card publish-card--range" aria-labelledby="range-slot-heading">
         <form method="POST" action="{{ url_for('app.publish_range', year=year, month=month, day=day) }}">
           {% if user.is_admin %}
           <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
           {% endif %}
-          <h2 class="h5" id="range-slot-heading">Publish a range of slots</h2>
+          <h2 class="publish-card__title" id="range-slot-heading">
+            <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+            Publish a range of slots
+          </h2>
           <p class="mb-3">Example: 09:00 to 11:00 with slot length 0 h 30 min creates 09:00–09:30, 09:30–10:00, 10:00–10:30, 10:30–11:00. Overlapping times are skipped.</p>
           <div class="row g-3 align-items-end">
-            <div class="col-12 col-md-4">
+            <div class="col-12">
               <fieldset class="clock-fieldset">
                 <legend class="form-label">From</legend>
                 <div class="clock-selects">
@@ -109,7 +115,7 @@
                 </div>
               </fieldset>
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12">
               <fieldset class="clock-fieldset">
                 <legend class="form-label">To</legend>
                 <div class="clock-selects">
@@ -129,7 +135,7 @@
                 </div>
               </fieldset>
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12">
               <fieldset class="clock-fieldset">
                 <legend class="form-label">Slot length</legend>
                 <div class="clock-selects">
@@ -148,7 +154,7 @@
                 </div>
               </fieldset>
             </div>
-            <div class="col-12">
+            <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
               <button type="submit" class="btn btn-success tap-target">Publish range</button>
             </div>
           </div>
@@ -158,33 +164,35 @@
           <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
           {% endif %}
           <button type="submit" class="btn btn-outline-success tap-target">Publish all day</button>
-          <span class="form-text ms-sm-2">Shortcut: hourly slots from 09:00 to 22:00.</span>
+          <span class="form-text d-block mt-2">Shortcut: hourly slots from 09:00 to 22:00.</span>
         </form>
       </section>
     </div>
     {% endif %}
 
-    <div class="staff-slot-actions">
-      <form method="POST" action="{{ url_for('app.delete_available_slots', year=year, month=month, day=day) }}">
-        {% if user.is_admin %}
-        <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
-        {% endif %}
-        <button type="submit" class="btn btn-outline-secondary tap-target" {% if available_count == 0 %}disabled{% endif %}>
-          Delete all Available slots{% if available_count %} ({{ available_count }}){% endif %}
-        </button>
-      </form>
-      <form
-        method="POST"
-        action="{{ url_for('app.cancel_booked_slots', year=year, month=month, day=day) }}"
-        onsubmit="return confirm('Cancel ALL booked slots on this day? Clients will lose those sessions. The slots will not stay available.');"
-      >
-        {% if user.is_admin %}
-        <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
-        {% endif %}
-        <button type="submit" class="btn btn-danger tap-target" {% if upcoming_booked_count == 0 %}disabled{% endif %}>
-          Cancel all booked slots{% if upcoming_booked_count %} ({{ upcoming_booked_count }}){% endif %}
-        </button>
-      </form>
+    <div class="staff-actions-card">
+      <div class="staff-slot-actions">
+        <form method="POST" action="{{ url_for('app.delete_available_slots', year=year, month=month, day=day) }}">
+          {% if user.is_admin %}
+          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+          {% endif %}
+          <button type="submit" class="btn btn-delete-available tap-target" {% if available_count == 0 %}disabled{% endif %}>
+            Delete all Available slots{% if available_count %} ({{ available_count }}){% endif %}
+          </button>
+        </form>
+        <form
+          method="POST"
+          action="{{ url_for('app.cancel_booked_slots', year=year, month=month, day=day) }}"
+          onsubmit="return confirm('Cancel ALL booked slots on this day? Clients will lose those sessions. The slots will not stay available.');"
+        >
+          {% if user.is_admin %}
+          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+          {% endif %}
+          <button type="submit" class="btn btn-danger tap-target" {% if upcoming_booked_count == 0 %}disabled{% endif %}>
+            Cancel all booked slots{% if upcoming_booked_count %} ({{ upcoming_booked_count }}){% endif %}
+          </button>
+        </form>
+      </div>
     </div>
   </div>
   {% endif %}
@@ -211,9 +219,9 @@
           </form>
         {% endif %}
 
-        {% if (user.is_instructor or user.is_admin) and session.status == 'available' and not session.is_past %}
+        {% if (user.is_instructor or user.is_admin) and session.status == 'available' %}
           <form method="POST" action="{{ url_for('app.remove_availability', session_id=session.id) }}" onsubmit="return confirm('Delete this available slot?');">
-            <button type="submit" class="btn btn-outline-danger tap-target">Delete slot</button>
+            <button type="submit" class="btn btn-delete-slot tap-target">Delete slot</button>
           </form>
         {% endif %}
 
