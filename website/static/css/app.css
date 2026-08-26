@@ -120,6 +120,45 @@ main#main-content {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
+.clock-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.clock-fieldset legend {
+  float: none;
+  width: auto;
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.clock-selects {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.clock-selects .form-select {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.clock-sep {
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.staff-slot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #dee2e6;
+}
+
 .hero .lead {
   max-width: 40rem;
 }

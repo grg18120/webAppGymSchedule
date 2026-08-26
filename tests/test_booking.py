@@ -149,6 +149,165 @@ class BookingRolesTest(unittest.TestCase):
         admin_past_empty = self.client.get("/book/2026/7/1", follow_redirects=False)
         self.assertEqual(admin_past_empty.status_code, 302)
 
+    def test_instructor_publish_uses_24h_dropdowns_not_ampm(self):
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/book/2099/6/15")
+        self.assertEqual(page.status_code, 200)
+        html = page.data
+        self.assertIn(b'name="start_hour"', html)
+        self.assertIn(b'name="start_minute"', html)
+        self.assertIn(b'name="end_hour"', html)
+        self.assertIn(b'name="end_minute"', html)
+        self.assertNotIn(b'type="time"', html)
+        self.assertIn(b">00</option>", html)
+        self.assertIn(b">05</option>", html)
+        self.assertIn(b">55</option>", html)
+        self.assertIn(b'value="24"', html)
+        self.assertIn(b"Publish all day", html)
+        self.assertIn(b"Delete all Available slots", html)
+        self.assertIn(b"Delete all Booked Slots", html)
+        self.assertIn(
+            b"Delete ALL booked slots on this day? Clients will lose those sessions.",
+            html,
+        )
+
+    def test_instructor_cannot_publish_overlapping_slot(self):
+        from datetime import datetime
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        start = datetime(2099, 6, 15, 10, 0)
+        end = datetime(2099, 6, 15, 11, 0)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=start,
+                datetime_end=end,
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.commit()
+
+        self.login("instructor@gym.com", "instructor123")
+        overlap = self.client.post(
+            "/book/2099/6/15/availability",
+            data={
+                "start_hour": "10",
+                "start_minute": "5",
+                "end_hour": "11",
+                "end_minute": "0",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(overlap.status_code, 200)
+        self.assertIn(b"overlaps an existing session", overlap.data)
+        same_day = GymSession.query.filter(
+            GymSession.instructor_id == instructor.id,
+            GymSession.datetime_start >= datetime(2099, 6, 15),
+            GymSession.datetime_start < datetime(2099, 6, 16),
+        ).count()
+        self.assertEqual(same_day, 1)
+
+    def test_publish_all_day_creates_hourly_slots_and_skips_overlap(self):
+        from datetime import datetime
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        self.login("instructor@gym.com", "instructor123")
+        first = self.client.post("/book/2099/6/16/availability/all-day", follow_redirects=True)
+        self.assertEqual(first.status_code, 200)
+        self.assertIn(b"Published 13 hourly slots from 09:00 to 22:00", first.data)
+        slots = (
+            GymSession.query.filter_by(instructor_id=instructor.id, status=SESSION_AVAILABLE)
+            .filter(GymSession.datetime_start >= datetime(2099, 6, 16))
+            .filter(GymSession.datetime_start < datetime(2099, 6, 17))
+            .order_by(GymSession.datetime_start)
+            .all()
+        )
+        self.assertEqual(len(slots), 13)
+        self.assertEqual(slots[0].datetime_start.hour, 9)
+        self.assertEqual(slots[-1].datetime_end.hour, 22)
+
+        again = self.client.post("/book/2099/6/16/availability/all-day", follow_redirects=True)
+        self.assertIn(b"No new slots were published", again.data)
+        self.assertEqual(
+            GymSession.query.filter_by(instructor_id=instructor.id, status=SESSION_AVAILABLE)
+            .filter(GymSession.datetime_start >= datetime(2099, 6, 16))
+            .filter(GymSession.datetime_start < datetime(2099, 6, 17))
+            .count(),
+            13,
+        )
+
+    def test_delete_all_available_and_booked_slots(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        day_start = datetime(2099, 6, 17, 9, 0)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=day_start,
+                datetime_end=day_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=client.id,
+                datetime_start=day_start + timedelta(hours=2),
+                datetime_end=day_start + timedelta(hours=3),
+                status=SESSION_BOOKED,
+            )
+        )
+        db.session.commit()
+
+        self.login("instructor@gym.com", "instructor123")
+        deleted_available = self.client.post(
+            "/book/2099/6/17/availability/delete-available",
+            follow_redirects=True,
+        )
+        self.assertIn(b"Deleted 1 available slot", deleted_available.data)
+        remaining = GymSession.query.filter(
+            GymSession.instructor_id == instructor.id,
+            GymSession.datetime_start >= datetime(2099, 6, 17),
+            GymSession.datetime_start < datetime(2099, 6, 18),
+        ).all()
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(remaining[0].status, SESSION_BOOKED)
+
+        deleted_booked = self.client.post(
+            "/book/2099/6/17/bookings/delete-booked",
+            follow_redirects=True,
+        )
+        self.assertIn(b"Deleted 1 booked slot", deleted_booked.data)
+        self.assertEqual(
+            GymSession.query.filter(
+                GymSession.instructor_id == instructor.id,
+                GymSession.datetime_start >= datetime(2099, 6, 17),
+                GymSession.datetime_start < datetime(2099, 6, 18),
+            ).count(),
+            0,
+        )
+
+    def test_client_cannot_publish_or_bulk_delete_slots(self):
+        self.login("client@gym.com", "client123")
+        self.assertEqual(
+            self.client.post("/book/2099/6/15/availability").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/book/2099/6/15/availability/all-day").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/book/2099/6/15/availability/delete-available").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/book/2099/6/15/bookings/delete-booked").status_code,
+            403,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

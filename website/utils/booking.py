@@ -14,6 +14,9 @@ from website.models import (
     User,
 )
 
+CLOCK_HOURS = tuple(range(0, 25))
+CLOCK_MINUTES = (0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
+
 
 def overlapping_sessions(instructor_id, start, end, exclude_id=None):
     query = GymSession.query.filter(
@@ -27,7 +30,7 @@ def overlapping_sessions(instructor_id, start, end, exclude_id=None):
     return query.all()
 
 
-def create_availability(instructor, start, end):
+def create_availability(instructor, start, end, commit=True):
     if instructor.role not in (ROLE_INSTRUCTOR, ROLE_ADMIN):
         return None, "Only instructors can publish availability."
     if end <= start:
@@ -44,8 +47,57 @@ def create_availability(instructor, start, end):
         status=SESSION_AVAILABLE,
     )
     db.session.add(session)
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return session, None
+
+
+def publish_hourly_slots(instructor, day_date, start_hour=9, end_hour=22):
+    created = 0
+    skipped = 0
+    for hour in range(start_hour, end_hour):
+        start = day_date.replace(hour=hour, minute=0, second=0, microsecond=0)
+        end = day_date.replace(hour=hour + 1, minute=0, second=0, microsecond=0)
+        session, error = create_availability(instructor, start, end, commit=False)
+        if error:
+            skipped += 1
+            continue
+        created += 1
+    if created:
+        db.session.commit()
+    else:
+        db.session.rollback()
+    return created, skipped
+
+
+def _instructor_day_query(instructor, year, month, day, status):
+    return GymSession.query.filter(
+        GymSession.instructor_id == instructor.id,
+        GymSession.status == status,
+        extract("year", GymSession.datetime_start) == year,
+        extract("month", GymSession.datetime_start) == month,
+        extract("day", GymSession.datetime_start) == day,
+    )
+
+
+def actor_can_manage_instructor(actor, instructor):
+    if not instructor or not instructor.is_instructor:
+        return False
+    return actor.is_admin or (actor.is_instructor and actor.id == instructor.id)
+
+
+def delete_slots_on_day(actor, instructor, year, month, day, status):
+    if not actor_can_manage_instructor(actor, instructor):
+        return 0, "You can only change your own slots."
+    if status not in (SESSION_AVAILABLE, SESSION_BOOKED):
+        return 0, "That slot type cannot be deleted in bulk."
+    query = _instructor_day_query(instructor, year, month, day, status)
+    slots = query.all()
+    count = len(slots)
+    for slot in slots:
+        db.session.delete(slot)
+    db.session.commit()
+    return count, None
 
 
 def book_session(session, client):

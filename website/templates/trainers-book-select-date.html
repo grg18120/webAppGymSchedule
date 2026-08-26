@@ -11,36 +11,105 @@
   <h1 class="h3 text-white">{{ day_date.strftime('%A %d %B %Y') }}</h1>
 
   {% if user.is_instructor or user.is_admin %}
+  <div class="availability-form mb-4">
+    {% if user.is_admin %}
+    <div class="mb-3">
+      <label for="day-instructor" class="form-label">Instructor</label>
+      <select class="form-select tap-target" id="day-instructor" required>
+        <option value="">Select instructor</option>
+        {% for instructor in instructors %}
+          <option value="{{ instructor.id }}" {% if instructor_id == instructor.id %}selected{% endif %}>{{ instructor.display_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
     {% if not is_past %}
-    <form method="POST" action="{{ url_for('app.add_availability', year=year, month=month, day=day) }}" class="availability-form mb-4">
+    <form method="POST" action="{{ url_for('app.add_availability', year=year, month=month, day=day) }}" class="mb-3">
+      {% if user.is_admin %}
+      <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+      {% endif %}
       <h2 class="h5">Add availability</h2>
-      <p class="mb-3">Publish a 1-on-1 slot that clients can book.</p>
+      <p class="mb-3">Publish a 1-on-1 slot that clients can book. Times use a 24-hour clock. Hour 24 is midnight at the end of the day.</p>
       <div class="row g-3 align-items-end">
-        {% if user.is_admin %}
-        <div class="col-md-4">
-          <label for="instructor_id" class="form-label">Instructor</label>
-          <select class="form-select tap-target" id="instructor_id" name="instructor_id" required>
-            <option value="">Select instructor</option>
-            {% for instructor in instructors %}
-              <option value="{{ instructor.id }}" {% if instructor_id == instructor.id %}selected{% endif %}>{{ instructor.display_name }}</option>
-            {% endfor %}
-          </select>
+        <div class="col-12 col-md-5">
+          <fieldset class="clock-fieldset">
+            <legend class="form-label">Start</legend>
+            <div class="clock-selects">
+              <label class="visually-hidden" for="start_hour">Start hour</label>
+              <select class="form-select tap-target" id="start_hour" name="start_hour" required>
+                {% for hour in clock_hours %}
+                  <option value="{{ hour }}" {% if hour == 9 %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>
+                {% endfor %}
+              </select>
+              <span class="clock-sep" aria-hidden="true">:</span>
+              <label class="visually-hidden" for="start_minute">Start minutes</label>
+              <select class="form-select tap-target" id="start_minute" name="start_minute" required>
+                {% for minute in clock_minutes %}
+                  <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ '%02d'|format(minute) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </fieldset>
         </div>
-        {% endif %}
-        <div class="col-6 col-md-3">
-          <label for="start_time" class="form-label">Start</label>
-          <input class="form-control tap-target" type="time" id="start_time" name="start_time" required>
+        <div class="col-12 col-md-5">
+          <fieldset class="clock-fieldset">
+            <legend class="form-label">End</legend>
+            <div class="clock-selects">
+              <label class="visually-hidden" for="end_hour">End hour</label>
+              <select class="form-select tap-target" id="end_hour" name="end_hour" required>
+                {% for hour in clock_hours %}
+                  <option value="{{ hour }}" {% if hour == 10 %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>
+                {% endfor %}
+              </select>
+              <span class="clock-sep" aria-hidden="true">:</span>
+              <label class="visually-hidden" for="end_minute">End minutes</label>
+              <select class="form-select tap-target" id="end_minute" name="end_minute" required>
+                {% for minute in clock_minutes %}
+                  <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ '%02d'|format(minute) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </fieldset>
         </div>
-        <div class="col-6 col-md-3">
-          <label for="end_time" class="form-label">End</label>
-          <input class="form-control tap-target" type="time" id="end_time" name="end_time" required>
-        </div>
-        <div class="col-md-2">
+        <div class="col-12 col-md-2">
           <button type="submit" class="btn btn-primary tap-target w-100">Publish</button>
         </div>
       </div>
     </form>
+
+    <form method="POST" action="{{ url_for('app.publish_all_day', year=year, month=month, day=day) }}" class="mb-3">
+      {% if user.is_admin %}
+      <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+      {% endif %}
+      <button type="submit" class="btn btn-success tap-target">Publish all day</button>
+      <p class="form-text mb-0 mt-2">Creates one-hour slots from 09:00 to 22:00. Hours that overlap an existing session are skipped.</p>
+    </form>
     {% endif %}
+
+    <div class="staff-slot-actions">
+      <form method="POST" action="{{ url_for('app.delete_available_slots', year=year, month=month, day=day) }}">
+        {% if user.is_admin %}
+        <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+        {% endif %}
+        <button type="submit" class="btn btn-outline-secondary tap-target" {% if available_count == 0 %}disabled{% endif %}>
+          Delete all Available slots{% if available_count %} ({{ available_count }}){% endif %}
+        </button>
+      </form>
+      <form
+        method="POST"
+        action="{{ url_for('app.delete_booked_slots', year=year, month=month, day=day) }}"
+        onsubmit="return confirm('Delete ALL booked slots on this day? Clients will lose those sessions. This cannot be undone.');"
+      >
+        {% if user.is_admin %}
+        <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+        {% endif %}
+        <button type="submit" class="btn btn-danger tap-target" {% if booked_count == 0 %}disabled{% endif %}>
+          Delete all Booked Slots{% if booked_count %} ({{ booked_count }}){% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
   {% endif %}
 
   {% if sessions %}
@@ -90,4 +159,21 @@
   </p>
   {% endif %}
 </div>
+{% endblock %}
+{% block extra_scripts %}
+{% if user.is_admin %}
+<script>
+(function () {
+  var select = document.getElementById("day-instructor");
+  if (!select) return;
+  function syncInstructor() {
+    document.querySelectorAll("input.js-instructor-id").forEach(function (input) {
+      input.value = select.value;
+    });
+  }
+  select.addEventListener("change", syncInstructor);
+  syncInstructor();
+})();
+</script>
+{% endif %}
 {% endblock %}

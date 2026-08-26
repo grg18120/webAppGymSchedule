@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import (
     Blueprint,
@@ -17,7 +17,15 @@ from sqlalchemy import extract
 from werkzeug.security import generate_password_hash
 
 from website import db
-from website.models import ROLE_ADMIN, ROLE_CLIENT, ROLE_INSTRUCTOR, GymSession, User
+from website.models import (
+    ROLE_ADMIN,
+    ROLE_CLIENT,
+    ROLE_INSTRUCTOR,
+    SESSION_AVAILABLE,
+    SESSION_BOOKED,
+    GymSession,
+    User,
+)
 from website.utils import booking
 from website.utils.datetime_utils import get_days_in_month, string_to_datetime
 from website.utils.security import role_required
@@ -184,7 +192,32 @@ def book_day(year, month, day):
         instructor_id=instructor_id,
         instructors=booking.instructors() if (current_user.is_admin or current_user.is_client) else [],
         is_past=is_past,
+        clock_hours=booking.CLOCK_HOURS,
+        clock_minutes=booking.CLOCK_MINUTES,
+        available_count=sum(1 for session in sessions if session.status == SESSION_AVAILABLE),
+        booked_count=sum(1 for session in sessions if session.status == SESSION_BOOKED),
     )
+
+
+def _day_instructor():
+    if current_user.is_admin:
+        instructor = db.session.get(User, request.form.get("instructor_id", type=int))
+        if not instructor or not instructor.is_instructor:
+            return None
+        return instructor
+    return current_user
+
+
+def _parse_clock(day_date, hour_name, minute_name):
+    hour = int(request.form.get(hour_name))
+    minute = int(request.form.get(minute_name))
+    if hour not in booking.CLOCK_HOURS or minute not in booking.CLOCK_MINUTES:
+        raise ValueError("Invalid time")
+    if hour == 24:
+        if minute != 0:
+            raise ValueError("Hour 24 must be 24:00")
+        return day_date.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    return day_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
 
 @app.route("/book/<int:year>/<int:month>/<int:day>/availability", methods=["POST"])
@@ -196,28 +229,86 @@ def add_availability(year, month, day):
         flash("That date is not valid.", "error")
         return redirect(url_for("app.book_calendar"))
 
-    start_time = request.form.get("start_time") or ""
-    end_time = request.form.get("end_time") or ""
     try:
-        start_hour, start_minute = [int(part) for part in start_time.split(":")]
-        end_hour, end_minute = [int(part) for part in end_time.split(":")]
-        start = day_date.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
-        end = day_date.replace(hour=end_hour, minute=end_minute, second=0, microsecond=0)
-    except ValueError:
-        flash("Enter start and end times in HH:MM format.", "error")
+        start = _parse_clock(day_date, "start_hour", "start_minute")
+        end = _parse_clock(day_date, "end_hour", "end_minute")
+    except (TypeError, ValueError):
+        flash("Choose a start and end time using 24-hour hours and minutes.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day))
 
-    if current_user.is_admin:
-        instructor = db.session.get(User, request.form.get("instructor_id", type=int))
-        if not instructor or not instructor.is_instructor:
-            flash("Choose an instructor for this slot.", "error")
-            return redirect(url_for("app.book_day", year=year, month=month, day=day))
-    else:
-        instructor = current_user
+    instructor = _day_instructor()
+    if not instructor:
+        flash("Choose an instructor for this slot.", "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day))
 
     _session, error = booking.create_availability(instructor, start, end)
     flash(error or "Availability published. Clients can now book this slot.", "error" if error else "success")
-    return redirect(url_for("app.book_day", year=year, month=month, day=day))
+    return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+
+
+@app.route("/book/<int:year>/<int:month>/<int:day>/availability/all-day", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def publish_all_day(year, month, day):
+    day_date = _parse_day(year, month, day)
+    if not day_date:
+        flash("That date is not valid.", "error")
+        return redirect(url_for("app.book_calendar"))
+    instructor = _day_instructor()
+    if not instructor:
+        flash("Choose an instructor first.", "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day))
+    created, skipped = booking.publish_hourly_slots(instructor, day_date)
+    if created and skipped:
+        flash(f"Published {created} hourly slots from 09:00 to 22:00. Skipped {skipped} overlapping or past hours.", "success")
+    elif created:
+        flash(f"Published {created} hourly slots from 09:00 to 22:00.", "success")
+    else:
+        flash("No new slots were published. They overlap existing sessions or are in the past.", "error")
+    return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+
+
+@app.route("/book/<int:year>/<int:month>/<int:day>/availability/delete-available", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def delete_available_slots(year, month, day):
+    instructor = _day_instructor()
+    if not instructor:
+        flash("Choose an instructor first.", "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day))
+    count, error = booking.delete_slots_on_day(
+        current_user, instructor, year, month, day, SESSION_AVAILABLE
+    )
+    if error:
+        flash(error, "error")
+    elif count == 0:
+        flash("There are no available slots to delete on this day.", "error")
+    else:
+        flash(f"Deleted {count} available slot(s).", "success")
+    return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+
+
+@app.route("/book/<int:year>/<int:month>/<int:day>/bookings/delete-booked", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def delete_booked_slots(year, month, day):
+    instructor = _day_instructor()
+    if not instructor:
+        flash("Choose an instructor first.", "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day))
+    count, error = booking.delete_slots_on_day(
+        current_user, instructor, year, month, day, SESSION_BOOKED
+    )
+    if error:
+        flash(error, "error")
+    elif count == 0:
+        flash("There are no booked slots to delete on this day.", "error")
+    else:
+        flash(
+            f"Deleted {count} booked slot(s). Those clients no longer have that session.",
+            "success",
+        )
+    return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
 
 
 @app.route("/sessions/<int:session_id>/confirm")
