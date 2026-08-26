@@ -1,110 +1,91 @@
 from datetime import datetime, timedelta
+
 from werkzeug.security import generate_password_hash
 
+from website.models import (
+    ROLE_ADMIN,
+    ROLE_CLIENT,
+    ROLE_INSTRUCTOR,
+    SESSION_AVAILABLE,
+    SESSION_BOOKED,
+    GymSession,
+    User,
+)
 
 
-def generate_hourly_datetimes(for_date: datetime.date) -> list[datetime]:
-    return [
-        datetime.combine(for_date, datetime.min.time()) + timedelta(hours=i)
-        for i in range(24)
-    ]
-
-
-# def init_ScheduleDate_table(db):
-#     from website.models import ScheduleDate, ScheduleTime
-
-#     start_date = datetime.now().date() + timedelta(days=-1)
-#     end_date = start_date + timedelta(days=365)
-
-#     for i in range((end_date - start_date).days + 1):
-#         date_obj = datetime.combine(start_date + timedelta(days=i), datetime.min.time())
-#         schedule_date_obj = ScheduleDate(date=date_obj, date_bookable=1)
-#         db.session.add(schedule_date_obj)
-#         for tim in generate_hourly_datetimes(date_obj):
-#             schedule_time_obj = ScheduleTime(time_start=tim, time_end=tim + timedelta(hours=0.5), date_id= schedule_date_obj.id)
-#             db.session.add(schedule_time_obj)
-#             schedule_time_obj = ScheduleTime(time_start=tim + timedelta(hours=0.5), time_end=tim + timedelta(hours=1.0), date_id= schedule_date_obj.id)
-#             db.session.add(schedule_time_obj)
-
-#     db.session.commit()
+DEMO_ACCOUNTS = (
+    {
+        "email": "admin@gym.com",
+        "password": "admin123",
+        "name_first": "Ada",
+        "name_last": "Admin",
+        "role": ROLE_ADMIN,
+    },
+    {
+        "email": "instructor@gym.com",
+        "password": "instructor123",
+        "name_first": "Alex",
+        "name_last": "Instructor",
+        "role": ROLE_INSTRUCTOR,
+    },
+    {
+        "email": "client@gym.com",
+        "password": "client123",
+        "name_first": "Casey",
+        "name_last": "Client",
+        "role": ROLE_CLIENT,
+    },
+)
 
 
 def init_database(db):
-    init_User_table(db)
-    init_Trainer_table(db)
-    init_ScheduleTrainning_table(db)
+    _ensure_demo_users(db)
+    _ensure_demo_sessions(db)
 
 
-def init_User_table(db):
-    from website.models import User
-    user = User(
-        email="admin@admin.com",
-        password=generate_password_hash("admin"),
-        name_first="admin",
-        name_last="admin",
-    )
-    db.session.add(user)
+def _ensure_demo_users(db):
+    for account in DEMO_ACCOUNTS:
+        existing = User.query.filter_by(email=account["email"]).first()
+        if existing:
+            continue
+        db.session.add(
+            User(
+                email=account["email"],
+                password=generate_password_hash(account["password"]),
+                name_first=account["name_first"],
+                name_last=account["name_last"],
+                role=account["role"],
+                status=1,
+            )
+        )
     db.session.commit()
 
 
-def init_Trainer_table(db):
-    from website.models import Trainer
-    trainer = Trainer(
-        email="pavlos@pavlos.com",
-        password=generate_password_hash("pavlos"),
-        name_first="pavlos",
-        name_last="papadakis",
-    )
-    db.session.add(trainer)
+def _next_hour(now=None):
+    now = now or datetime.now()
+    return now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+
+
+def _ensure_demo_sessions(db):
+    instructor = User.query.filter_by(email="instructor@gym.com").first()
+    client = User.query.filter_by(email="client@gym.com").first()
+    if not instructor or not client:
+        return
+    if GymSession.query.filter_by(instructor_id=instructor.id).count() > 0:
+        return
+
+    base = _next_hour()
+    offsets = (0, 2, 24, 26)
+    for index, hour_offset in enumerate(offsets):
+        start = base + timedelta(hours=hour_offset)
+        session = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+        )
+        if index == 2:
+            session.client_id = client.id
+            session.status = SESSION_BOOKED
+        db.session.add(session)
     db.session.commit()
-
-
-def init_ScheduleTrainning_table(db):
-    from website.models import ScheduleTrainning, Trainer, User
-
-    schedule_trainning = ScheduleTrainning(
-        datetime_start = datetime(datetime.now().year, datetime.now().month, datetime.now().day, 20, 0),
-        datetime_end = datetime(datetime.now().year, datetime.now().month, datetime.now().day, 21, 55),
-        trainer_id = Trainer.query.filter(Trainer.name_first == "pavlos").first().id,
-    )
-    db.session.add(schedule_trainning)
-    db.session.commit()
-
-    
-    for x in range(12,16):
-        schedule_trainning = ScheduleTrainning(
-            datetime_start = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x, 0),
-            datetime_end = datetime(datetime.now().year, datetime.now().month, datetime.now().day, x+1, 0),
-            trainer_id = Trainer.query.filter(Trainer.name_first == "pavlos").first().id,
-            user_id = User.query.filter(User.name_first == "admin").first().id
-        )
-        db.session.add(schedule_trainning)
-        db.session.commit()
-
-
-
-
-    for m in range(1,13):
-        schedule_trainning = ScheduleTrainning(
-            datetime_start = datetime(2025, m, 20, 12, 0),
-            datetime_end = datetime(2025, m, 20, 14, 0),
-            trainer_id = Trainer.query.filter(Trainer.name_first == "pavlos").first().id
-        )
-        db.session.add(schedule_trainning)
-        db.session.commit()
-
-        schedule_trainning = ScheduleTrainning(
-            datetime_start = datetime(2026, m, 20, 12, 0),
-            datetime_end = datetime(2026, m, 20, 14, 0),
-            trainer_id = Trainer.query.filter(Trainer.name_first == "pavlos").first().id
-        )
-        db.session.add(schedule_trainning)
-        db.session.commit()
-
-
-
-
-
-
-
-

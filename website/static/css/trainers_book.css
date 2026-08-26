@@ -1,117 +1,121 @@
-
-
+.calendar-container {
+  max-width: 100%;
+}
 
 .calendar-header,
 .calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .weekday {
-    font-weight: bold;
-    text-align: center;
-    padding: 5px 0;
-    font-size: 0.9em;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 0;
+  font-size: 0.85rem;
+  color: #f2f6f8;
 }
-
 
 .day {
-    all: unset;
-    width: 90%;
-    background-color: #e0e0e0;
-    border-radius: 20px;
-    padding: 10px;
-    text-align: center;
-    font-size: 0.85em;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.8s ease;
-    min-height: 60px;
+  min-height: 72px;
+  min-width: 0;
+  background-color: #e9ecef;
+  color: #102a3a;
+  border-radius: 12px;
+  padding: 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border: 2px solid transparent;
 }
 
-.day:hover {
-    background-color: #e0e0e057;
-    color: white;
+.day:hover,
+.day:focus {
+  color: #102a3a;
+  border-color: #0d6efd;
+  outline: none;
+}
+
+.day.empty {
+  background: transparent;
+  pointer-events: none;
 }
 
 .day-number {
-    font-weight: bold;
-    font-size: 1.75em;
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1.1;
 }
 
-.day-full {
-    display: block;
-    font-size: 1.0em;
+.day-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
 }
 
 .day.today {
-    background-color: #27cf4bbc;
-    color: white;
-    animation: pulse-glow 1.8s infinite;
+  background-color: #198754;
+  color: #fff;
 }
 
-
-.day.today:hover {
-    background-color: #1b641c;
-    color: white;
-    animation: pulse-glow 1.8s infinite;
+.day.has-open:not(.passed):not(.today) {
+  background-color: #cfe2ff;
 }
 
-.day.weekend {
-    background-color: #2187d5d0;
-}
-
-.day.weekend:hover {
-    background-color: #2187d538;
-     /* #050248; */
-    color: white;
+.day.has-booked:not(.passed):not(.today):not(.has-open) {
+  background-color: #ffe69c;
 }
 
 .day.passed {
-    background-color: #d3d3d3;
-    color: #777;
-    opacity: 0.7;
-    text-decoration: line-through;
+  background-color: #ced4da;
+  color: #343a40;
 }
 
-.day.passed:hover {
-    background-color: #403d43;
-    color: white;
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  color: #f2f6f8;
 }
 
-
-.day.empty {
-    background-color: transparent;
-    visibility: hidden;
+.legend-swatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 3px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
 }
 
+.legend-swatch.today { background: #198754; }
+.legend-swatch.available { background: #cfe2ff; }
+.legend-swatch.booked { background: #ffe69c; }
+.legend-swatch.passed { background: #ced4da; }
 
-
-
-
-.fas.passed {
-    color: rgba(214, 138, 138, 0.4); /* transparent red */
-}
-
-.fas.not_passed {
-    color: rgba(245, 6, 6, 0.88); /* transparent red */
-}
-
-
-/* Animation */
-@keyframes pulse-glow {
-  0% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5);
+@media (max-width: 768px) {
+  .calendar-header,
+  .calendar-grid {
+    gap: 4px;
   }
-  70% {
-    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+
+  .day {
+    min-height: 52px;
+    padding: 4px;
+    border-radius: 8px;
   }
-  100% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+
+  .day-number {
+    font-size: 1rem;
+  }
+
+  .weekday {
+    font-size: 0.7rem;
   }
 }
-

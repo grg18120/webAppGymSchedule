@@ -1,132 +1,109 @@
 {% extends "base.html" %}
-
+{% block title %}Calendar · Gym Sessions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trainers_book.css') }}">
+{% endblock %}
 {% block content %}
+<div class="container py-4">
+  <h1 class="h3 text-white">
+    {% if user.is_instructor %}Your availability calendar
+    {% elif user.is_admin %}All sessions calendar
+    {% else %}Find an open session{% endif %}
+  </h1>
+  <p class="text-white-50">
+    Open days have at least one bookable slot. Booked days already have a client. Past days cannot be booked.
+  </p>
 
-    <link rel="stylesheet" href="/static/css/trainers_book.css">
-
-    <form method="POST" id="date-form" action="/trainers-book" class="container my-4">
-
-        <div class="row align-items-end g-3">
-            <div class="col-md-6 col-sm-12">
-                <label for="month-select" class="form-label" style="color:white;">Select Month</label>
-                <select name="month" class="form-select" id="month-select" required>
-                    {% set months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
-                    {% for i in range(1, 13) %}
-                        <option value="{{ i }}" {% if selected_month == i %}selected{% endif %}>
-                            {{ months[i - 1] }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="col-md-6 col-sm-12">
-                <label for="year-select" class="form-label" style="color:white";>Select Year</label>
-                <select name="year" class="form-select" id="year-select" required>
-                    {% for y in range(current_date.year - 2, current_date.year + 2) %}
-                        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-
-    </form>
-
-
-
-    {% if days %}
-    <div class="calendar-container">
-        <div class="calendar-header">
-            {% for weekday in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
-            <div class="weekday">{{ weekday }}</div>
-            {% endfor %}
-        </div>
-        <div class="calendar-grid">
-            {# Add empty cells for alignment before the 1st day #}
-            {% set first_weekday = days[0].weekday() %}
-            {% set adjusted = first_weekday %}
-
-            {% for _ in range(adjusted) %}
-                <div class="day empty"></div>
-            {% endfor %}
-
-            {% for day in days %}
-                {% set is_today = (day.date() == now.date()) %}
-                {% set is_passed = (day.date() < now.date()) %}
-
-                <form method="POST" action="/trainers-book-select-date">
-                    <input type="hidden" name="year" value="{{ day.year }}">
-                    <input type="hidden" name="month" value="{{ day.month }}">
-                    <input type="hidden" name="day" value="{{ day.day }}">
-
-                    
-                    <button type="submit" class="day
-                        {% if is_today %} today{% endif %}
-                        {% if is_passed %} passed{% endif %}
-                        {% if day.weekday() >= 5 %} weekend{% endif %}
-                    ">
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <!-- Left side: day info -->
-                            <div style="text-align: center; align-items: center; width: 100%;">
-                                <span style="font-size: 1.75em; font-weight: bold;">
-                                    {{ day.day }}
-                                </span><br>
-
-                                <span style="font-size: 1.0em;">
-                                    {{ day.strftime('%d-%m-%Y') }}
-                                </span>
-                            </div>
-
-                            <!-- Right side: icon if not scheduled -->
-                            {% if day not in trainers_dates_scheduled %}
-                                <div>
-                                    <i class="fas fa-exclamation-circle{% if is_passed %} passed{% endif %} {% if not is_passed %} not_passed{% endif %}"
-                                    style="font-size: 1.2em;"
-                                    title="Trainer have NOT schedule trainning"></i>
-                                </div>
-                            {% endif %}
-                            {% if day in users_dates_scheduled %}
-                                <div>
-                                <i class="fas fa-user user-icon"
-                                    style="font-size: 1.2em;"
-                                    title="User have book"></i>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </button>
-                </form>
+  <form method="GET" action="{{ url_for('app.book_calendar') }}" class="row g-3 align-items-end mb-4" id="date-form">
+    <div class="col-sm-6 col-md-4">
+      <label for="month-select" class="form-label text-white">Month</label>
+      <select name="month" class="form-select tap-target" id="month-select">
+        {% set months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+        {% for i in range(1, 13) %}
+          <option value="{{ i }}" {% if selected_month == i %}selected{% endif %}>{{ months[i - 1] }}</option>
         {% endfor %}
-
-        </div>
+      </select>
+    </div>
+    <div class="col-sm-6 col-md-4">
+      <label for="year-select" class="form-label text-white">Year</label>
+      <select name="year" class="form-select tap-target" id="year-select">
+        {% for y in range(current_date.year - 1, current_date.year + 2) %}
+          <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if user.is_admin %}
+    <div class="col-sm-6 col-md-4">
+      <label for="instructor-select" class="form-label text-white">Instructor (optional)</label>
+      <select name="instructor_id" class="form-select tap-target" id="instructor-select">
+        <option value="">All instructors</option>
+        {% for instructor in instructors %}
+          <option value="{{ instructor.id }}" {% if instructor_id == instructor.id %}selected{% endif %}>
+            {{ instructor.display_name }}
+          </option>
+        {% endfor %}
+      </select>
     </div>
     {% endif %}
+  </form>
 
+  <ul class="calendar-legend" aria-label="Calendar legend">
+    <li><span class="legend-swatch today" aria-hidden="true"></span> Today</li>
+    <li><span class="legend-swatch available" aria-hidden="true"></span> Open slots</li>
+    <li><span class="legend-swatch booked" aria-hidden="true"></span> Booked</li>
+    <li><span class="legend-swatch passed" aria-hidden="true"></span> Past</li>
+  </ul>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const form = document.getElementById("date-form");
-            const monthSelect = document.getElementById("month-select");
-            const yearSelect = document.getElementById("year-select");
+  {% if days %}
+  <div class="calendar-container">
+    <div class="calendar-header" aria-hidden="true">
+      {% for weekday in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+      <div class="weekday">{{ weekday }}</div>
+      {% endfor %}
+    </div>
+    <div class="calendar-grid">
+      {% set first_weekday = days[0].weekday() %}
+      {% for _ in range(first_weekday) %}
+        <div class="day empty" aria-hidden="true"></div>
+      {% endfor %}
 
-            function submitIfValid() {
-                if (monthSelect.value && yearSelect.value) {
-                    form.submit();
-                }
-            }
-
-            monthSelect.addEventListener("change", submitIfValid);
-            yearSelect.addEventListener("change", submitIfValid);
-        });
-    </script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            document.querySelectorAll(".day").forEach(button => {
-                button.addEventListener("click", () => {
-                    const year = button.getAttribute("data-year");
-                    const month = button.getAttribute("data-month");
-                    const day = button.getAttribute("data-day");
-                });
-            });
-        });
-    </script>
+      {% for day in days %}
+        {% set is_today = (day.date() == now.date()) %}
+        {% set is_passed = (day.date() < now.date()) %}
+        {% set has_open = day.date() in available_dates %}
+        {% set has_booked = day.date() in booked_dates %}
+        <a
+          class="day{% if is_today %} today{% endif %}{% if is_passed %} passed{% endif %}{% if has_open %} has-open{% endif %}{% if has_booked %} has-booked{% endif %}"
+          href="{{ url_for('app.book_day', year=day.year, month=day.month, day=day.day, instructor_id=instructor_id) }}"
+        >
+          <span class="day-number">{{ day.day }}</span>
+          <span class="visually-hidden">
+            {{ day.strftime('%A %d %B %Y') }}
+            {% if is_passed %} past day
+            {% elif has_open %} open slots
+            {% elif has_booked %} booked
+            {% else %} no sessions{% endif %}
+          </span>
+          <span class="day-status" aria-hidden="true">
+            {% if is_passed %}Past
+            {% elif has_open %}Open
+            {% elif has_booked %}Booked
+            {% else %}None{% endif %}
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var form = document.getElementById("date-form");
+    form.querySelectorAll("select").forEach(function (select) {
+      select.addEventListener("change", function () { form.submit(); });
+    });
+  });
+</script>
 {% endblock %}

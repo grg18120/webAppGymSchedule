@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}My sessions · Gym Sessions{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h3 text-white">My sessions</h1>
+
+  <h2 class="h5 text-white mt-4">Upcoming</h2>
+  {% if upcoming %}
+  <ul class="session-list">
+    {% for session in upcoming %}
+    <li class="session-card session-card--{{ session.status }}">
+      <p class="session-status"><span class="status-dot" aria-hidden="true"></span>{{ session.status_label }}</p>
+      <h3 class="h5">{{ session.datetime_start.strftime('%a %d %b %Y, %H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h3>
+      <p>Instructor: {{ session.instructor.display_name }}{% if session.client %} · Client: {{ session.client.display_name }}{% endif %}</p>
+      {% if session.status == 'booked' and not session.is_past %}
+        {% if user.is_client or user.is_instructor or user.is_admin %}
+        <form method="POST" action="{{ url_for('app.cancel_session', session_id=session.id) }}" onsubmit="return confirm('Cancel this session?');">
+          <button type="submit" class="btn btn-danger tap-target">Cancel</button>
+        </form>
+        {% endif %}
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-state">No upcoming sessions. <a href="{{ url_for('app.book_calendar') }}">Book a session</a>.</p>
+  {% endif %}
+
+  <h2 class="h5 text-white mt-4">Past</h2>
+  {% if past %}
+  <ul class="session-list">
+    {% for session in past %}
+    <li class="session-card session-card--past">
+      <p class="session-status"><span class="status-dot" aria-hidden="true"></span>{{ session.status_label }}</p>
+      <h3 class="h5">{{ session.datetime_start.strftime('%a %d %b %Y, %H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h3>
+      <p class="mb-0">Instructor: {{ session.instructor.display_name }}{% if session.client %} · Client: {{ session.client.display_name }}{% endif %}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-state">No past sessions yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

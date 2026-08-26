@@ -19,10 +19,11 @@
 
 /* *************************** MENU BUTTONS *************************** */
 .btn.btn-menu {
-  gap: 6px;                        /* space between icon and text */
+  gap: 6px;
   padding: 10px 12px;
   color: white;
-  font-size: 6x;
+  font-size: 1rem;
+  min-height: 44px;
 }
 
 .btn.btn-menu:hover {

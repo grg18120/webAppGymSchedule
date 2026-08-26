@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Page not found · Gym Sessions{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="empty-state">
+    <h1 class="h3">Page not found</h1>
+    <p>That address is not a page in Gym Sessions.</p>
+    <a class="btn btn-primary tap-target" href="{{ url_for('app.home') }}">Back to home</a>
+  </div>
+</div>
+{% endblock %}

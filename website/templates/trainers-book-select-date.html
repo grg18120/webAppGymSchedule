@@ -1,86 +1,93 @@
 {% extends "base.html" %}
-
+{% block title %}{{ day_date.strftime('%d %b %Y') }} · Gym Sessions{% endblock %}
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trainers_book.css') }}">
 {% endblock %}
-
 {% block content %}
-<br>
-<div class="schedule-header">
-  <div>Trainer</div>
-  <div>User</div>
-  <div>Time</div>
-  <div>Action</div>
-</div>
+<div class="container py-4">
+  <p class="mb-2">
+    <a class="text-white" href="{{ url_for('app.book_calendar', month=month, year=year, instructor_id=instructor_id) }}">Back to calendar</a>
+  </p>
+  <h1 class="h3 text-white">{{ day_date.strftime('%A %d %B %Y') }}</h1>
 
-<ul class="timeline">
-{% for schedule_tr, delta in schedule_data %}
-    <li class="event"
-        data-date="{{ schedule_tr.datetime_start.strftime('%H:%M') }} – {{ schedule_tr.datetime_end.strftime('%H:%M') }}"
-        style="--event-h: {{ 70 + 430.0 * delta / 1440.0 }}px;"
-        >
-      <div class="member-infos">
-        <table class="table schedule-table" style="height: var(--event-h);">
-          <colgroup>
-            <col class="col-static">
-            <col class="col-static">
-            <col class="col-static">
-            <col class="col-static">
-          </colgroup>
-          <tbody>
-            <tr class="{% if schedule_tr.trainer and schedule_tr.user %}working
-                        {% elif schedule_tr.trainer %}available-work
-                        {% else %}not-available-work{% endif %}">
-              <td title="{{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}">
-                {{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}
-              </td>
+  {% if user.is_instructor or user.is_admin %}
+    {% if not is_past %}
+    <form method="POST" action="{{ url_for('app.add_availability', year=year, month=month, day=day) }}" class="availability-form mb-4">
+      <h2 class="h5">Add availability</h2>
+      <p class="mb-3">Publish a 1-on-1 slot that clients can book.</p>
+      <div class="row g-3 align-items-end">
+        {% if user.is_admin %}
+        <div class="col-md-4">
+          <label for="instructor_id" class="form-label">Instructor</label>
+          <select class="form-select tap-target" id="instructor_id" name="instructor_id" required>
+            <option value="">Select instructor</option>
+            {% for instructor in instructors %}
+              <option value="{{ instructor.id }}" {% if instructor_id == instructor.id %}selected{% endif %}>{{ instructor.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="col-6 col-md-3">
+          <label for="start_time" class="form-label">Start</label>
+          <input class="form-control tap-target" type="time" id="start_time" name="start_time" required>
+        </div>
+        <div class="col-6 col-md-3">
+          <label for="end_time" class="form-label">End</label>
+          <input class="form-control tap-target" type="time" id="end_time" name="end_time" required>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary tap-target w-100">Publish</button>
+        </div>
+      </div>
+    </form>
+    {% endif %}
+  {% endif %}
 
-              <td title="{{ schedule_tr.user.name_first if schedule_tr.user else '' }}">
-                {{ schedule_tr.user.name_first if schedule_tr.user else '' }}
-              </td>
+  {% if sessions %}
+  <ul class="session-list">
+    {% for session in sessions %}
+    <li class="session-card session-card--{{ session.status }}{% if session.is_past %} session-card--past{% endif %}">
+      <p class="session-status">
+        <span class="status-dot" aria-hidden="true"></span>
+        {{ session.status_label }}
+      </p>
+      <h2 class="h5 mb-1">{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h2>
+      <p class="mb-1">{{ session.duration_minutes }} minutes</p>
+      <p class="mb-2">Instructor: {{ session.instructor.display_name }}
+        {% if session.client %} · Client: {{ session.client.display_name }}{% endif %}
+      </p>
+      <div class="d-flex flex-wrap gap-2">
+        {% if user.is_client and session.is_available %}
+          <a class="btn btn-primary tap-target" href="{{ url_for('app.confirm_booking', session_id=session.id) }}">Book this session</a>
+        {% elif user.is_client and session.client_id == user.id and not session.is_past %}
+          <form method="POST" action="{{ url_for('app.cancel_session', session_id=session.id) }}" onsubmit="return confirm('Cancel this booking? The slot will become available again.');">
+            <button type="submit" class="btn btn-danger tap-target">Cancel booking</button>
+          </form>
+        {% endif %}
 
-              <td>
-                {{ delta }} min
-              </td>
+        {% if (user.is_instructor or user.is_admin) and session.status == 'available' %}
+          <form method="POST" action="{{ url_for('app.remove_availability', session_id=session.id) }}" onsubmit="return confirm('Remove this open slot?');">
+            <button type="submit" class="btn btn-outline-light tap-target">Remove slot</button>
+          </form>
+        {% endif %}
 
-              <td data-label="Actions" class="actions-cell">
-                <div class="btn actions-buttons">
-                  {% if not schedule_tr.trainer and not schedule_tr.user %}
-                    <button type="button"
-                            class="btn btn-booking-available"
-                            data-action="enable"
-                            {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
-                      Enable Booking
-                    </button>
-                  {% endif %}
-
-                  {% if schedule_tr.trainer and not schedule_tr.user %}
-                    <button type="button"
-                            class="btn btn-booking-unavailable"
-                            data-action="disable"
-                            {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
-                      Disable Booking
-                    </button>
-                  {% endif %}
-
-                  {% if schedule_tr.user %}
-                    <button type="button"
-                            class="btn btn-booking-cancel"
-                            data-action="cancel"
-                            {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
-                      Cancel Booking
-                    </button>
-                  {% endif %}
-                </div>
-              </td>
-            </tr>
-
-          </tbody>
-        </table>
+        {% if (user.is_instructor or user.is_admin) and session.status == 'booked' and not session.is_past %}
+          <form method="POST" action="{{ url_for('app.cancel_session', session_id=session.id) }}" onsubmit="return confirm('Cancel this booked session? The client will lose the booking.');">
+            <button type="submit" class="btn btn-danger tap-target">Cancel session</button>
+          </form>
+        {% endif %}
       </div>
     </li>
-  {% endfor %}
-</ul>
-{% endblock %}
-
-{% block extra_scripts %}
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-state">No sessions on this day.
+    {% if user.is_client %}
+      <a href="{{ url_for('app.book_calendar') }}">Try another date</a>.
+    {% elif not is_past %}
+      Publish a slot above so clients can book.
+    {% endif %}
+  </p>
+  {% endif %}
+</div>
 {% endblock %}
