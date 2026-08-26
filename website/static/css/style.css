@@ -8,11 +8,14 @@ html, body {
 }
 
   body {
-    background-image: url('/static/images/bg2.png'); 
+    background-color: #102a3a;
+    background-image:
+      linear-gradient(rgba(16, 42, 58, 0.82), rgba(16, 42, 58, 0.88)),
+      url('/static/images/bg.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-attachment: fixed; 
+    background-attachment: fixed;
   }
 
 /* Table look */
@@ -63,8 +66,8 @@ input[type="date"] {
   border-radius: 0.5rem;
 }
 
-.btn-primary {
-  width: 60%;
+.inputs-card .btn-primary {
+  width: 100%;
 }
 
 

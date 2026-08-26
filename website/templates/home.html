@@ -1,61 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gymnastics Club</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+{% extends "base.html" %}
+{% block title %}Home · Gym Sessions{% endblock %}
+{% block content %}
+<section class="hero container py-4">
+  <h1 class="display-5 text-white">Book a gym session</h1>
+  <p class="lead text-white">1-on-1 training with an instructor. Choose a time that is already open, then confirm.</p>
 
-    <style>
-        @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(100px); }
-        to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-        animation: fadeIn 1.6s ease-out forwards;
-        }
+  {% if not user.is_authenticated %}
+  <div class="d-flex flex-wrap gap-2 mt-3">
+    <a class="btn btn-primary tap-target" href="{{ url_for('auth.sign_up') }}">Create a client account</a>
+    <a class="btn btn-outline-light tap-target" href="{{ url_for('auth.login') }}">Log in</a>
+  </div>
+  {% include '_demo_accounts.html' %}
+  {% endif %}
 
-    </style>
+  {% if user.is_authenticated %}
+  <div class="welcome-card mt-4">
+    <h2 class="h4 mb-2">Hello, {{ user.display_name }}</h2>
+    <p class="mb-3">You are signed in as <strong>{{ user.role_label }}</strong>.</p>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-primary tap-target" href="{{ url_for('app.book_calendar') }}">
+        {% if user.is_instructor %}Manage availability{% else %}Book a session{% endif %}
+      </a>
+      <a class="btn btn-outline-primary tap-target" href="{{ url_for('app.my_sessions') }}">My sessions</a>
+      {% if user.is_admin %}
+      <a class="btn btn-outline-primary tap-target" href="{{ url_for('app.users') }}">Manage users</a>
+      {% endif %}
+    </div>
+  </div>
 
-
-
-</head>
-<body>
-    
-    {% include 'base_up_menu.html' %}
-      
-    <main class="container text-center my-5 animate-fade-in">
-        <h2 class="display-4 text-white  mb-3">Discover the Art of Movement</h2>
-        <p class="lead text-white mb-4">
-            Join our gymnastics club to experience the thrill of athleticism, discipline, and grace.
-        </p>
-
-        {% if not user.is_authenticated %}
-        <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
-            <a class="btn btn-primary btn-lg px-5 shadow-sm" href="/sign-up" style="border-radius: 20px; padding: 6px 18px;">
-                Register
-            </a>
-            <a class="btn btn-primary btn-lg px-5 shadow-sm" href="/login" style="border-radius: 20px; padding: 6px 18px;">
-                Log in
-            </a>
-        </div>
-        {% endif %}
-
-        {% if user.is_authenticated %}
-        <div class="mt-5 p-4 bg-light rounded shadow-sm d-inline-block">
-            <h2 class="h1 fw-bold text-secondary mb-2">
-                👋 Welcome, <span class="text-primary">{{ user.name_last }}</span>
-            </h2>
-            <p class="fs-5 text-muted">Glad to have you back!</p>
-        </div>
-        {% endif %}   
-
-    </main>
-
-    
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-
+  {% if dashboard and dashboard.upcoming %}
+  <h2 class="h5 text-white mt-4">Coming up</h2>
+  <ul class="session-list">
+    {% for session in dashboard.upcoming %}
+    <li class="session-card session-card--{{ session.status }}">
+      <p class="session-status">
+        <span class="status-dot" aria-hidden="true"></span>
+        {{ session.status_label }}
+      </p>
+      <p class="mb-1"><strong>{{ session.datetime_start.strftime('%a %d %b, %H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</strong></p>
+      <p class="mb-0">
+        Instructor: {{ session.instructor.display_name }}
+        {% if session.client %} · Client: {{ session.client.display_name }}{% endif %}
+      </p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif dashboard %}
+  <p class="empty-state mt-4">No upcoming sessions. <a href="{{ url_for('app.book_calendar') }}">Open the calendar</a> to get started.</p>
+  {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

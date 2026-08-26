@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Confirm booking · Gym Sessions{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="inputs-card">
+    <h1 class="h3">Confirm this session</h1>
+    <p>Review the details, then confirm. Nothing is booked until you confirm.</p>
+    <dl class="confirm-details">
+      <dt>Instructor</dt>
+      <dd>{{ session.instructor.display_name }}</dd>
+      <dt>Date</dt>
+      <dd>{{ session.datetime_start.strftime('%A %d %B %Y') }}</dd>
+      <dt>Time</dt>
+      <dd>{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }} ({{ session.duration_minutes }} min)</dd>
+    </dl>
+    <form method="POST" action="{{ url_for('app.book_session', session_id=session.id) }}" class="d-flex flex-wrap gap-2">
+      <button type="submit" class="btn btn-primary tap-target">Confirm booking</button>
+      <a class="btn btn-outline-secondary tap-target" href="{{ url_for('app.book_day', year=session.datetime_start.year, month=session.datetime_start.month, day=session.datetime_start.day) }}">Go back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

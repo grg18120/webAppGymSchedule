@@ -1,86 +1,256 @@
 {% extends "base.html" %}
-
+{% block title %}{{ day_date.strftime('%d %b %Y') }} · Gym Sessions{% endblock %}
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trainers_book.css') }}">
 {% endblock %}
-
 {% block content %}
-<br>
-<div class="schedule-header">
-  <div>Trainer</div>
-  <div>User</div>
-  <div>Time</div>
-  <div>Action</div>
-</div>
+<div class="container py-4">
+  <p class="mb-2">
+    <a class="text-white" href="{{ url_for('app.book_calendar', month=month, year=year, instructor_id=instructor_id) }}">Back to calendar</a>
+  </p>
+  <h1 class="h3 text-white">{{ day_date.strftime('%A %d %B %Y') }}</h1>
 
-<ul class="timeline">
-{% for schedule_tr, delta in schedule_data %}
-    <li class="event"
-        data-date="{{ schedule_tr.datetime_start.strftime('%H:%M') }} – {{ schedule_tr.datetime_end.strftime('%H:%M') }}"
-        style="--event-h: {{ 70 + 430.0 * delta / 1440.0 }}px;"
-        >
-      <div class="member-infos">
-        <table class="table schedule-table" style="height: var(--event-h);">
-          <colgroup>
-            <col class="col-static">
-            <col class="col-static">
-            <col class="col-static">
-            <col class="col-static">
-          </colgroup>
-          <tbody>
-            <tr class="{% if schedule_tr.trainer and schedule_tr.user %}working
-                        {% elif schedule_tr.trainer %}available-work
-                        {% else %}not-available-work{% endif %}">
-              <td title="{{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}">
-                {{ schedule_tr.trainer.name_first if schedule_tr.trainer else '' }}
-              </td>
+  {% if user.is_instructor or user.is_admin %}
+  <div class="availability-form mb-4">
+    {% if user.is_admin %}
+    <div class="mb-3">
+      <label for="day-instructor" class="form-label">Instructor</label>
+      <select class="form-select tap-target" id="day-instructor" required>
+        <option value="">Select instructor</option>
+        {% for instructor in instructors %}
+          <option value="{{ instructor.id }}" {% if instructor_id == instructor.id %}selected{% endif %}>{{ instructor.display_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
 
-              <td title="{{ schedule_tr.user.name_first if schedule_tr.user else '' }}">
-                {{ schedule_tr.user.name_first if schedule_tr.user else '' }}
-              </td>
-
-              <td>
-                {{ delta }} min
-              </td>
-
-              <td data-label="Actions" class="actions-cell">
-                <div class="btn actions-buttons">
-                  {% if not schedule_tr.trainer and not schedule_tr.user %}
-                    <button type="button"
-                            class="btn btn-booking-available"
-                            data-action="enable"
-                            {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
-                      Enable Booking
-                    </button>
-                  {% endif %}
-
-                  {% if schedule_tr.trainer and not schedule_tr.user %}
-                    <button type="button"
-                            class="btn btn-booking-unavailable"
-                            data-action="disable"
-                            {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
-                      Disable Booking
-                    </button>
-                  {% endif %}
-
-                  {% if schedule_tr.user %}
-                    <button type="button"
-                            class="btn btn-booking-cancel"
-                            data-action="cancel"
-                            {% if schedule_tr.id %}data-id="{{ schedule_tr.id }}"{% endif %}>
-                      Cancel Booking
-                    </button>
-                  {% endif %}
+    {% if not is_past %}
+    <div class="publish-panel">
+      <section class="publish-panel__section" aria-labelledby="custom-slot-heading">
+        <form method="POST" action="{{ url_for('app.add_availability', year=year, month=month, day=day) }}">
+          {% if user.is_admin %}
+          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+          {% endif %}
+          <h2 class="h5" id="custom-slot-heading">Publish a custom slot</h2>
+          <p class="mb-3">One 1-on-1 slot with your own start and end. 24-hour clock. Hour 24 is midnight at the end of the day.</p>
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-5">
+              <fieldset class="clock-fieldset">
+                <legend class="form-label">Start</legend>
+                <div class="clock-selects">
+                  <label class="visually-hidden" for="start_hour">Start hour</label>
+                  <select class="form-select tap-target" id="start_hour" name="start_hour" required>
+                    {% for hour in clock_hours %}
+                      <option value="{{ hour }}" {% if hour == 9 %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="clock-sep" aria-hidden="true">:</span>
+                  <label class="visually-hidden" for="start_minute">Start minutes</label>
+                  <select class="form-select tap-target" id="start_minute" name="start_minute" required>
+                    {% for minute in clock_minutes %}
+                      <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ '%02d'|format(minute) }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
-              </td>
-            </tr>
+              </fieldset>
+            </div>
+            <div class="col-12 col-md-5">
+              <fieldset class="clock-fieldset">
+                <legend class="form-label">End</legend>
+                <div class="clock-selects">
+                  <label class="visually-hidden" for="end_hour">End hour</label>
+                  <select class="form-select tap-target" id="end_hour" name="end_hour" required>
+                    {% for hour in clock_hours %}
+                      <option value="{{ hour }}" {% if hour == 10 %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="clock-sep" aria-hidden="true">:</span>
+                  <label class="visually-hidden" for="end_minute">End minutes</label>
+                  <select class="form-select tap-target" id="end_minute" name="end_minute" required>
+                    {% for minute in clock_minutes %}
+                      <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ '%02d'|format(minute) }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </fieldset>
+            </div>
+            <div class="col-12 col-md-2">
+              <button type="submit" class="btn btn-primary tap-target w-100">Publish</button>
+            </div>
+          </div>
+        </form>
+      </section>
 
-          </tbody>
-        </table>
+      <section class="publish-panel__section" aria-labelledby="range-slot-heading">
+        <form method="POST" action="{{ url_for('app.publish_range', year=year, month=month, day=day) }}">
+          {% if user.is_admin %}
+          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+          {% endif %}
+          <h2 class="h5" id="range-slot-heading">Publish a range of slots</h2>
+          <p class="mb-3">Example: 09:00 to 11:00 with slot length 0 h 30 min creates 09:00–09:30, 09:30–10:00, 10:00–10:30, 10:30–11:00. Overlapping times are skipped.</p>
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+              <fieldset class="clock-fieldset">
+                <legend class="form-label">From</legend>
+                <div class="clock-selects">
+                  <label class="visually-hidden" for="range_start_hour">Range start hour</label>
+                  <select class="form-select tap-target" id="range_start_hour" name="range_start_hour" required>
+                    {% for hour in clock_hours %}
+                      <option value="{{ hour }}" {% if hour == 9 %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="clock-sep" aria-hidden="true">:</span>
+                  <label class="visually-hidden" for="range_start_minute">Range start minutes</label>
+                  <select class="form-select tap-target" id="range_start_minute" name="range_start_minute" required>
+                    {% for minute in clock_minutes %}
+                      <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ '%02d'|format(minute) }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </fieldset>
+            </div>
+            <div class="col-12 col-md-4">
+              <fieldset class="clock-fieldset">
+                <legend class="form-label">To</legend>
+                <div class="clock-selects">
+                  <label class="visually-hidden" for="range_end_hour">Range end hour</label>
+                  <select class="form-select tap-target" id="range_end_hour" name="range_end_hour" required>
+                    {% for hour in clock_hours %}
+                      <option value="{{ hour }}" {% if hour == 11 %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="clock-sep" aria-hidden="true">:</span>
+                  <label class="visually-hidden" for="range_end_minute">Range end minutes</label>
+                  <select class="form-select tap-target" id="range_end_minute" name="range_end_minute" required>
+                    {% for minute in clock_minutes %}
+                      <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ '%02d'|format(minute) }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </fieldset>
+            </div>
+            <div class="col-12 col-md-4">
+              <fieldset class="clock-fieldset">
+                <legend class="form-label">Slot length</legend>
+                <div class="clock-selects">
+                  <label class="visually-hidden" for="slot_hours">Slot hours</label>
+                  <select class="form-select tap-target" id="slot_hours" name="slot_hours" required>
+                    {% for hour in duration_hours %}
+                      <option value="{{ hour }}" {% if hour == 0 %}selected{% endif %}>{{ hour }} h</option>
+                    {% endfor %}
+                  </select>
+                  <label class="visually-hidden" for="slot_minutes">Slot minutes</label>
+                  <select class="form-select tap-target" id="slot_minutes" name="slot_minutes" required>
+                    {% for minute in clock_minutes %}
+                      <option value="{{ minute }}" {% if minute == 30 %}selected{% endif %}>{{ '%02d'|format(minute) }} min</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </fieldset>
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-success tap-target">Publish range</button>
+            </div>
+          </div>
+        </form>
+        <form method="POST" action="{{ url_for('app.publish_all_day', year=year, month=month, day=day) }}" class="mt-3">
+          {% if user.is_admin %}
+          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+          {% endif %}
+          <button type="submit" class="btn btn-outline-success tap-target">Publish all day</button>
+          <span class="form-text ms-sm-2">Shortcut: hourly slots from 09:00 to 22:00.</span>
+        </form>
+      </section>
+    </div>
+    {% endif %}
+
+    <div class="staff-slot-actions">
+      <form method="POST" action="{{ url_for('app.delete_available_slots', year=year, month=month, day=day) }}">
+        {% if user.is_admin %}
+        <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+        {% endif %}
+        <button type="submit" class="btn btn-outline-secondary tap-target" {% if available_count == 0 %}disabled{% endif %}>
+          Delete all Available slots{% if available_count %} ({{ available_count }}){% endif %}
+        </button>
+      </form>
+      <form
+        method="POST"
+        action="{{ url_for('app.cancel_booked_slots', year=year, month=month, day=day) }}"
+        onsubmit="return confirm('Cancel ALL booked slots on this day? Clients will lose those sessions. The slots will not stay available.');"
+      >
+        {% if user.is_admin %}
+        <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+        {% endif %}
+        <button type="submit" class="btn btn-danger tap-target" {% if upcoming_booked_count == 0 %}disabled{% endif %}>
+          Cancel all booked slots{% if upcoming_booked_count %} ({{ upcoming_booked_count }}){% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if sessions %}
+  <ul class="session-list">
+    {% for session in sessions %}
+    <li class="session-card session-card--{{ session.status }}{% if session.is_past %} session-card--past{% endif %}">
+      <p class="session-status">
+        <span class="status-dot" aria-hidden="true"></span>
+        {{ session.status_label }}
+      </p>
+      <h2 class="h5 mb-1">{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h2>
+      <p class="mb-1">{{ session.duration_minutes }} minutes</p>
+      <p class="mb-2">Instructor: {{ session.instructor.display_name }}
+        {% if session.client %} · Client: {{ session.client.display_name }}{% endif %}
+      </p>
+      <div class="d-flex flex-wrap gap-2">
+        {% if user.is_client and session.is_available %}
+          <a class="btn btn-primary tap-target" href="{{ url_for('app.confirm_booking', session_id=session.id) }}">Book this session</a>
+        {% elif user.is_client and session.client_id == user.id and not session.is_past %}
+          <form method="POST" action="{{ url_for('app.cancel_session', session_id=session.id) }}" onsubmit="return confirm('Cancel this booking? The slot will become available again.');">
+            <button type="submit" class="btn btn-danger tap-target">Cancel booking</button>
+          </form>
+        {% endif %}
+
+        {% if (user.is_instructor or user.is_admin) and session.status == 'available' and not session.is_past %}
+          <form method="POST" action="{{ url_for('app.remove_availability', session_id=session.id) }}" onsubmit="return confirm('Delete this available slot?');">
+            <button type="submit" class="btn btn-outline-danger tap-target">Delete slot</button>
+          </form>
+        {% endif %}
+
+        {% if (user.is_instructor or user.is_admin) and session.status == 'booked' and not session.is_past %}
+          <form method="POST" action="{{ url_for('app.cancel_session', session_id=session.id) }}" onsubmit="return confirm('Cancel this booked session? The client will lose the booking.');">
+            <button type="submit" class="btn btn-danger tap-target">Cancel session</button>
+          </form>
+        {% endif %}
       </div>
     </li>
-  {% endfor %}
-</ul>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-state">No sessions on this day.
+    {% if user.is_client %}
+      <a href="{{ url_for('app.book_calendar') }}">Try another date</a>.
+    {% elif not is_past %}
+      Publish a slot above so clients can book.
+    {% endif %}
+  </p>
+  {% endif %}
+</div>
 {% endblock %}
-
 {% block extra_scripts %}
+{% if user.is_admin %}
+<script>
+(function () {
+  var select = document.getElementById("day-instructor");
+  if (!select) return;
+  function syncInstructor() {
+    document.querySelectorAll("input.js-instructor-id").forEach(function (input) {
+      input.value = select.value;
+    });
+  }
+  select.addEventListener("change", syncInstructor);
+  syncInstructor();
+})();
+</script>
+{% endif %}
 {% endblock %}

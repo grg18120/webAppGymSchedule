@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · Gym Sessions{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="welcome-card">
+    <h1 class="h3">{{ heading }}</h1>
+    {% if heading == 'Contact' %}
+      <p>Email the gym desk at <a href="mailto:desk@gym.example">desk@gym.example</a> for account help.</p>
+    {% else %}
+      <p>Gym Sessions is a 1-on-1 booking tool. Instructors publish open times, clients book a slot, and admins manage people.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

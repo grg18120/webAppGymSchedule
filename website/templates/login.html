@@ -1,58 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css">
-  <link rel="stylesheet" href="/static/css/home_button.css">
-  <style>
- 
-  </style>
-</head>
-<body>
-
-  {% include 'base_up_menu.html' %}
-
-  <div class="container">
-    <div class="inputs-card">
-      <h3 class="text-center mb-4">Login</h3>
-      <form method="POST">
-        <div class="mb-3">
-          <input
-            type="email"
-            class="form-control"
-            id="email"
-            name="email"
-            placeholder="Enter your email"
-            required
-          />
-        </div>
-        <div class="mb-3">
-          <input
-            type="password"
-            class="form-control"
-            id="password"
-            name="password"
-            placeholder="Enter your password"
-            required
-          />
-        </div>
-        <div class="text-center">
-          <button type="submit" class="btn btn-primary">Login</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
-      <br>
-        <a href="/" title="Return Home">
-            <button class="btn_home">← Home</button>
-        </a>
+{% extends "base.html" %}
+{% block title %}Log in · Gym Sessions{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="inputs-card">
+    <h1 class="h3 text-center mb-4">Log in</h1>
+    <form method="POST" novalidate>
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control tap-target" id="email" name="email" autocomplete="username" required>
       </div>
-    </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" class="form-control tap-target" id="password" name="password" autocomplete="current-password" required>
+      </div>
+      <div class="d-grid">
+        <button type="submit" class="btn btn-primary tap-target">Log in</button>
+      </div>
+    </form>
+    <p class="text-center mt-3 mb-0">
+      New client? <a href="{{ url_for('auth.sign_up') }}">Create an account</a>
+    </p>
+    {% include '_demo_accounts.html' %}
+  </div>
+</div>
+{% endblock %}
