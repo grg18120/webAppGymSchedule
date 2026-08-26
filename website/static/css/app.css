@@ -237,8 +237,8 @@ main#main-content {
   background: #2e7d32;
 }
 
-.btn-delete-available,
-.btn-delete-slot,
+.btn.btn-delete-available,
+.btn.btn-delete-slot,
 .staff-actions-card .btn-danger,
 .session-card .btn-danger {
   background-color: #c62828;
@@ -246,10 +246,10 @@ main#main-content {
   color: #ffffff;
 }
 
-.btn-delete-available:hover,
-.btn-delete-available:focus-visible,
-.btn-delete-slot:hover,
-.btn-delete-slot:focus-visible,
+.btn.btn-delete-available:hover,
+.btn.btn-delete-available:focus-visible,
+.btn.btn-delete-slot:hover,
+.btn.btn-delete-slot:focus-visible,
 .staff-actions-card .btn-danger:hover,
 .session-card .btn-danger:hover {
   background-color: #8e0000;
@@ -257,7 +257,7 @@ main#main-content {
   color: #ffffff;
 }
 
-.btn-delete-available:disabled,
+.btn.btn-delete-available:disabled,
 .staff-actions-card .btn-danger:disabled {
   background-color: #e57373;
   border-color: #e57373;
