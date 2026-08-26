@@ -159,6 +159,18 @@ main#main-content {
   border-top: 1px solid #dee2e6;
 }
 
+.publish-panel__section {
+  padding-bottom: 1.15rem;
+  margin-bottom: 1.15rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.publish-panel__section:last-of-type {
+  border-bottom: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
 .hero .lead {
   max-width: 40rem;
 }

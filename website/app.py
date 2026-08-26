@@ -23,6 +23,7 @@ from website.models import (
     ROLE_INSTRUCTOR,
     SESSION_AVAILABLE,
     SESSION_BOOKED,
+    SESSION_CANCELLED,
     GymSession,
     User,
 )
@@ -194,8 +195,12 @@ def book_day(year, month, day):
         is_past=is_past,
         clock_hours=booking.CLOCK_HOURS,
         clock_minutes=booking.CLOCK_MINUTES,
+        duration_hours=booking.DURATION_HOURS,
         available_count=sum(1 for session in sessions if session.status == SESSION_AVAILABLE),
         booked_count=sum(1 for session in sessions if session.status == SESSION_BOOKED),
+        upcoming_booked_count=sum(
+            1 for session in sessions if session.status == SESSION_BOOKED and not session.is_past
+        ),
     )
 
 
@@ -246,6 +251,45 @@ def add_availability(year, month, day):
     return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
 
 
+@app.route("/book/<int:year>/<int:month>/<int:day>/availability/range", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def publish_range(year, month, day):
+    day_date = _parse_day(year, month, day)
+    if not day_date:
+        flash("That date is not valid.", "error")
+        return redirect(url_for("app.book_calendar"))
+    instructor = _day_instructor()
+    if not instructor:
+        flash("Choose an instructor first.", "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day))
+    try:
+        range_start = _parse_clock(day_date, "range_start_hour", "range_start_minute")
+        range_end = _parse_clock(day_date, "range_end_hour", "range_end_minute")
+        slot_hours = int(request.form.get("slot_hours"))
+        slot_minutes = int(request.form.get("slot_minutes"))
+        if slot_hours not in booking.DURATION_HOURS or slot_minutes not in booking.CLOCK_MINUTES:
+            raise ValueError("Invalid slot length")
+    except (TypeError, ValueError):
+        flash("Choose a range and slot length using 24-hour hours and minutes.", "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+    created, skipped, error = booking.publish_range_slots(
+        instructor, range_start, range_end, slot_hours * 60 + slot_minutes
+    )
+    if error:
+        flash(error, "error")
+    elif created and skipped:
+        flash(
+            f"Published {created} slot(s) in that range. Skipped {skipped} overlapping or past times.",
+            "success",
+        )
+    elif created:
+        flash(f"Published {created} slot(s) in that range.", "success")
+    else:
+        flash("No new slots were published. They overlap existing sessions or are in the past.", "error")
+    return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+
+
 @app.route("/book/<int:year>/<int:month>/<int:day>/availability/all-day", methods=["POST"])
 @login_required
 @role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
@@ -288,24 +332,22 @@ def delete_available_slots(year, month, day):
     return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
 
 
-@app.route("/book/<int:year>/<int:month>/<int:day>/bookings/delete-booked", methods=["POST"])
+@app.route("/book/<int:year>/<int:month>/<int:day>/bookings/cancel-booked", methods=["POST"])
 @login_required
 @role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
-def delete_booked_slots(year, month, day):
+def cancel_booked_slots(year, month, day):
     instructor = _day_instructor()
     if not instructor:
         flash("Choose an instructor first.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day))
-    count, error = booking.delete_slots_on_day(
-        current_user, instructor, year, month, day, SESSION_BOOKED
-    )
+    count, error = booking.cancel_booked_slots_on_day(current_user, instructor, year, month, day)
     if error:
         flash(error, "error")
     elif count == 0:
-        flash("There are no booked slots to delete on this day.", "error")
+        flash("There are no upcoming booked slots to cancel on this day.", "error")
     else:
         flash(
-            f"Deleted {count} booked slot(s). Those clients no longer have that session.",
+            f"Cancelled {count} booked slot(s). Those clients no longer have that session.",
             "success",
         )
     return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
@@ -354,7 +396,15 @@ def remove_availability(session_id):
     start = session.datetime_start
     ok, message = booking.remove_availability(session, current_user)
     flash(message, "success" if ok else "error")
-    return redirect(url_for("app.book_day", year=start.year, month=start.month, day=start.day))
+    return redirect(
+        url_for(
+            "app.book_day",
+            year=start.year,
+            month=start.month,
+            day=start.day,
+            instructor_id=session.instructor_id,
+        )
+    )
 
 
 @app.route("/my-sessions")
@@ -368,15 +418,15 @@ def my_sessions():
     else:
         query = GymSession.query
 
+    query = query.filter(GymSession.status != SESSION_CANCELLED)
     upcoming = (
-        query.filter(GymSession.datetime_start >= now, GymSession.status != "cancelled")
-        .order_by(GymSession.datetime_start)
+        query.filter(GymSession.datetime_start >= now)
+        .order_by(GymSession.datetime_start.desc())
         .all()
     )
     past = (
         query.filter(GymSession.datetime_start < now)
         .order_by(GymSession.datetime_start.desc())
-        .limit(20)
         .all()
     )
     return render_template(

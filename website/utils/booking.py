@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import extract
 
@@ -16,6 +16,7 @@ from website.models import (
 
 CLOCK_HOURS = tuple(range(0, 25))
 CLOCK_MINUTES = (0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
+DURATION_HOURS = tuple(range(0, 13))
 
 
 def overlapping_sessions(instructor_id, start, end, exclude_id=None):
@@ -70,6 +71,30 @@ def publish_hourly_slots(instructor, day_date, start_hour=9, end_hour=22):
     return created, skipped
 
 
+def publish_range_slots(instructor, range_start, range_end, slot_minutes):
+    if slot_minutes <= 0:
+        return 0, 0, "Slot length must be greater than 0 minutes."
+    if range_end <= range_start:
+        return 0, 0, "Range end must be after range start."
+    created = 0
+    skipped = 0
+    start = range_start
+    step = timedelta(minutes=slot_minutes)
+    while start + step <= range_end:
+        end = start + step
+        _session, error = create_availability(instructor, start, end, commit=False)
+        if error:
+            skipped += 1
+        else:
+            created += 1
+        start = end
+    if created:
+        db.session.commit()
+    else:
+        db.session.rollback()
+    return created, skipped, None
+
+
 def _instructor_day_query(instructor, year, month, day, status):
     return GymSession.query.filter(
         GymSession.instructor_id == instructor.id,
@@ -96,6 +121,21 @@ def delete_slots_on_day(actor, instructor, year, month, day, status):
     count = len(slots)
     for slot in slots:
         db.session.delete(slot)
+    db.session.commit()
+    return count, None
+
+
+def cancel_booked_slots_on_day(actor, instructor, year, month, day):
+    if not actor_can_manage_instructor(actor, instructor):
+        return 0, "You can only change your own slots."
+    slots = _instructor_day_query(instructor, year, month, day, SESSION_BOOKED).all()
+    count = 0
+    for slot in slots:
+        if slot.is_past:
+            continue
+        slot.status = SESSION_CANCELLED
+        slot.client_id = None
+        count += 1
     db.session.commit()
     return count, None
 

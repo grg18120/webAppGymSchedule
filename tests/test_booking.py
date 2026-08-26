@@ -3,7 +3,14 @@ import tempfile
 import unittest
 
 from website import create_app, db
-from website.models import GymSession, ROLE_CLIENT, SESSION_AVAILABLE, SESSION_BOOKED, User
+from website.models import (
+    GymSession,
+    ROLE_CLIENT,
+    SESSION_AVAILABLE,
+    SESSION_BOOKED,
+    SESSION_CANCELLED,
+    User,
+)
 from werkzeug.security import generate_password_hash
 
 
@@ -175,10 +182,13 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b">55</option>", html)
         self.assertIn(b'value="24"', html)
         self.assertIn(b"Publish all day", html)
+        self.assertIn(b"Publish a custom slot", html)
+        self.assertIn(b"Publish a range of slots", html)
+        self.assertIn(b"Publish range", html)
         self.assertIn(b"Delete all Available slots", html)
-        self.assertIn(b"Delete all Booked Slots", html)
+        self.assertIn(b"Cancel all booked slots", html)
         self.assertIn(
-            b"Delete ALL booked slots on this day? Clients will lose those sessions.",
+            b"Cancel ALL booked slots on this day? Clients will lose those sessions.",
             html,
         )
 
@@ -286,19 +296,114 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(len(remaining), 1)
         self.assertEqual(remaining[0].status, SESSION_BOOKED)
 
-        deleted_booked = self.client.post(
-            "/book/2099/6/17/bookings/delete-booked",
+        cancelled_booked = self.client.post(
+            "/book/2099/6/17/bookings/cancel-booked",
             follow_redirects=True,
         )
-        self.assertIn(b"Deleted 1 booked slot", deleted_booked.data)
-        self.assertEqual(
-            GymSession.query.filter(
-                GymSession.instructor_id == instructor.id,
-                GymSession.datetime_start >= datetime(2099, 6, 17),
-                GymSession.datetime_start < datetime(2099, 6, 18),
-            ).count(),
-            0,
+        self.assertIn(b"Cancelled 1 booked slot", cancelled_booked.data)
+        remaining_after = GymSession.query.filter(
+            GymSession.instructor_id == instructor.id,
+            GymSession.datetime_start >= datetime(2099, 6, 17),
+            GymSession.datetime_start < datetime(2099, 6, 18),
+        ).all()
+        self.assertEqual(len(remaining_after), 1)
+        self.assertEqual(remaining_after[0].status, SESSION_CANCELLED)
+
+    def test_instructor_can_delete_future_available_slot(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        start = datetime(2099, 6, 18, 10, 0)
+        session = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
         )
+        db.session.add(session)
+        db.session.commit()
+        session_id = session.id
+
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/book/2099/6/18")
+        self.assertIn(b"Delete slot", page.data)
+        self.assertNotIn(b"btn-outline-light", page.data)
+
+        deleted = self.client.post(f"/sessions/{session_id}/remove", follow_redirects=True)
+        self.assertIn(b"Availability removed", deleted.data)
+        self.assertIsNone(db.session.get(GymSession, session_id))
+
+    def test_publish_range_with_thirty_minute_slots(self):
+        from datetime import datetime
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        self.login("instructor@gym.com", "instructor123")
+        response = self.client.post(
+            "/book/2099/6/19/availability/range",
+            data={
+                "range_start_hour": "9",
+                "range_start_minute": "0",
+                "range_end_hour": "11",
+                "range_end_minute": "0",
+                "slot_hours": "0",
+                "slot_minutes": "30",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Published 4 slot", response.data)
+        slots = (
+            GymSession.query.filter_by(instructor_id=instructor.id, status=SESSION_AVAILABLE)
+            .filter(GymSession.datetime_start >= datetime(2099, 6, 19))
+            .filter(GymSession.datetime_start < datetime(2099, 6, 20))
+            .order_by(GymSession.datetime_start)
+            .all()
+        )
+        self.assertEqual(len(slots), 4)
+        times = [(s.datetime_start.strftime("%H:%M"), s.datetime_end.strftime("%H:%M")) for s in slots]
+        self.assertEqual(
+            times,
+            [("09:00", "09:30"), ("09:30", "10:00"), ("10:00", "10:30"), ("10:30", "11:00")],
+        )
+
+    def test_my_sessions_lists_future_dates_before_past_dates(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        far_future = datetime(2099, 8, 1, 10, 0)
+        near_future = datetime(2099, 7, 1, 10, 0)
+        past = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=5)
+        for start in (far_future, near_future, past):
+            db.session.add(
+                GymSession(
+                    instructor_id=instructor.id,
+                    client_id=client.id,
+                    datetime_start=start,
+                    datetime_end=start + timedelta(hours=1),
+                    status=SESSION_BOOKED,
+                )
+            )
+        db.session.commit()
+
+        for email, password in (
+            ("instructor@gym.com", "instructor123"),
+            ("client@gym.com", "client123"),
+            ("admin@gym.com", "admin123"),
+        ):
+            self.client.get("/logout")
+            self.login(email, password)
+            page = self.client.get("/my-sessions")
+            self.assertEqual(page.status_code, 200)
+            html = page.data.decode()
+            far_pos = html.find("01 Aug 2099")
+            near_pos = html.find("01 Jul 2099")
+            past_pos = html.find(past.strftime("%d %b %Y"))
+            self.assertGreater(far_pos, 0, email)
+            self.assertGreater(near_pos, 0, email)
+            self.assertGreater(past_pos, 0, email)
+            self.assertLess(far_pos, near_pos, email)
+            self.assertLess(near_pos, past_pos, email)
 
     def test_client_cannot_publish_or_bulk_delete_slots(self):
         self.login("client@gym.com", "client123")
@@ -315,7 +420,11 @@ class BookingRolesTest(unittest.TestCase):
             403,
         )
         self.assertEqual(
-            self.client.post("/book/2099/6/15/bookings/delete-booked").status_code,
+            self.client.post("/book/2099/6/15/bookings/cancel-booked").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/book/2099/6/15/availability/range").status_code,
             403,
         )
 
