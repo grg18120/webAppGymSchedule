@@ -71,8 +71,18 @@
 }
 
 .day.passed {
+  background-color: #adb5bd;
+  color: #212529;
+}
+
+.day.passed.has-booked {
+  background-color: #e0c36a;
+  color: #212529;
+}
+
+.day.passed:not(.has-booked) {
   background-color: #ced4da;
-  color: #343a40;
+  color: #495057;
 }
 
 .calendar-legend {
@@ -97,7 +107,9 @@
 .legend-swatch.today { background: #198754; }
 .legend-swatch.available { background: #cfe2ff; }
 .legend-swatch.booked { background: #ffe69c; }
-.legend-swatch.passed { background: #ced4da; }
+.legend-swatch.none { background: #e9ecef; }
+.legend-swatch.past-booked { background: #e0c36a; }
+.legend-swatch.past-empty { background: #ced4da; }
 
 @media (max-width: 768px) {
   .calendar-header,
@@ -115,7 +127,10 @@
     font-size: 1rem;
   }
 
-  .weekday {
-    font-size: 0.7rem;
+  .day-status {
+    font-size: 0.62rem;
+    line-height: 1.15;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 }

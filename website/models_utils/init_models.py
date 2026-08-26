@@ -130,6 +130,8 @@ def _ensure_extra_client_bookings(db):
         ("jordan@gym.com", alex, 48),
         ("riley@gym.com", alex, 50),
         ("morgan@gym.com", sam or alex, 72),
+        ("client@gym.com", alex, -72),
+        ("jordan@gym.com", alex, -48),
     )
     base = _next_hour()
     created = False
@@ -137,13 +139,15 @@ def _ensure_extra_client_bookings(db):
         client = User.query.filter_by(email=email).first()
         if not client or not instructor:
             continue
+        start = base + timedelta(hours=hour_offset)
         already_booked = GymSession.query.filter_by(
             client_id=client.id,
+            instructor_id=instructor.id,
             status=SESSION_BOOKED,
+            datetime_start=start,
         ).first()
         if already_booked:
             continue
-        start = base + timedelta(hours=hour_offset)
         db.session.add(
             GymSession(
                 instructor_id=instructor.id,

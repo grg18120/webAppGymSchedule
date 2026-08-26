@@ -101,6 +101,35 @@ class BookingRolesTest(unittest.TestCase):
             self.assertIn(email.encode(), users_page.data)
         self.assertIn(b"filterRole", users_page.data)
 
+    def test_calendar_labels_open_slots_and_past_bookings(self):
+        from datetime import datetime, timedelta
+
+        from website.models import SESSION_BOOKED
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        past_start = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=2)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=client.id,
+                datetime_start=past_start,
+                datetime_end=past_start + timedelta(hours=1),
+                status=SESSION_BOOKED,
+            )
+        )
+        db.session.commit()
+
+        self.login("client@gym.com", "client123")
+        page = self.client.get("/book")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"Open slots", page.data)
+        self.assertIn(b"No slots", page.data)
+        self.assertIn(b"No bookings", page.data)
+        self.assertIn(b"past-booked", page.data)
+        self.assertIn(b"has-booked", page.data)
+        self.assertNotIn(b">None<", page.data)
+
 
 if __name__ == "__main__":
     unittest.main()

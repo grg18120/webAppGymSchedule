@@ -11,7 +11,7 @@
     {% else %}Find an open session{% endif %}
   </h1>
   <p class="text-white-50">
-    Open days have at least one bookable slot. Booked days already have a client. Past days cannot be booked.
+    Future days show whether they still have open slots. Past days show whether a session was booked; they cannot be booked again.
   </p>
 
   <form method="GET" action="{{ url_for('app.book_calendar') }}" class="row g-3 align-items-end mb-4" id="date-form">
@@ -51,7 +51,9 @@
     <li><span class="legend-swatch today" aria-hidden="true"></span> Today</li>
     <li><span class="legend-swatch available" aria-hidden="true"></span> Open slots</li>
     <li><span class="legend-swatch booked" aria-hidden="true"></span> Booked</li>
-    <li><span class="legend-swatch passed" aria-hidden="true"></span> Past</li>
+    <li><span class="legend-swatch none" aria-hidden="true"></span> No slots</li>
+    <li><span class="legend-swatch past-booked" aria-hidden="true"></span> Past - booked</li>
+    <li><span class="legend-swatch past-empty" aria-hidden="true"></span> Past - no bookings</li>
   </ul>
 
   {% if days %}
@@ -79,16 +81,20 @@
           <span class="day-number">{{ day.day }}</span>
           <span class="visually-hidden">
             {{ day.strftime('%A %d %B %Y') }}
-            {% if is_passed %} past day
+            {% if is_passed %}
+              {% if has_booked %} past, booked
+              {% else %} past, no bookings{% endif %}
             {% elif has_open %} open slots
             {% elif has_booked %} booked
-            {% else %} no sessions{% endif %}
+            {% else %} no slots{% endif %}
           </span>
           <span class="day-status" aria-hidden="true">
-            {% if is_passed %}Past
-            {% elif has_open %}Open
+            {% if is_passed %}
+              {% if has_booked %}Booked
+              {% else %}No bookings{% endif %}
+            {% elif has_open %}Open slots
             {% elif has_booked %}Booked
-            {% else %}None{% endif %}
+            {% else %}No slots{% endif %}
           </span>
         </a>
       {% endfor %}
