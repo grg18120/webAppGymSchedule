@@ -2,6 +2,45 @@
   max-width: 100%;
 }
 
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.month-nav__title {
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 700;
+  min-width: 12rem;
+  text-align: center;
+  margin: 0;
+}
+
+.month-nav__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 999px;
+  background: #1b3a4b;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  text-decoration: none;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.month-nav__btn:hover,
+.month-nav__btn:focus-visible {
+  background: #1565c0;
+  color: #ffffff;
+  outline: none;
+}
+
 .calendar-header,
 .calendar-grid {
   display: grid;
@@ -32,13 +71,14 @@
   text-decoration: none;
   border: 3px solid transparent;
   position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
-.day:hover,
-.day:focus {
-  color: #ffffff;
+a.day:hover,
+a.day:focus-visible {
   border-color: #ffffff;
   outline: none;
+  color: inherit;
 }
 
 .day.empty {
@@ -61,12 +101,35 @@
   margin-top: 0.15rem;
 }
 
+.today-chip {
+  display: inline-block;
+  margin-top: 0.15rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(16, 42, 58, 0.75);
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 .day.today {
-  background-color: inherit;
-  color: inherit;
   border-color: #ffffff;
-  box-shadow: 0 0 0 3px #102a3a;
   z-index: 1;
+  animation: today-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes today-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px #fff, 0 0 0 5px #102a3a; }
+  50% { box-shadow: 0 0 0 3px #fff, 0 0 0 8px #90caf9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .day.today {
+    animation: none;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 5px #102a3a;
+  }
 }
 
 .day.has-open:not(.passed) {
@@ -75,13 +138,16 @@
 }
 
 .day.has-booked:not(.passed):not(.has-open) {
-  background-color: #f9a825;
-  color: #102a3a;
+  background-color: #6a1b9a;
+  color: #ffffff;
 }
 
 .day.passed {
+  opacity: 0.55;
   background-color: #adb5bd;
   color: #212529;
+  box-shadow: none;
+  font-size: 0.92em;
 }
 
 .day.passed.has-booked {
@@ -92,6 +158,10 @@
 .day.passed:not(.has-booked) {
   background-color: #ced4da;
   color: #495057;
+}
+
+.day.day-disabled {
+  cursor: default;
 }
 
 .calendar-legend {
@@ -120,7 +190,7 @@
   box-sizing: border-box;
 }
 .legend-swatch.available { background: #1565c0; }
-.legend-swatch.booked { background: #f9a825; }
+.legend-swatch.booked { background: #6a1b9a; }
 .legend-swatch.none { background: #c62828; }
 .legend-swatch.past-booked { background: #e0c36a; }
 .legend-swatch.past-empty { background: #ced4da; }
@@ -131,8 +201,13 @@
     gap: 4px;
   }
 
+  .month-nav__title {
+    font-size: 1.1rem;
+    min-width: 8rem;
+  }
+
   .day {
-    min-height: 52px;
+    min-height: 56px;
     padding: 4px;
     border-radius: 8px;
   }

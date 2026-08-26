@@ -130,6 +130,21 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"has-booked", page.data)
         self.assertNotIn(b">None<", page.data)
 
+        self.assertIn(b"Previous month", page.data)
+        self.assertIn(b"Next month", page.data)
+        self.assertNotIn(b"month-select", page.data)
+        self.assertIn(b"day-disabled", page.data)
+
+        blocked = self.client.get("/book/2099/1/1", follow_redirects=False)
+        self.assertEqual(blocked.status_code, 302)
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        admin_cal = self.client.get("/book")
+        self.assertIn(b"month-select", admin_cal.data)
+        open_empty = self.client.get("/book/2099/1/1")
+        self.assertEqual(open_empty.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

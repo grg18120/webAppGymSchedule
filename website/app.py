@@ -32,6 +32,17 @@ def _parse_day(year, month, day):
         return None
 
 
+def _shift_month(year, month, delta):
+    month += delta
+    while month < 1:
+        month += 12
+        year -= 1
+    while month > 12:
+        month -= 12
+        year += 1
+    return year, month
+
+
 def _session_or_404(session_id):
     session = db.session.get(GymSession, session_id)
     if not session:
@@ -115,6 +126,16 @@ def book_calendar():
         elif session.status == "available":
             available_dates.add(day_key)
 
+    prev_year, prev_month = _shift_month(selected_year, selected_month, -1)
+    next_year, next_month = _shift_month(selected_year, selected_month, 1)
+    month_names = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+    ]
+    nav_kwargs = {}
+    if instructor_id:
+        nav_kwargs["instructor_id"] = instructor_id
+
     return render_template(
         "trainers-book.html",
         user=current_user,
@@ -127,6 +148,9 @@ def book_calendar():
         now=current_date,
         instructor_id=instructor_id,
         instructors=booking.instructors() if current_user.is_admin else [],
+        prev_url=url_for("app.book_calendar", month=prev_month, year=prev_year, **nav_kwargs),
+        next_url=url_for("app.book_calendar", month=next_month, year=next_year, **nav_kwargs),
+        month_label=f"{month_names[selected_month - 1]} {selected_year}",
     )
 
 
@@ -140,6 +164,11 @@ def book_day(year, month, day):
 
     instructor_id = request.args.get("instructor_id", type=int)
     sessions = booking.sessions_on_day(year, month, day, current_user, instructor_id)
+    if current_user.is_client:
+        can_view = any(session.is_available or session.client_id == current_user.id for session in sessions)
+        if not can_view:
+            flash("There are no open slots on that day.", "error")
+            return redirect(url_for("app.book_calendar", month=month, year=year))
     return render_template(
         "trainers-book-select-date.html",
         user=current_user,
