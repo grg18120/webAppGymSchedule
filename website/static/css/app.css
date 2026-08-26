@@ -147,6 +147,33 @@ main#main-content {
   margin-bottom: 0.75rem;
 }
 
+.demo-accounts {
+  margin-top: 1.25rem;
+  padding: 1rem 1.15rem;
+  background: rgba(255, 255, 255, 0.94);
+  color: #212529;
+  border-radius: 0.85rem;
+  max-width: 36rem;
+}
+
+.hero .demo-accounts {
+  margin-top: 1.5rem;
+}
+
+.demo-accounts__title {
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.demo-accounts__list {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.demo-accounts__list li {
+  margin-bottom: 0.35rem;
+}
+
 .users-table,
 .users-table td,
 .users-table th {

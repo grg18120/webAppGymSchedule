@@ -10,7 +10,7 @@
     <a class="btn btn-primary tap-target" href="{{ url_for('auth.sign_up') }}">Create a client account</a>
     <a class="btn btn-outline-light tap-target" href="{{ url_for('auth.login') }}">Log in</a>
   </div>
-  <p class="mt-3 text-white-50 mb-0">Demo accounts: admin@gym.com / admin123 · instructor@gym.com / instructor123 · client@gym.com / client123</p>
+  {% include '_demo_accounts.html' %}
   {% endif %}
 
   {% if user.is_authenticated %}

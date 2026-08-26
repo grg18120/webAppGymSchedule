@@ -79,6 +79,28 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(refreshed.status, SESSION_AVAILABLE)
         self.assertIsNone(refreshed.client_id)
 
+    def test_seeded_clients_can_be_compared_by_role(self):
+        emails = ["client@gym.com", "jordan@gym.com", "riley@gym.com", "morgan@gym.com"]
+        clients = User.query.filter(User.email.in_(emails)).all()
+        self.assertEqual(len(clients), 4)
+        self.assertTrue(all(user.role == ROLE_CLIENT for user in clients))
+        self.assertEqual(User.query.filter_by(role="instructor").count(), 2)
+        self.assertEqual(User.query.filter_by(role="admin").count(), 1)
+
+        self.login("jordan@gym.com", "client123")
+        home = self.client.get("/")
+        self.assertEqual(home.status_code, 200)
+        self.assertIn(b"Client", home.data)
+        self.assertEqual(self.client.get("/users").status_code, 403)
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        users_page = self.client.get("/users")
+        self.assertEqual(users_page.status_code, 200)
+        for email in emails + ["sam@gym.com", "instructor@gym.com"]:
+            self.assertIn(email.encode(), users_page.data)
+        self.assertIn(b"filterRole", users_page.data)
+
 
 if __name__ == "__main__":
     unittest.main()

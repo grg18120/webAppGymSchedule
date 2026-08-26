@@ -42,11 +42,20 @@
   </form>
 
   <div class="row g-3 mb-3">
-    <div class="col-md-8">
+    <div class="col-md-6">
       <label for="searchInput" class="form-label text-white">Search users</label>
       <input id="searchInput" type="search" class="form-control tap-target" placeholder="Name, email, or role">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+      <label for="filterRole" class="form-label text-white">Role</label>
+      <select id="filterRole" class="form-select tap-target">
+        <option value="">All roles</option>
+        <option value="admin">Admin</option>
+        <option value="instructor">Instructor</option>
+        <option value="client">Client</option>
+      </select>
+    </div>
+    <div class="col-md-3">
       <label for="filterStatus" class="form-label text-white">Status</label>
       <select id="filterStatus" class="form-select tap-target">
         <option value="">All users</option>
@@ -69,7 +78,7 @@
       </thead>
       <tbody>
         {% for account in users_list %}
-        <tr data-status="{% if account.status == 0 %}disabled{% else %}enabled{% endif %}">
+        <tr data-status="{% if account.status == 0 %}disabled{% else %}enabled{% endif %}" data-role="{{ account.role }}">
           <td data-label="Name">{{ account.display_name }}</td>
           <td data-label="Email">{{ account.email }}</td>
           <td data-label="Role">{{ account.role_label }}</td>
@@ -237,22 +246,20 @@
     });
   }
 
-  $("#searchInput").on("input", function () {
-    const value = $(this).val().toLowerCase();
-    $("#userTable tbody tr").filter(function () {
-      $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+  function applyUserFilters() {
+    const query = $("#searchInput").val().toLowerCase();
+    const status = $("#filterStatus").val();
+    const role = $("#filterRole").val();
+    $("#userTable tbody tr").each(function () {
+      const textMatch = $(this).text().toLowerCase().indexOf(query) > -1;
+      const statusMatch = !status || $(this).data("status") === status;
+      const roleMatch = !role || $(this).data("role") === role;
+      $(this).toggle(textMatch && statusMatch && roleMatch);
     });
-  });
+  }
 
-  $("#filterStatus").on("change", function () {
-    const status = $(this).val();
-    if (status === "") {
-      $("#userTable tbody tr").show();
-    } else {
-      $("#userTable tbody tr").each(function () {
-        $(this).toggle($(this).data("status") === status);
-      });
-    }
-  });
+  $("#searchInput").on("input", applyUserFilters);
+  $("#filterStatus").on("change", applyUserFilters);
+  $("#filterRole").on("change", applyUserFilters);
 </script>
 {% endblock %}
