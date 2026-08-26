@@ -137,6 +137,8 @@ class BookingRolesTest(unittest.TestCase):
 
         blocked = self.client.get("/book/2099/1/1", follow_redirects=False)
         self.assertEqual(blocked.status_code, 302)
+        past_empty = self.client.get("/book/2026/7/1", follow_redirects=False)
+        self.assertEqual(past_empty.status_code, 302)
 
         self.client.get("/logout")
         self.login("admin@gym.com", "admin123")
@@ -144,6 +146,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"month-select", admin_cal.data)
         open_empty = self.client.get("/book/2099/1/1")
         self.assertEqual(open_empty.status_code, 200)
+        admin_past_empty = self.client.get("/book/2026/7/1", follow_redirects=False)
+        self.assertEqual(admin_past_empty.status_code, 302)
 
 
 if __name__ == "__main__":

@@ -14,12 +14,34 @@
 }
 
 .app-navbar {
-  background-color: #1b3a4b;
+  background-color: #1b3a4b !important;
   min-height: 3.5rem;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  padding: 0.35rem 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.app-navbar .container-fluid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  gap: 0.25rem 0.5rem;
+}
+
+.app-navbar .navbar-brand {
+  color: #ffffff;
+  font-weight: 700;
+  margin-right: 0.75rem;
+  white-space: nowrap;
 }
 
 .app-navbar .nav-link,
-.app-navbar .navbar-brand,
 .app-navbar .navbar-text {
   color: #ffffff;
 }
@@ -28,17 +50,33 @@
   min-height: 44px;
   display: inline-flex;
   align-items: center;
-  padding: 0.65rem 0.9rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.5rem;
+}
+
+.app-navbar .nav-link:hover,
+.app-navbar .nav-link:focus {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.12);
 }
 
 .app-navbar .navbar-toggler {
   min-width: 44px;
   min-height: 44px;
   border-color: rgba(255, 255, 255, 0.7);
+  margin-left: auto;
 }
 
 .app-navbar .navbar-toggler:focus {
   box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.35);
+}
+
+.app-navbar .navbar-collapse {
+  flex-grow: 1;
+}
+
+.app-navbar .navbar-text {
+  white-space: nowrap;
 }
 
 main#main-content {

@@ -164,6 +164,10 @@ def book_day(year, month, day):
 
     instructor_id = request.args.get("instructor_id", type=int)
     sessions = booking.sessions_on_day(year, month, day, current_user, instructor_id)
+    is_past = day_date.date() < datetime.now().date()
+    if is_past and not sessions:
+        flash("That past day has no bookings.", "error")
+        return redirect(url_for("app.book_calendar", month=month, year=year))
     if current_user.is_client:
         can_view = any(session.is_available or session.client_id == current_user.id for session in sessions)
         if not can_view:
@@ -179,7 +183,7 @@ def book_day(year, month, day):
         sessions=sessions,
         instructor_id=instructor_id,
         instructors=booking.instructors() if (current_user.is_admin or current_user.is_client) else [],
-        is_past=day_date.date() < datetime.now().date(),
+        is_past=is_past,
     )
 
 

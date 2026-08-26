@@ -87,6 +87,7 @@
         {% set has_open = day.date() in available_dates %}
         {% set has_booked = day.date() in booked_dates %}
         {% set no_slots = (not is_passed and not has_open and not has_booked) %}
+        {% set past_empty = (is_passed and not has_booked) %}
         {% set day_classes = 'day' %}
         {% if is_today %}{% set day_classes = day_classes ~ ' today' %}{% endif %}
         {% if is_passed %}{% set day_classes = day_classes ~ ' passed' %}{% endif %}
@@ -100,11 +101,11 @@
           {% elif has_booked %}Booked
           {% else %}No slots{% endif %}
         {% endset %}
-        {% if user.is_client and no_slots %}
+        {% if past_empty or (user.is_client and no_slots) %}
         <span class="{{ day_classes }} day-disabled" aria-disabled="true">
           <span class="day-number">{{ day.day }}</span>
           {% if is_today %}<span class="today-chip">Today</span>{% endif %}
-          <span class="visually-hidden">{{ day.strftime('%A %d %B %Y') }} no slots, not available to book</span>
+          <span class="visually-hidden">{{ day.strftime('%A %d %B %Y') }} {{ status_text }}, not available</span>
           <span class="day-status" aria-hidden="true">{{ status_text }}</span>
         </span>
         {% else %}
