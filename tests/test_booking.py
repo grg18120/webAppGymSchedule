@@ -149,6 +149,17 @@ class BookingRolesTest(unittest.TestCase):
         admin_past_empty = self.client.get("/book/2026/7/1", follow_redirects=False)
         self.assertEqual(admin_past_empty.status_code, 302)
 
+    def test_calendar_booked_is_blue_and_hover_keeps_letter_colors(self):
+        css = self.client.get("/static/css/trainers_book.css")
+        self.assertEqual(css.status_code, 200)
+        self.assertIn(b"#1565c0", css.data)
+        self.assertIn(b"rgba(21, 101, 192", css.data)
+        self.assertNotIn(b"#8e24aa", css.data)
+        self.assertNotIn(b"#ce93d8", css.data)
+        self.assertIn(b"a.day.no-slots:hover", css.data)
+        self.assertIn(b"color: #ffffff", css.data)
+        self.assertIn(b"color: #000000", css.data)
+
     def test_instructor_publish_uses_24h_dropdowns_not_ampm(self):
         self.login("instructor@gym.com", "instructor123")
         page = self.client.get("/book/2099/6/15")

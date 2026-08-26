@@ -74,11 +74,43 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
+.day:not(.passed),
+.day:not(.passed) .day-number,
+.day:not(.passed) .day-status {
+  color: #ffffff;
+}
+
+.day.passed,
+.day.passed .day-number,
+.day.passed .day-status {
+  color: #000000;
+}
+
 a.day:hover,
-a.day:focus-visible {
+a.day:focus-visible,
+a.day.no-slots:hover,
+a.day.no-slots:focus-visible {
   border-color: #ffffff;
   outline: none;
-  color: inherit;
+  color: #ffffff;
+}
+
+a.day:hover .day-number,
+a.day:hover .day-status,
+a.day:focus-visible .day-number,
+a.day:focus-visible .day-status,
+a.day.no-slots:hover .day-number,
+a.day.no-slots:hover .day-status {
+  color: #ffffff;
+}
+
+a.day.passed:hover,
+a.day.passed:focus-visible,
+a.day.passed:hover .day-number,
+a.day.passed:hover .day-status,
+a.day.passed:focus-visible .day-number,
+a.day.passed:focus-visible .day-status {
+  color: #000000;
 }
 
 .day.empty {
@@ -138,31 +170,31 @@ a.day:focus-visible {
 }
 
 .day.has-booked:not(.passed):not(.has-open) {
-  background-color: #8e24aa;
+  background-color: #1565c0;
   color: #ffffff;
 }
 
 .day.today.has-booked:not(.has-open) {
-  background-color: #ce93d8;
-  color: #4a148c;
+  background-color: #1565c0;
+  color: #ffffff;
 }
 
 .day.passed {
   background-color: rgba(206, 212, 218, 0.5);
-  color: #343a40;
+  color: #000000;
   box-shadow: none;
   font-size: 0.92em;
 }
 
 .day.passed.has-booked {
-  background-color: rgba(186, 104, 200, 0.42);
-  color: #4a148c;
-  border-color: rgba(142, 36, 170, 0.35);
+  background-color: rgba(21, 101, 192, 0.55);
+  color: #000000;
+  border-color: rgba(21, 101, 192, 0.4);
 }
 
 .day.passed:not(.has-booked) {
   background-color: rgba(189, 189, 189, 0.45);
-  color: #424242;
+  color: #000000;
 }
 
 .day.day-disabled {
@@ -195,9 +227,9 @@ a.day:focus-visible {
   box-sizing: border-box;
 }
 .legend-swatch.available { background: #2e7d32; }
-.legend-swatch.booked { background: #8e24aa; }
+.legend-swatch.booked { background: #1565c0; }
 .legend-swatch.none { background: #c62828; }
-.legend-swatch.past-booked { background: rgba(186, 104, 200, 0.7); }
+.legend-swatch.past-booked { background: rgba(21, 101, 192, 0.7); }
 .legend-swatch.past-empty { background: rgba(189, 189, 189, 0.7); }
 
 @media (max-width: 768px) {
