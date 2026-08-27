@@ -63,6 +63,7 @@
     <li><span class="legend-swatch today" aria-hidden="true"></span> Today (frame)</li>
     <li><span class="legend-swatch available" aria-hidden="true"></span> Open slots</li>
     <li><span class="legend-swatch booked" aria-hidden="true"></span> Booked</li>
+    <li><span class="legend-swatch mixed" aria-hidden="true"></span> Open + booked</li>
     <li><span class="legend-swatch none" aria-hidden="true"></span> No slots</li>
     <li><span class="legend-swatch past-booked" aria-hidden="true"></span> Past - booked</li>
     <li><span class="legend-swatch past-empty" aria-hidden="true"></span> Past - no bookings</li>
@@ -97,6 +98,7 @@
         {% set status_text %}
           {% if is_passed %}
             {% if has_booked %}Booked{% else %}No bookings{% endif %}
+          {% elif has_open and has_booked %}Open + booked
           {% elif has_open %}Open slots
           {% elif has_booked %}Booked
           {% else %}No slots{% endif %}

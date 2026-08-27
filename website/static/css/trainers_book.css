@@ -169,6 +169,11 @@ a.day.passed:focus-visible .day-status {
   color: #ffffff;
 }
 
+.day.has-open.has-booked:not(.passed) {
+  background: linear-gradient(135deg, #2e7d32 50%, #1565c0 50%);
+  color: #ffffff;
+}
+
 .day.has-booked:not(.passed):not(.has-open) {
   background-color: #1565c0;
   color: #ffffff;
@@ -228,6 +233,7 @@ a.day.passed:focus-visible .day-status {
 }
 .legend-swatch.available { background: #2e7d32; }
 .legend-swatch.booked { background: #1565c0; }
+.legend-swatch.mixed { background: linear-gradient(135deg, #2e7d32 50%, #1565c0 50%); }
 .legend-swatch.none { background: #c62828; }
 .legend-swatch.past-booked { background: rgba(21, 101, 192, 0.7); }
 .legend-swatch.past-empty { background: rgba(189, 189, 189, 0.7); }

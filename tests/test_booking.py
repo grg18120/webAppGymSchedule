@@ -193,6 +193,7 @@ class BookingRolesTest(unittest.TestCase):
         page = self.client.get("/book")
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"Open slots", page.data)
+        self.assertIn(b"Open + booked", page.data)
         self.assertIn(b"No slots", page.data)
         self.assertIn(b"No bookings", page.data)
         self.assertIn(b"past-booked", page.data)
@@ -228,6 +229,78 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"a.day.no-slots:hover", css.data)
         self.assertIn(b"color: #ffffff", css.data)
         self.assertIn(b"color: #000000", css.data)
+        self.assertIn(b".day.has-open.has-booked:not(.passed)", css.data)
+        self.assertIn(b"linear-gradient(135deg, #2e7d32 50%, #1565c0 50%)", css.data)
+        self.assertIn(b".legend-swatch.mixed", css.data)
+
+    def test_calendar_mixed_day_shows_open_plus_booked(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        open_start = datetime(2099, 10, 15, 9, 0)
+        booked_start = datetime(2099, 10, 15, 11, 0)
+        past_open = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=2, hours=2)
+        past_booked = past_open + timedelta(hours=2)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=open_start,
+                datetime_end=open_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=client.id,
+                datetime_start=booked_start,
+                datetime_end=booked_start + timedelta(hours=1),
+                status=SESSION_BOOKED,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=past_open,
+                datetime_end=past_open + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=client.id,
+                datetime_start=past_booked,
+                datetime_end=past_booked + timedelta(hours=1),
+                status=SESSION_BOOKED,
+            )
+        )
+        db.session.commit()
+
+        self.login("client@gym.com", "client123")
+        future_page = self.client.get("/book?month=10&year=2099")
+        self.assertEqual(future_page.status_code, 200)
+        future_html = future_page.get_data(as_text=True)
+        self.assertIn("Open + booked", future_html)
+        self.assertIn("legend-swatch mixed", future_html)
+        self.assertIn("/book/2099/10/15", future_html)
+        self.assertIn("has-open has-booked", future_html)
+        self.assertNotIn('class="day passed has-open has-booked"', future_html)
+
+        current_page = self.client.get("/book")
+        current_html = current_page.get_data(as_text=True)
+        self.assertIn("legend-swatch mixed", current_html)
+        past_cell = None
+        for chunk in current_html.split("<"):
+            if "day passed" in chunk and "has-open" in chunk and "has-booked" in chunk:
+                past_cell = chunk
+                break
+        self.assertIsNotNone(past_cell)
+        past_block_start = current_html.find(past_cell)
+        past_block = current_html[past_block_start : past_block_start + 800]
+        self.assertIn("Booked", past_block)
+        self.assertNotIn("Open + booked", past_block)
 
     def test_instructor_publish_uses_24h_dropdowns_not_ampm(self):
         self.login("instructor@gym.com", "instructor123")
