@@ -1,0 +1,224 @@
+.timeline-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1rem 0 1.1rem;
+}
+
+.timeline-nav__title {
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  min-width: 14rem;
+  text-align: center;
+  margin: 0;
+}
+
+.timeline-nav__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 999px;
+  background: #1b3a4b;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  text-decoration: none;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.timeline-nav__btn:hover,
+.timeline-nav__btn:focus-visible {
+  background: #2e7d32;
+  color: #ffffff;
+  outline: none;
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  color: #f2f6f8;
+}
+
+.timeline-swatch {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 3px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.timeline-swatch--available {
+  background: rgba(46, 125, 50, 0.18);
+  border: 2px solid #2e7d32;
+  box-sizing: border-box;
+}
+
+.timeline-swatch--booked {
+  background: #1565c0;
+}
+
+.timeline-swatch--past {
+  background: rgba(120, 144, 156, 0.55);
+}
+
+.timeline {
+  background: rgba(16, 42, 58, 0.72);
+  border-radius: 12px;
+  padding: 0.65rem;
+}
+
+.timeline__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.timeline__head,
+.timeline__body {
+  display: grid;
+  grid-template-columns: 3.6rem repeat(7, minmax(6.4rem, 1fr));
+  min-width: 52rem;
+}
+
+.timeline__axis-label,
+.timeline__day-head {
+  color: #f2f6f8;
+  text-align: center;
+  padding: 0.35rem 0.25rem 0.55rem;
+}
+
+.timeline__axis-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b0bec5;
+  align-self: end;
+}
+
+.timeline__day-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.timeline__day-head--today {
+  color: #ffffff;
+  border-bottom-color: #ffffff;
+}
+
+.timeline__day-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.timeline__day-date {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.timeline__body {
+  position: relative;
+}
+
+.timeline__hours {
+  display: grid;
+  grid-template-rows: repeat(var(--hour-count), var(--hour-height));
+}
+
+.timeline__hour {
+  color: #cfd8dc;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transform: translateY(-0.45rem);
+}
+
+.timeline__lane {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(var(--hour-count), var(--hour-height));
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.06) 0,
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 1px,
+    transparent var(--hour-height)
+  );
+  min-height: calc(var(--hour-count) * var(--hour-height));
+}
+
+.timeline__lane--today {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.timeline__slot {
+  min-height: var(--hour-height);
+}
+
+.timeline__block {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  text-decoration: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.timeline__block:hover,
+.timeline__block:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+.timeline__block--available {
+  background: rgba(232, 245, 233, 0.95);
+  border: 2px solid #2e7d32;
+  color: #1b5e20;
+}
+
+.timeline__block--booked {
+  background: #1565c0;
+  border: 2px solid #0d47a1;
+  color: #ffffff;
+}
+
+.timeline__block--past {
+  background: rgba(176, 190, 197, 0.92);
+  border-color: #78909c;
+  color: #263238;
+}
+
+.timeline__block-time {
+  font-size: 0.75rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+  .timeline {
+    padding: 0.4rem;
+  }
+
+  .timeline-nav__title {
+    font-size: 1.05rem;
+    min-width: 9rem;
+  }
+}

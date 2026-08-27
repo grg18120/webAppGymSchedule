@@ -751,10 +751,11 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(" · Client:".encode(), html)
 
         css = self.client.get("/static/css/app.css")
-        self.assertIn(b".session-person--instructor", css.data)
-        self.assertIn(b".session-person--client", css.data)
-        self.assertIn(b"#d6f3f7", css.data)
-        self.assertIn(b"#0d47a1", css.data)
+        self.assertIn(b".session-people", css.data)
+        self.assertIn(b".session-person--open", css.data)
+        self.assertNotIn(b"#d6f3f7", css.data)
+        self.assertNotIn(b"#f1f8e9", css.data)
+        self.assertIn(b"#607d8b", css.data)
 
     def test_publish_range_with_thirty_minute_slots(self):
         from datetime import datetime
@@ -939,6 +940,79 @@ class BookingRolesTest(unittest.TestCase):
             self.client.post("/book/2099/6/15/availability/range").status_code,
             403,
         )
+
+    def test_timeline_is_available_to_every_role(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        open_start = datetime(2099, 6, 16, 10, 0)
+        casey_start = datetime(2099, 6, 16, 14, 0)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=open_start,
+                datetime_end=open_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=casey.id,
+                datetime_start=casey_start,
+                datetime_end=casey_start + timedelta(hours=1),
+                status=SESSION_BOOKED,
+            )
+        )
+        db.session.commit()
+
+        guest = self.client.get("/timeline")
+        self.assertEqual(guest.status_code, 302)
+
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/timeline?start=2099-06-16")
+        self.assertEqual(page.status_code, 200)
+        html = page.data
+        self.assertIn(b"Session timeline", html)
+        self.assertIn(b"timeline__block", html)
+        self.assertIn(b'timeline__block-time">10:00', html)
+        self.assertIn(b'timeline__block-time">14:00', html)
+        self.assertIn(b'timeline__block--booked', html)
+        self.assertIn(b">08:00<", html)
+        self.assertIn(b"Tue", html)
+        self.assertIn(b"16 Jun", html)
+        self.assertIn(b"/book/2099/6/16", html)
+        self.assertIn(b"Previous week", html)
+        self.assertIn(b"Next week", html)
+
+        self.client.get("/logout")
+        self.login("client@gym.com", "client123")
+        casey_page = self.client.get("/timeline?start=2099-06-16")
+        self.assertEqual(casey_page.status_code, 200)
+        self.assertIn(b'timeline__block-time">10:00', casey_page.data)
+        self.assertIn(b'timeline__block-time">14:00', casey_page.data)
+
+        self.client.get("/logout")
+        self.login("jordan@gym.com", "client123")
+        jordan_page = self.client.get("/timeline?start=2099-06-16")
+        self.assertEqual(jordan_page.status_code, 200)
+        self.assertIn(b'timeline__block-time">10:00', jordan_page.data)
+        self.assertNotIn(b'timeline__block-time">14:00', jordan_page.data)
+        self.assertNotIn(b"timeline__block--booked", jordan_page.data)
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        admin_page = self.client.get("/timeline?start=2099-06-16")
+        self.assertEqual(admin_page.status_code, 200)
+        self.assertIn(b"Timeline", admin_page.data)
+        self.assertIn(b"14:00", admin_page.data)
+
+        css = self.client.get("/static/css/timeline.css")
+        self.assertEqual(css.status_code, 200)
+        self.assertIn(b".timeline__block--available", css.data)
+        self.assertIn(b".timeline__block--booked", css.data)
 
 
 if __name__ == "__main__":

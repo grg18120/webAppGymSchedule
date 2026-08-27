@@ -31,6 +31,7 @@ from website.utils import booking
 from website.utils.datetime_utils import get_days_in_month, string_to_datetime
 from website.utils.security import role_required
 from website.utils.timeutils import now_gym
+from website.utils import timeline as timeline_view
 
 app = Blueprint("app", __name__)
 
@@ -443,6 +444,33 @@ def _paginate_sessions(query, raw_page, per_page=MY_SESSIONS_PER_PAGE):
         "has_prev": page > 1,
         "has_next": page < pages,
     }
+
+
+@app.route("/timeline")
+@login_required
+def timeline():
+    today = now_gym().date()
+    raw_start = request.args.get("start")
+    try:
+        selected = datetime.strptime(raw_start, "%Y-%m-%d").date() if raw_start else today
+    except ValueError:
+        selected = today
+    monday = timeline_view.monday_of(selected)
+    days = timeline_view.days_with_blocks(current_user, monday)
+    prev_monday = monday - timedelta(days=7)
+    next_monday = monday + timedelta(days=7)
+    sunday = monday + timedelta(days=6)
+    return render_template(
+        "timeline.html",
+        user=current_user,
+        days=days,
+        hours=timeline_view.HOURS,
+        hour_height=timeline_view.HOUR_HEIGHT_PX,
+        today=today,
+        week_label=f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}",
+        prev_url=url_for("app.timeline", start=prev_monday.isoformat()),
+        next_url=url_for("app.timeline", start=next_monday.isoformat()),
+    )
 
 
 @app.route("/my-sessions")

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Timeline · Gym Sessions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/timeline.css') }}">
+{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h3 text-white">Session timeline</h1>
+  <p class="text-white-50">Dates across, times down. Open slots are outlined; booked sessions are filled.</p>
+
+  <nav class="timeline-nav" aria-label="Change week">
+    <a class="timeline-nav__btn tap-target" href="{{ prev_url }}" aria-label="Previous week">
+      <span aria-hidden="true">&lt;</span>
+    </a>
+    <h2 class="timeline-nav__title">{{ week_label }}</h2>
+    <a class="timeline-nav__btn tap-target" href="{{ next_url }}" aria-label="Next week">
+      <span aria-hidden="true">&gt;</span>
+    </a>
+  </nav>
+
+  <ul class="timeline-legend" aria-label="Timeline legend">
+    <li><span class="timeline-swatch timeline-swatch--available" aria-hidden="true"></span> Open slot</li>
+    <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Booked</li>
+    <li><span class="timeline-swatch timeline-swatch--past" aria-hidden="true"></span> Past</li>
+  </ul>
+
+  <div class="timeline" role="region" aria-label="Week timeline">
+    <div class="timeline__scroll">
+      <div class="timeline__head">
+        <div class="timeline__axis-label" aria-hidden="true">Time</div>
+        {% for day in days %}
+        <div class="timeline__day-head{% if day.date == today %} timeline__day-head--today{% endif %}">
+          <span class="timeline__day-name">{{ day.label }}</span>
+          <span class="timeline__day-date">{{ day.day_number }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="timeline__body" style="--hour-height: {{ hour_height }}px; --hour-count: {{ hours|length }};">
+        <div class="timeline__hours" aria-hidden="true">
+          {% for hour in hours %}
+          <div class="timeline__hour">{{ '%02d'|format(hour) }}:00</div>
+          {% endfor %}
+        </div>
+        {% for day in days %}
+        <div class="timeline__lane{% if day.date == today %} timeline__lane--today{% endif %}">
+          {% for hour in hours %}
+          <div class="timeline__slot" aria-hidden="true"></div>
+          {% endfor %}
+          {% for block in day.blocks %}
+          {% set session = block.session %}
+          <a
+            class="timeline__block timeline__block--{{ session.status }}{% if session.is_past %} timeline__block--past{% endif %}"
+            href="{{ url_for('app.book_day', year=day.date.year, month=day.date.month, day=day.date.day) }}"
+            style="top: {{ block.top }}%; height: {{ block.height }}%; left: calc({{ block.col }} / {{ block.cols }} * 100% + 3px); width: calc(100% / {{ block.cols }} - 6px);"
+          >
+            <span class="timeline__block-time">{{ session.datetime_start.strftime('%H:%M') }}</span>
+            <span class="visually-hidden">
+              {{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
+              instructor {{ session.instructor.display_name }}{% if session.client %}, client {{ session.client.display_name }}{% else %}, no client yet{% endif %}
+            </span>
+          </a>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
