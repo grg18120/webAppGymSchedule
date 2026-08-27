@@ -131,6 +131,8 @@ def book_calendar():
     for session in month_sessions:
         day_key = session.datetime_start.date()
         if session.status == "booked":
+            if current_user.is_client and session.client_id != current_user.id:
+                continue
             booked_dates.add(day_key)
         elif session.status == "available":
             available_dates.add(day_key)

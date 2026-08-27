@@ -231,7 +231,117 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"color: #000000", css.data)
         self.assertIn(b".day.has-open.has-booked:not(.passed)", css.data)
         self.assertIn(b"linear-gradient(135deg, #2e7d32 50%, #1565c0 50%)", css.data)
+        self.assertIn(b"background-clip: padding-box", css.data)
+        self.assertIn(b".day.today.has-open.has-booked:not(.passed)", css.data)
         self.assertIn(b".legend-swatch.mixed", css.data)
+
+    def test_client_calendar_shows_only_own_bookings(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        jordan_only = datetime(2099, 11, 5, 10, 0)
+        casey_only = datetime(2099, 11, 6, 10, 0)
+        casey_mixed_booked = datetime(2099, 11, 7, 10, 0)
+        casey_mixed_open = datetime(2099, 11, 7, 14, 0)
+        open_only = datetime(2099, 11, 8, 10, 0)
+        jordan_past = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=4)
+        casey_past = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=5)
+        for start, client in (
+            (jordan_only, jordan),
+            (casey_only, casey),
+            (casey_mixed_booked, casey),
+            (jordan_past, jordan),
+            (casey_past, casey),
+        ):
+            db.session.add(
+                GymSession(
+                    instructor_id=instructor.id,
+                    client_id=client.id,
+                    datetime_start=start,
+                    datetime_end=start + timedelta(hours=1),
+                    status=SESSION_BOOKED,
+                )
+            )
+        for start in (casey_mixed_open, open_only):
+            db.session.add(
+                GymSession(
+                    instructor_id=instructor.id,
+                    datetime_start=start,
+                    datetime_end=start + timedelta(hours=1),
+                    status=SESSION_AVAILABLE,
+                )
+            )
+        db.session.commit()
+
+        def cell_for(html, year, month, day):
+            marker = f"/book/{year}/{month}/{day}"
+            idx = html.find(marker)
+            self.assertNotEqual(idx, -1, f"missing link {marker}")
+            start = html.rfind("<a", 0, idx)
+            end = html.find("</a>", idx)
+            return html[start:end]
+
+        self.login("client@gym.com", "client123")
+        casey_page = self.client.get("/book?month=11&year=2099").get_data(as_text=True)
+        casey_day = cell_for(casey_page, 2099, 11, 6)
+        mixed_day = cell_for(casey_page, 2099, 11, 7)
+        open_day = cell_for(casey_page, 2099, 11, 8)
+        self.assertNotIn("/book/2099/11/5", casey_page)
+        self.assertIn("has-booked", casey_day)
+        self.assertNotIn("has-open", casey_day)
+        self.assertIn("has-open has-booked", mixed_day)
+        self.assertIn("Open + booked", mixed_day)
+        self.assertIn("has-open", open_day)
+        self.assertNotIn("has-booked", open_day)
+
+        current = self.client.get("/book").get_data(as_text=True)
+        self.assertIn(f"/book/{casey_past.year}/{casey_past.month}/{casey_past.day}", current)
+        self.assertNotIn(f"/book/{jordan_past.year}/{jordan_past.month}/{jordan_past.day}", current)
+
+        self.client.get("/logout")
+        self.login("jordan@gym.com", "client123")
+        jordan_page = self.client.get("/book?month=11&year=2099").get_data(as_text=True)
+        self.assertIn("has-booked", cell_for(jordan_page, 2099, 11, 5))
+        self.assertNotIn("/book/2099/11/6", jordan_page)
+        self.assertNotIn("has-booked", cell_for(jordan_page, 2099, 11, 7))
+        self.assertIn("has-open", cell_for(jordan_page, 2099, 11, 7))
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        admin_page = self.client.get("/book?month=11&year=2099").get_data(as_text=True)
+        self.assertIn("has-booked", cell_for(admin_page, 2099, 11, 5))
+        self.assertIn("has-booked", cell_for(admin_page, 2099, 11, 6))
+
+    def test_today_mixed_cell_keeps_today_outline_classes(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        today = datetime.now().replace(minute=0, second=0, microsecond=0)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=today.replace(hour=8),
+                datetime_end=today.replace(hour=8) + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=client.id,
+                datetime_start=today.replace(hour=10),
+                datetime_end=today.replace(hour=10) + timedelta(hours=1),
+                status=SESSION_BOOKED,
+            )
+        )
+        db.session.commit()
+
+        self.login("client@gym.com", "client123")
+        html = self.client.get("/book").get_data(as_text=True)
+        self.assertIn('class="day today has-open has-booked"', html)
 
     def test_calendar_mixed_day_shows_open_plus_booked(self):
         from datetime import datetime, timedelta
