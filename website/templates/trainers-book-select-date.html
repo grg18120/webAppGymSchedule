@@ -195,19 +195,29 @@
   {% endif %}
 
   {% if sessions %}
-  <ul class="session-list">
+  <h2 class="h4 text-white mt-4 mb-3">Sessions</h2>
+  <ul class="session-list session-list--day">
     {% for session in sessions %}
-    <li class="session-card session-card--{{ session.status }}{% if session.is_past %} session-card--past{% endif %}">
-      <p class="session-status">
-        <span class="status-dot" aria-hidden="true"></span>
-        {{ session.status_label }}
-      </p>
-      <h2 class="h5 mb-1">{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h2>
-      <p class="mb-1">{{ session.duration_minutes }} minutes</p>
-      <p class="mb-2">Instructor: {{ session.instructor.display_name }}
-        {% if session.client %} · Client: {{ session.client.display_name }}{% endif %}
-      </p>
-      <div class="d-flex flex-wrap gap-2">
+    <li class="session-card session-card--day session-card--{{ session.status }}{% if session.is_past %} session-card--past{% endif %}">
+      <div class="session-card__header">
+        <p class="session-status session-status--badge">
+          <span class="status-dot" aria-hidden="true"></span>
+          {{ session.status_label }}
+        </p>
+        <p class="session-card__duration">{{ session.duration_minutes }} min</p>
+      </div>
+      <h3 class="session-card__time">{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h3>
+      <dl class="session-people">
+        <div class="session-person session-person--instructor">
+          <dt>Instructor</dt>
+          <dd>{{ session.instructor.display_name }}</dd>
+        </div>
+        <div class="session-person {% if session.client %}session-person--client{% else %}session-person--open{% endif %}">
+          <dt>Client</dt>
+          <dd>{% if session.client %}{{ session.client.display_name }}{% else %}No client yet{% endif %}</dd>
+        </div>
+      </dl>
+      <div class="session-card__actions d-flex flex-wrap gap-2">
         {% if user.is_client and session.is_available %}
           <a class="btn btn-primary tap-target" href="{{ url_for('app.confirm_booking', session_id=session.id) }}">Book this session</a>
         {% elif user.is_client and session.client_id == user.id and not session.is_past %}

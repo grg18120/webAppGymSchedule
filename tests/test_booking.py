@@ -709,6 +709,53 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Availability removed", deleted.data)
         self.assertIsNone(db.session.get(GymSession, session_id))
 
+    def test_day_session_cards_separate_instructor_and_client(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        open_start = datetime(2099, 6, 21, 9, 0)
+        booked_start = datetime(2099, 6, 21, 11, 0)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=open_start,
+                datetime_end=open_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=client.id,
+                datetime_start=booked_start,
+                datetime_end=booked_start + timedelta(hours=1),
+                status=SESSION_BOOKED,
+            )
+        )
+        db.session.commit()
+
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/book/2099/6/21")
+        self.assertEqual(page.status_code, 200)
+        html = page.data
+        self.assertIn(b"session-card--day", html)
+        self.assertIn(b"session-person--instructor", html)
+        self.assertIn(b"session-person--client", html)
+        self.assertIn(b"session-person--open", html)
+        self.assertIn(b"Alex Instructor", html)
+        self.assertIn(b"Casey Client", html)
+        self.assertIn(b"No client yet", html)
+        self.assertIn(b"session-status--badge", html)
+        self.assertNotIn(b"Instructor: Alex Instructor", html)
+        self.assertNotIn(" · Client:".encode(), html)
+
+        css = self.client.get("/static/css/app.css")
+        self.assertIn(b".session-person--instructor", css.data)
+        self.assertIn(b".session-person--client", css.data)
+        self.assertIn(b"#0b3d4a", css.data)
+        self.assertIn(b"#0d47a1", css.data)
+
     def test_publish_range_with_thirty_minute_slots(self):
         from datetime import datetime
 

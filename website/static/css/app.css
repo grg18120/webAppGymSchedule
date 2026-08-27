@@ -322,6 +322,149 @@ main#main-content {
   background: #0d6efd;
 }
 
+.session-list--day {
+  gap: 1rem;
+}
+
+.session-card--day {
+  padding: 1.1rem 1.15rem 1.2rem;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+  border-left-width: 8px;
+}
+
+.session-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.session-card--day .session-status {
+  margin-bottom: 0;
+}
+
+.session-status--badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: #eceff1;
+  color: #263238;
+}
+
+.session-card--available .session-status--badge {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.session-card--booked .session-status--badge {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+.session-card--past .session-status--badge {
+  background: #eceff1;
+  color: #37474f;
+}
+
+.session-card__duration {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #455a64;
+}
+
+.session-card__time {
+  margin: 0.15rem 0 0.85rem;
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: #102a3a;
+}
+
+.session-people {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+  margin: 0 0 0.9rem;
+}
+
+.session-person {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.7rem;
+  min-height: 4.25rem;
+}
+
+.session-person dt {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-person dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.session-person--instructor {
+  background: #0b3d4a;
+  color: #ffffff;
+}
+
+.session-person--instructor dt {
+  color: #9ad8e8;
+}
+
+.session-person--client {
+  background: #0d47a1;
+  color: #ffffff;
+}
+
+.session-person--client dt {
+  color: #bbdefb;
+}
+
+.session-person--open {
+  background: #f1f8e9;
+  color: #1b5e20;
+  border: 2px dashed #2e7d32;
+}
+
+.session-person--open dt {
+  color: #33691e;
+}
+
+.session-card--past .session-person--instructor {
+  background: #1b3a4b;
+}
+
+.session-card--past .session-person--client {
+  background: #1565c0;
+}
+
+.session-card__actions {
+  margin-top: 0.15rem;
+}
+
+@media (min-width: 640px) {
+  .session-people {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .session-count {
   color: #d7e3ea;
   font-size: 0.95rem;
