@@ -322,6 +322,46 @@ main#main-content {
   background: #0d6efd;
 }
 
+.session-count {
+  color: #d7e3ea;
+  font-size: 0.95rem;
+  margin: 0 0 0.75rem;
+}
+
+.session-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.85rem 0 0.25rem;
+}
+
+.session-pager__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: #1b3a4b;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.session-pager__btn:hover,
+.session-pager__btn:focus-visible {
+  background: #2e7d32;
+  color: #ffffff;
+  outline: none;
+}
+
+.session-pager__status {
+  color: #f2f6f8;
+  font-weight: 600;
+}
+
 .confirm-details dt {
   font-weight: 600;
 }

@@ -798,7 +798,7 @@ class BookingRolesTest(unittest.TestCase):
         ):
             self.client.get("/logout")
             self.login(email, password)
-            page = self.client.get("/my-sessions")
+            page = self.client.get("/my-sessions?upcoming_page=999")
             self.assertEqual(page.status_code, 200)
             html = page.data.decode()
             far_pos = html.find("01 Aug 2099")
@@ -807,8 +807,68 @@ class BookingRolesTest(unittest.TestCase):
             self.assertGreater(far_pos, 0, email)
             self.assertGreater(near_pos, 0, email)
             self.assertGreater(past_pos, 0, email)
-            self.assertLess(far_pos, near_pos, email)
-            self.assertLess(near_pos, past_pos, email)
+            self.assertLess(near_pos, far_pos, email)
+            self.assertLess(far_pos, past_pos, email)
+
+    def test_my_sessions_limits_each_section_to_ten(self):
+        from datetime import timedelta
+
+        from website.app import MY_SESSIONS_PER_PAGE
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        base = now_gym().replace(minute=0, second=0, microsecond=0)
+        extra_upcoming = []
+        extra_past = []
+        for index in range(12):
+            future_start = base.replace(hour=7, minute=5) + timedelta(days=100 + index)
+            past_start = base.replace(hour=7, minute=5) - timedelta(days=100 + index)
+            extra_upcoming.append(future_start)
+            extra_past.append(past_start)
+            db.session.add(
+                GymSession(
+                    instructor_id=instructor.id,
+                    client_id=client.id,
+                    datetime_start=future_start,
+                    datetime_end=future_start + timedelta(hours=1),
+                    status=SESSION_BOOKED,
+                )
+            )
+            db.session.add(
+                GymSession(
+                    instructor_id=instructor.id,
+                    client_id=client.id,
+                    datetime_start=past_start,
+                    datetime_end=past_start + timedelta(hours=1),
+                    status=SESSION_BOOKED,
+                )
+            )
+        db.session.commit()
+
+        self.login("instructor@gym.com", "instructor123")
+        first = self.client.get("/my-sessions")
+        self.assertEqual(first.status_code, 200)
+        html = first.data.decode()
+        self.assertIn("Showing 1–10 of", html)
+        self.assertIn("Page 1 of", html)
+        self.assertIn("upcoming_page=2", html)
+        self.assertIn("past_page=2", html)
+        last_future = extra_upcoming[-1].strftime("%d %b %Y, %H:%M")
+        oldest_past = extra_past[-1].strftime("%d %b %Y, %H:%M")
+        newest_past = extra_past[0].strftime("%d %b %Y, %H:%M")
+        self.assertNotIn(last_future, html)
+        self.assertNotIn(oldest_past, html)
+        self.assertEqual(html.count('class="session-card'), MY_SESSIONS_PER_PAGE * 2)
+        self.assertEqual(html.count("Showing 1–10 of"), 2)
+
+        upcoming_html = self.client.get("/my-sessions?upcoming_page=999").data.decode()
+        self.assertIn(last_future, upcoming_html)
+        self.assertIn("upcoming_page=", upcoming_html)
+
+        past_html = self.client.get("/my-sessions?past_page=999").data.decode()
+        self.assertIn(oldest_past, past_html)
+        self.assertNotIn(newest_past, past_html)
+        self.assertEqual(MY_SESSIONS_PER_PAGE, 10)
 
     def test_client_cannot_publish_or_bulk_delete_slots(self):
         self.login("client@gym.com", "client123")

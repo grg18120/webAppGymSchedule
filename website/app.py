@@ -413,6 +413,38 @@ def remove_availability(session_id):
     )
 
 
+MY_SESSIONS_PER_PAGE = 10
+
+
+def _clamp_page(raw, total, per_page):
+    last = max(1, (total + per_page - 1) // per_page) if total else 1
+    try:
+        page = int(raw)
+    except (TypeError, ValueError):
+        page = 1
+    return min(max(page, 1), last)
+
+
+def _paginate_sessions(query, raw_page, per_page=MY_SESSIONS_PER_PAGE):
+    total = query.count()
+    page = _clamp_page(raw_page, total, per_page)
+    items = query.offset((page - 1) * per_page).limit(per_page).all()
+    pages = max(1, (total + per_page - 1) // per_page) if total else 1
+    start = 0 if total == 0 else (page - 1) * per_page + 1
+    end = min(total, page * per_page)
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pages": pages,
+        "per_page": per_page,
+        "start": start,
+        "end": end,
+        "has_prev": page > 1,
+        "has_next": page < pages,
+    }
+
+
 @app.route("/my-sessions")
 @login_required
 def my_sessions():
@@ -425,21 +457,21 @@ def my_sessions():
         query = GymSession.query
 
     query = query.filter(GymSession.status != SESSION_CANCELLED)
-    upcoming = (
-        query.filter(GymSession.datetime_start >= now)
-        .order_by(GymSession.datetime_start.desc())
-        .all()
+    upcoming = _paginate_sessions(
+        query.filter(GymSession.datetime_start >= now).order_by(GymSession.datetime_start.asc()),
+        request.args.get("upcoming_page", 1, type=int),
     )
-    past = (
-        query.filter(GymSession.datetime_start < now)
-        .order_by(GymSession.datetime_start.desc())
-        .all()
+    past = _paginate_sessions(
+        query.filter(GymSession.datetime_start < now).order_by(GymSession.datetime_start.desc()),
+        request.args.get("past_page", 1, type=int),
     )
     return render_template(
         "my_sessions.html",
         user=current_user,
-        upcoming=upcoming,
-        past=past,
+        upcoming=upcoming["items"],
+        upcoming_meta=upcoming,
+        past=past["items"],
+        past_meta=past,
     )
 
 

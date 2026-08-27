@@ -5,8 +5,9 @@
   <h1 class="h3 text-white">My sessions</h1>
 
   <h2 class="h5 text-white mt-4">Upcoming</h2>
-  <p class="text-white-50">Future sessions first, latest date at the top.</p>
+  <p class="text-white-50">Soonest sessions first.</p>
   {% if upcoming %}
+  <p class="session-count">Showing {{ upcoming_meta.start }}–{{ upcoming_meta.end }} of {{ upcoming_meta.total }}</p>
   <ul class="session-list">
     {% for session in upcoming %}
     <li class="session-card session-card--{{ session.status }}">
@@ -23,12 +24,24 @@
     </li>
     {% endfor %}
   </ul>
+  {% if upcoming_meta.pages > 1 %}
+  <nav class="session-pager" aria-label="Upcoming sessions pages">
+    {% if upcoming_meta.has_prev %}
+    <a class="session-pager__btn tap-target" href="{{ url_for('app.my_sessions', upcoming_page=upcoming_meta.page - 1, past_page=past_meta.page) }}">Previous</a>
+    {% endif %}
+    <span class="session-pager__status">Page {{ upcoming_meta.page }} of {{ upcoming_meta.pages }}</span>
+    {% if upcoming_meta.has_next %}
+    <a class="session-pager__btn tap-target" href="{{ url_for('app.my_sessions', upcoming_page=upcoming_meta.page + 1, past_page=past_meta.page) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
   {% else %}
   <p class="empty-state">No upcoming sessions. <a href="{{ url_for('app.book_calendar') }}">Book a session</a>.</p>
   {% endif %}
 
   <h2 class="h5 text-white mt-4">Past</h2>
   {% if past %}
+  <p class="session-count">Showing {{ past_meta.start }}–{{ past_meta.end }} of {{ past_meta.total }}</p>
   <ul class="session-list">
     {% for session in past %}
     <li class="session-card session-card--past">
@@ -38,6 +51,17 @@
     </li>
     {% endfor %}
   </ul>
+  {% if past_meta.pages > 1 %}
+  <nav class="session-pager" aria-label="Past sessions pages">
+    {% if past_meta.has_prev %}
+    <a class="session-pager__btn tap-target" href="{{ url_for('app.my_sessions', upcoming_page=upcoming_meta.page, past_page=past_meta.page - 1) }}">Previous</a>
+    {% endif %}
+    <span class="session-pager__status">Page {{ past_meta.page }} of {{ past_meta.pages }}</span>
+    {% if past_meta.has_next %}
+    <a class="session-pager__btn tap-target" href="{{ url_for('app.my_sessions', upcoming_page=upcoming_meta.page, past_page=past_meta.page + 1) }}">Next</a>
+    {% endif %}
+  </nav>
+  {% endif %}
   {% else %}
   <p class="empty-state">No past sessions yet.</p>
   {% endif %}
