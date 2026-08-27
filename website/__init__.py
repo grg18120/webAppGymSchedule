@@ -1,7 +1,7 @@
 from flask import Flask, render_template
 from flask_login import LoginManager, current_user
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 DB_NAME = "database.db"
 
@@ -14,6 +14,7 @@ def create_app(test_config=None):
         SECRET_KEY="si0fdmewmfic.k405964305c.fem[serWDO>$K#$%()]",
         SQLALCHEMY_DATABASE_URI=f"sqlite:///{DB_NAME}",
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        GYM_TIMEZONE="Europe/Athens",
     )
     if test_config:
         app_flask.config.update(test_config)
@@ -89,5 +90,48 @@ def create_database(app):
             need_reset = True
         if need_reset:
             db.drop_all()
+        if "gym_session" in inspect(db.engine).get_table_names():
+            _collapse_duplicate_active_slots()
         db.create_all()
+        _ensure_active_slot_index()
         init_database(db)
+
+
+def _collapse_duplicate_active_slots():
+    rows = db.session.execute(
+        text(
+            """
+            SELECT instructor_id, datetime_start, id
+            FROM gym_session
+            WHERE status != 'cancelled'
+            ORDER BY instructor_id, datetime_start, id
+            """
+        )
+    ).fetchall()
+    seen = set()
+    cancelled = 0
+    for instructor_id, start, session_id in rows:
+        key = (instructor_id, start)
+        if key in seen:
+            db.session.execute(
+                text("UPDATE gym_session SET status = 'cancelled', client_id = NULL WHERE id = :id"),
+                {"id": session_id},
+            )
+            cancelled += 1
+        else:
+            seen.add(key)
+    if cancelled:
+        db.session.commit()
+
+
+def _ensure_active_slot_index():
+    db.session.execute(
+        text(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_gym_session_instructor_start_active
+            ON gym_session (instructor_id, datetime_start)
+            WHERE status != 'cancelled'
+            """
+        )
+    )
+    db.session.commit()

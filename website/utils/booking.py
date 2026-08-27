@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from sqlalchemy import extract
+from sqlalchemy import extract, update
+from sqlalchemy.exc import IntegrityError
 
 from website import db
 from website.models import (
@@ -13,6 +14,7 @@ from website.models import (
     GymSession,
     User,
 )
+from website.utils.timeutils import now_gym
 
 CLOCK_HOURS = tuple(range(0, 25))
 CLOCK_MINUTES = (0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
@@ -37,7 +39,7 @@ def create_availability(instructor, start, end, commit=True):
         return None, "Only instructors can publish availability."
     if end <= start:
         return None, "End time must be after start time."
-    if start <= datetime.now():
+    if start <= now_gym():
         return None, "Cannot create availability in the past."
     if overlapping_sessions(instructor.id, start, end):
         return None, "This time overlaps an existing session for that instructor."
@@ -48,7 +50,12 @@ def create_availability(instructor, start, end, commit=True):
         datetime_end=end,
         status=SESSION_AVAILABLE,
     )
-    db.session.add(session)
+    try:
+        with db.session.begin_nested():
+            db.session.add(session)
+            db.session.flush()
+    except IntegrityError:
+        return None, "This time overlaps an existing session for that instructor."
     if commit:
         db.session.commit()
     return session, None
@@ -149,14 +156,23 @@ def book_session(session, client):
         return False, "Only clients can book a training session."
     if not session:
         return False, "Session not found."
-    if session.status != SESSION_AVAILABLE or session.client_id is not None:
-        return False, "That session is no longer available."
-    if session.datetime_start <= datetime.now():
+    if session.datetime_start <= now_gym():
         return False, "Past sessions cannot be booked."
 
-    session.client_id = client.id
-    session.status = SESSION_BOOKED
+    result = db.session.execute(
+        update(GymSession)
+        .where(
+            GymSession.id == session.id,
+            GymSession.status == SESSION_AVAILABLE,
+            GymSession.client_id.is_(None),
+        )
+        .values(status=SESSION_BOOKED, client_id=client.id)
+    )
+    if result.rowcount != 1:
+        db.session.rollback()
+        return False, "That session is no longer available."
     db.session.commit()
+    db.session.expire(session)
     return True, "Session booked. See it under My sessions."
 
 

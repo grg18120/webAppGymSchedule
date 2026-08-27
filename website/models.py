@@ -1,9 +1,11 @@
 from datetime import datetime
 
 from flask_login import UserMixin
+from sqlalchemy import Index, text
 from sqlalchemy.sql import func
 
 from . import db
+from website.utils.timeutils import now_gym
 
 ROLE_ADMIN = "admin"
 ROLE_INSTRUCTOR = "instructor"
@@ -79,13 +81,23 @@ class GymSession(db.Model, SerializerMixin):
     instructor = db.relationship("User", foreign_keys=[instructor_id], backref="instructed_sessions")
     client = db.relationship("User", foreign_keys=[client_id], backref="booked_sessions")
 
+    __table_args__ = (
+        Index(
+            "ux_gym_session_instructor_start_active",
+            "instructor_id",
+            "datetime_start",
+            unique=True,
+            sqlite_where=text("status != 'cancelled'"),
+        ),
+    )
+
     @property
     def duration_minutes(self):
         return int((self.datetime_end - self.datetime_start).total_seconds() / 60)
 
     @property
     def is_past(self):
-        return self.datetime_start <= datetime.now()
+        return self.datetime_start <= now_gym()
 
     @property
     def is_available(self):

@@ -30,6 +30,7 @@ from website.models import (
 from website.utils import booking
 from website.utils.datetime_utils import get_days_in_month, string_to_datetime
 from website.utils.security import role_required
+from website.utils.timeutils import now_gym
 
 app = Blueprint("app", __name__)
 
@@ -63,7 +64,7 @@ def _session_or_404(session_id):
 def home():
     dashboard = None
     if current_user.is_authenticated:
-        now = datetime.now()
+        now = now_gym()
         if current_user.is_admin:
             dashboard = {
                 "user_count": User.query.count(),
@@ -104,7 +105,7 @@ def home():
 @app.route("/book", methods=["GET", "POST"])
 @login_required
 def book_calendar():
-    current_date = datetime.now()
+    current_date = now_gym()
     if request.method == "POST":
         selected_month = int(request.form.get("month", current_date.month))
         selected_year = int(request.form.get("year", current_date.year))
@@ -175,7 +176,7 @@ def book_day(year, month, day):
 
     instructor_id = request.args.get("instructor_id", type=int)
     sessions = booking.sessions_on_day(year, month, day, current_user, instructor_id)
-    is_past = day_date.date() < datetime.now().date()
+    is_past = day_date.date() < now_gym().date()
     if is_past and not sessions:
         flash("That past day has no bookings.", "error")
         return redirect(url_for("app.book_calendar", month=month, year=year))
@@ -415,7 +416,7 @@ def remove_availability(session_id):
 @app.route("/my-sessions")
 @login_required
 def my_sessions():
-    now = datetime.now()
+    now = now_gym()
     if current_user.is_client:
         query = GymSession.query.filter(GymSession.client_id == current_user.id)
     elif current_user.is_instructor:

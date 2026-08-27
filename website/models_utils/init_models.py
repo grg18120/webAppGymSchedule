@@ -11,6 +11,7 @@ from website.models import (
     GymSession,
     User,
 )
+from website.utils.timeutils import now_gym
 
 
 DEMO_ACCOUNTS = (
@@ -122,7 +123,7 @@ def _ensure_single_instructor(db):
 
 
 def _next_hour(now=None):
-    now = now or datetime.now()
+    now = now or now_gym()
     return now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
 
 
@@ -220,7 +221,7 @@ def _ensure_jul_aug_sep_sessions(db):
     if not instructor or not clients:
         return
 
-    year = datetime.now().year
+    year = now_gym().year
     booked_days = (
         (7, 3, 10, clients[0]),
         (7, 8, 11, clients[1 % len(clients)]),

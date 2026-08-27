@@ -133,6 +133,11 @@ a.day.passed:focus-visible .day-status {
   margin-top: 0.15rem;
 }
 
+.day-status--short,
+.legend-label--short {
+  display: none;
+}
+
 .today-chip {
   display: inline-block;
   margin-top: 0.15rem;
@@ -272,5 +277,15 @@ a.day.passed:focus-visible .day-status {
     line-height: 1.15;
     max-width: 100%;
     overflow-wrap: anywhere;
+  }
+
+  .day-status--full,
+  .legend-label--full {
+    display: none;
+  }
+
+  .day-status--short,
+  .legend-label--short {
+    display: inline;
   }
 }

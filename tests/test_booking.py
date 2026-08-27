@@ -11,6 +11,7 @@ from website.models import (
     SESSION_CANCELLED,
     User,
 )
+from website.utils.timeutils import now_gym
 from werkzeug.security import generate_password_hash
 
 
@@ -75,6 +76,79 @@ class BookingRolesTest(unittest.TestCase):
         self.login("second@gym.com", "client123")
         again = self.client.post(f"/sessions/{session_id}/book", follow_redirects=True)
         self.assertIn(b"no longer available", again.data)
+
+    def test_atomic_book_keeps_a_single_client(self):
+        from datetime import timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=20)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+        )
+        db.session.add(slot)
+        db.session.commit()
+        ok_first, _ = booking.book_session(slot, casey)
+        ok_second, message = booking.book_session(slot, jordan)
+        self.assertTrue(ok_first)
+        self.assertFalse(ok_second)
+        self.assertIn("no longer available", message)
+        refreshed = db.session.get(GymSession, slot.id)
+        self.assertEqual(refreshed.status, SESSION_BOOKED)
+        self.assertEqual(refreshed.client_id, casey.id)
+
+    def test_duplicate_active_slot_start_is_rejected(self):
+        from datetime import datetime, timedelta
+
+        from sqlalchemy.exc import IntegrityError
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        start = datetime(2099, 12, 1, 9, 0)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=start,
+                datetime_end=start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.commit()
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=start,
+                datetime_end=start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        with self.assertRaises(IntegrityError):
+            db.session.commit()
+        db.session.rollback()
+
+    def test_nav_label_depends_on_role(self):
+        self.login("client@gym.com", "client123")
+        client_cal = self.client.get("/book")
+        self.assertIn(b"Book a session", client_cal.data)
+        self.assertNotIn(b"My availability", client_cal.data)
+
+        self.client.get("/logout")
+        self.login("instructor@gym.com", "instructor123")
+        instructor_cal = self.client.get("/book")
+        self.assertIn(b"My availability", instructor_cal.data)
+        self.assertNotIn(b"Book a session", instructor_cal.data)
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        admin_cal = self.client.get("/book")
+        self.assertIn(b"Calendar", admin_cal.data)
+        self.assertNotIn(b"Book a session", admin_cal.data)
+        self.assertNotIn(b"My availability", admin_cal.data)
 
     def test_instructor_cannot_book_as_client(self):
         session = GymSession.query.filter_by(status=SESSION_AVAILABLE).first()
@@ -177,7 +251,7 @@ class BookingRolesTest(unittest.TestCase):
 
         instructor = User.query.filter_by(email="instructor@gym.com").first()
         client = User.query.filter_by(email="client@gym.com").first()
-        past_start = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=2)
+        past_start = now_gym().replace(minute=0, second=0, microsecond=0) - timedelta(days=2)
         db.session.add(
             GymSession(
                 instructor_id=instructor.id,
@@ -194,6 +268,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"Open slots", page.data)
         self.assertIn(b"Open + booked", page.data)
+        self.assertIn(b"Op&amp;B", page.data)
+        self.assertIn(b"day-status--short", page.data)
+        self.assertIn(b"legend-label--short", page.data)
         self.assertIn(b"No slots", page.data)
         self.assertIn(b"No bookings", page.data)
         self.assertIn(b"past-booked", page.data)
@@ -234,6 +311,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"background-clip: padding-box", css.data)
         self.assertIn(b".day.today.has-open.has-booked:not(.passed)", css.data)
         self.assertIn(b".legend-swatch.mixed", css.data)
+        self.assertIn(b".day-status--short", css.data)
+        self.assertIn(b".legend-label--short", css.data)
 
     def test_client_calendar_shows_only_own_bookings(self):
         from datetime import datetime, timedelta
@@ -246,8 +325,8 @@ class BookingRolesTest(unittest.TestCase):
         casey_mixed_booked = datetime(2099, 11, 7, 10, 0)
         casey_mixed_open = datetime(2099, 11, 7, 14, 0)
         open_only = datetime(2099, 11, 8, 10, 0)
-        jordan_past = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=4)
-        casey_past = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=5)
+        jordan_past = now_gym().replace(minute=0, second=0, microsecond=0) - timedelta(days=4)
+        casey_past = now_gym().replace(minute=0, second=0, microsecond=0) - timedelta(days=5)
         for start, client in (
             (jordan_only, jordan),
             (casey_only, casey),
@@ -319,7 +398,7 @@ class BookingRolesTest(unittest.TestCase):
 
         instructor = User.query.filter_by(email="instructor@gym.com").first()
         client = User.query.filter_by(email="client@gym.com").first()
-        today = datetime.now().replace(minute=0, second=0, microsecond=0)
+        today = now_gym().replace(minute=0, second=0, microsecond=0)
         db.session.add(
             GymSession(
                 instructor_id=instructor.id,
@@ -350,7 +429,7 @@ class BookingRolesTest(unittest.TestCase):
         client = User.query.filter_by(email="client@gym.com").first()
         open_start = datetime(2099, 10, 15, 9, 0)
         booked_start = datetime(2099, 10, 15, 11, 0)
-        past_open = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=2, hours=2)
+        past_open = now_gym().replace(minute=0, second=0, microsecond=0) - timedelta(days=2, hours=2)
         past_booked = past_open + timedelta(hours=2)
         db.session.add(
             GymSession(
@@ -659,7 +738,7 @@ class BookingRolesTest(unittest.TestCase):
         client = User.query.filter_by(email="client@gym.com").first()
         far_future = datetime(2099, 8, 1, 10, 0)
         near_future = datetime(2099, 7, 1, 10, 0)
-        past = datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(days=5)
+        past = now_gym().replace(minute=0, second=0, microsecond=0) - timedelta(days=5)
         for start in (far_future, near_future, past):
             db.session.add(
                 GymSession(
