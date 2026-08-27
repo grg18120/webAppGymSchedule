@@ -753,7 +753,7 @@ class BookingRolesTest(unittest.TestCase):
         css = self.client.get("/static/css/app.css")
         self.assertIn(b".session-person--instructor", css.data)
         self.assertIn(b".session-person--client", css.data)
-        self.assertIn(b"#0b3d4a", css.data)
+        self.assertIn(b"#d6f3f7", css.data)
         self.assertIn(b"#0d47a1", css.data)
 
     def test_publish_range_with_thirty_minute_slots(self):

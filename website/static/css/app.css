@@ -420,12 +420,13 @@ main#main-content {
 }
 
 .session-person--instructor {
-  background: #0b3d4a;
-  color: #ffffff;
+  background: #d6f3f7;
+  color: #00363d;
+  border: 2px solid #00796b;
 }
 
 .session-person--instructor dt {
-  color: #9ad8e8;
+  color: #00695c;
 }
 
 .session-person--client {
@@ -448,7 +449,13 @@ main#main-content {
 }
 
 .session-card--past .session-person--instructor {
-  background: #1b3a4b;
+  background: #e0f2f1;
+  border-color: #546e7a;
+  color: #263238;
+}
+
+.session-card--past .session-person--instructor dt {
+  color: #455a64;
 }
 
 .session-card--past .session-person--client {
