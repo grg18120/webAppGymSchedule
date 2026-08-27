@@ -16,7 +16,8 @@ from website.models import (
 
 CLOCK_HOURS = tuple(range(0, 25))
 CLOCK_MINUTES = (0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
-DURATION_HOURS = tuple(range(0, 13))
+SLOT_LENGTH_MINUTES = tuple(range(5, 181, 5))
+BREAK_MINUTES = tuple(range(0, 61, 5))
 
 
 def overlapping_sessions(instructor_id, start, end, exclude_id=None):
@@ -71,23 +72,26 @@ def publish_hourly_slots(instructor, day_date, start_hour=9, end_hour=22):
     return created, skipped
 
 
-def publish_range_slots(instructor, range_start, range_end, slot_minutes):
+def publish_range_slots(instructor, range_start, range_end, slot_minutes, break_minutes=0):
     if slot_minutes <= 0:
         return 0, 0, "Slot length must be greater than 0 minutes."
+    if break_minutes < 0:
+        return 0, 0, "Break time cannot be negative."
     if range_end <= range_start:
         return 0, 0, "Range end must be after range start."
     created = 0
     skipped = 0
     start = range_start
-    step = timedelta(minutes=slot_minutes)
-    while start + step <= range_end:
-        end = start + step
+    slot = timedelta(minutes=slot_minutes)
+    pause = timedelta(minutes=break_minutes)
+    while start + slot <= range_end:
+        end = start + slot
         _session, error = create_availability(instructor, start, end, commit=False)
         if error:
             skipped += 1
         else:
             created += 1
-        start = end
+        start = end + pause
     if created:
         db.session.commit()
     else:

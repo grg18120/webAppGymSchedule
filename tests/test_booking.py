@@ -430,6 +430,14 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Publish a custom slot", html)
         self.assertIn(b"Publish a range of slots", html)
         self.assertIn(b"Publish range", html)
+        self.assertNotIn(b'name="slot_hours"', html)
+        self.assertIn(b'name="slot_minutes"', html)
+        self.assertIn(b'name="break_minutes"', html)
+        self.assertIn(b'value="60" selected', html)
+        self.assertIn(b">60 min</option>", html)
+        self.assertIn(b">0 min</option>", html)
+        self.assertIn(b"Break between slots", html)
+        self.assertIn(b"Slot length", html)
         self.assertIn(b"Delete all Available slots", html)
         self.assertIn(b"btn-delete-available", html)
         self.assertIn(b"publish-card--custom", html)
@@ -594,8 +602,8 @@ class BookingRolesTest(unittest.TestCase):
                 "range_start_minute": "0",
                 "range_end_hour": "11",
                 "range_end_minute": "0",
-                "slot_hours": "0",
                 "slot_minutes": "30",
+                "break_minutes": "0",
             },
             follow_redirects=True,
         )
@@ -614,6 +622,35 @@ class BookingRolesTest(unittest.TestCase):
             times,
             [("09:00", "09:30"), ("09:30", "10:00"), ("10:00", "10:30"), ("10:30", "11:00")],
         )
+
+    def test_publish_range_with_break_between_slots(self):
+        from datetime import datetime
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        self.login("instructor@gym.com", "instructor123")
+        response = self.client.post(
+            "/book/2099/6/20/availability/range",
+            data={
+                "range_start_hour": "9",
+                "range_start_minute": "0",
+                "range_end_hour": "12",
+                "range_end_minute": "0",
+                "slot_minutes": "60",
+                "break_minutes": "15",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Published 2 slot", response.data)
+        slots = (
+            GymSession.query.filter_by(instructor_id=instructor.id, status=SESSION_AVAILABLE)
+            .filter(GymSession.datetime_start >= datetime(2099, 6, 20))
+            .filter(GymSession.datetime_start < datetime(2099, 6, 21))
+            .order_by(GymSession.datetime_start)
+            .all()
+        )
+        times = [(s.datetime_start.strftime("%H:%M"), s.datetime_end.strftime("%H:%M")) for s in slots]
+        self.assertEqual(times, [("09:00", "10:00"), ("10:15", "11:15")])
 
     def test_my_sessions_lists_future_dates_before_past_dates(self):
         from datetime import datetime, timedelta

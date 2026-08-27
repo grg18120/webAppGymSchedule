@@ -197,7 +197,8 @@ def book_day(year, month, day):
         is_past=is_past,
         clock_hours=booking.CLOCK_HOURS,
         clock_minutes=booking.CLOCK_MINUTES,
-        duration_hours=booking.DURATION_HOURS,
+        slot_length_minutes=booking.SLOT_LENGTH_MINUTES,
+        break_minutes=booking.BREAK_MINUTES,
         available_count=sum(1 for session in sessions if session.status == SESSION_AVAILABLE),
         booked_count=sum(1 for session in sessions if session.status == SESSION_BOOKED),
         upcoming_booked_count=sum(
@@ -268,15 +269,17 @@ def publish_range(year, month, day):
     try:
         range_start = _parse_clock(day_date, "range_start_hour", "range_start_minute")
         range_end = _parse_clock(day_date, "range_end_hour", "range_end_minute")
-        slot_hours = int(request.form.get("slot_hours"))
         slot_minutes = int(request.form.get("slot_minutes"))
-        if slot_hours not in booking.DURATION_HOURS or slot_minutes not in booking.CLOCK_MINUTES:
+        break_minutes = int(request.form.get("break_minutes", 0))
+        if slot_minutes not in booking.SLOT_LENGTH_MINUTES:
             raise ValueError("Invalid slot length")
+        if break_minutes not in booking.BREAK_MINUTES:
+            raise ValueError("Invalid break time")
     except (TypeError, ValueError):
-        flash("Choose a range and slot length using 24-hour hours and minutes.", "error")
+        flash("Choose a range, slot length, and break using minutes.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
     created, skipped, error = booking.publish_range_slots(
-        instructor, range_start, range_end, slot_hours * 60 + slot_minutes
+        instructor, range_start, range_end, slot_minutes, break_minutes
     )
     if error:
         flash(error, "error")

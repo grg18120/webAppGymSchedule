@@ -93,7 +93,7 @@
             <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
             Publish a range of slots
           </h2>
-          <p class="mb-3">Example: 09:00 to 11:00 with slot length 0 h 30 min creates 09:00–09:30, 09:30–10:00, 10:00–10:30, 10:30–11:00. Overlapping times are skipped.</p>
+          <p class="mb-3">Example: 09:00 to 12:00, slot length 60 min, break 0 min creates 09:00–10:00, 10:00–11:00, 11:00–12:00. A 15 min break would create 09:00–10:00, then 10:15–11:15. Overlapping times are skipped.</p>
           <div class="row g-3 align-items-end">
             <div class="col-12">
               <fieldset class="clock-fieldset">
@@ -135,24 +135,21 @@
                 </div>
               </fieldset>
             </div>
-            <div class="col-12">
-              <fieldset class="clock-fieldset">
-                <legend class="form-label">Slot length</legend>
-                <div class="clock-selects">
-                  <label class="visually-hidden" for="slot_hours">Slot hours</label>
-                  <select class="form-select tap-target" id="slot_hours" name="slot_hours" required>
-                    {% for hour in duration_hours %}
-                      <option value="{{ hour }}" {% if hour == 0 %}selected{% endif %}>{{ hour }} h</option>
-                    {% endfor %}
-                  </select>
-                  <label class="visually-hidden" for="slot_minutes">Slot minutes</label>
-                  <select class="form-select tap-target" id="slot_minutes" name="slot_minutes" required>
-                    {% for minute in clock_minutes %}
-                      <option value="{{ minute }}" {% if minute == 30 %}selected{% endif %}>{{ '%02d'|format(minute) }} min</option>
-                    {% endfor %}
-                  </select>
-                </div>
-              </fieldset>
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="slot_minutes">Slot length</label>
+              <select class="form-select tap-target" id="slot_minutes" name="slot_minutes" required>
+                {% for minute in slot_length_minutes %}
+                  <option value="{{ minute }}" {% if minute == 60 %}selected{% endif %}>{{ minute }} min</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="break_minutes">Break between slots</label>
+              <select class="form-select tap-target" id="break_minutes" name="break_minutes" required>
+                {% for minute in break_minutes %}
+                  <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ minute }} min</option>
+                {% endfor %}
+              </select>
             </div>
             <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
               <button type="submit" class="btn btn-success tap-target">Publish range</button>
