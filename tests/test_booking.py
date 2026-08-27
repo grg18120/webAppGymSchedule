@@ -114,6 +114,62 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"instructor@gym.com", login_page.data)
         self.assertNotIn(b"sam@gym.com", login_page.data)
 
+    def test_extra_instructor_is_collapsed_onto_alex(self):
+        from datetime import datetime, timedelta
+
+        from website.models import ROLE_INSTRUCTOR
+        from website.models_utils.init_models import _ensure_single_instructor
+
+        alex = User.query.filter_by(email="instructor@gym.com").first()
+        extra = User(
+            email="sam@gym.com",
+            password=generate_password_hash("instructor123"),
+            name_first="Sam",
+            name_last="Rivera",
+            role=ROLE_INSTRUCTOR,
+        )
+        db.session.add(extra)
+        db.session.commit()
+        unique_start = datetime(2099, 10, 1, 9, 0)
+        clash_start = datetime(2099, 10, 1, 11, 0)
+        db.session.add(
+            GymSession(
+                instructor_id=extra.id,
+                datetime_start=unique_start,
+                datetime_end=unique_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=alex.id,
+                datetime_start=clash_start,
+                datetime_end=clash_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.add(
+            GymSession(
+                instructor_id=extra.id,
+                datetime_start=clash_start,
+                datetime_end=clash_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.commit()
+        extra_session_count = GymSession.query.filter_by(instructor_id=extra.id).count()
+        self.assertEqual(extra_session_count, 2)
+        _ensure_single_instructor(db)
+        self.assertIsNone(User.query.filter_by(email="sam@gym.com").first())
+        self.assertEqual(User.query.filter_by(role=ROLE_INSTRUCTOR).count(), 1)
+        moved = GymSession.query.filter_by(instructor_id=alex.id, datetime_start=unique_start).first()
+        self.assertIsNotNone(moved)
+        self.assertEqual(
+            GymSession.query.filter_by(instructor_id=alex.id, datetime_start=clash_start).count(),
+            1,
+        )
+        self.assertEqual(GymSession.query.filter(GymSession.instructor_id.is_(None)).count(), 0)
+
     def test_calendar_labels_open_slots_and_past_bookings(self):
         from datetime import datetime, timedelta
 

@@ -98,17 +98,26 @@ def _ensure_single_instructor(db):
         extras = extras[1:]
         if not extras:
             return
-    for extra in extras:
-        for session in GymSession.query.filter_by(instructor_id=extra.id).all():
+    keep_id = keep.id
+    extra_ids = [extra.id for extra in extras]
+    for extra_id in extra_ids:
+        extra_sessions = GymSession.query.filter_by(instructor_id=extra_id).all()
+        for session in extra_sessions:
             clash = GymSession.query.filter_by(
-                instructor_id=keep.id,
+                instructor_id=keep_id,
                 datetime_start=session.datetime_start,
             ).first()
             if clash:
                 db.session.delete(session)
-            else:
-                session.instructor_id = keep.id
-        db.session.delete(extra)
+        db.session.flush()
+        # Remap then SQL-delete the extra user. ORM User.delete() would
+        # null instructor_id via the instructed_sessions backref.
+        GymSession.query.filter_by(instructor_id=extra_id).update(
+            {GymSession.instructor_id: keep_id},
+            synchronize_session=False,
+        )
+        User.query.filter_by(id=extra_id).delete(synchronize_session=False)
+        db.session.expire_all()
     db.session.commit()
 
 
