@@ -133,9 +133,13 @@ a.day.passed:focus-visible .day-status {
   margin-top: 0.15rem;
 }
 
-.day-status--short,
-.legend-label--short {
-  display: none;
+.day-status::after,
+.legend-label::after {
+  content: attr(data-full);
+}
+
+.legend-label::after {
+  white-space: nowrap;
 }
 
 .today-chip {
@@ -279,13 +283,8 @@ a.day.passed:focus-visible .day-status {
     overflow-wrap: anywhere;
   }
 
-  .day-status--full,
-  .legend-label--full {
-    display: none;
-  }
-
-  .day-status--short,
-  .legend-label--short {
-    display: inline;
+  .day-status::after,
+  .legend-label::after {
+    content: attr(data-short);
   }
 }

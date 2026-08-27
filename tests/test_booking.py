@@ -300,11 +300,16 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"Open slots", page.data)
         self.assertIn(b"Open + booked", page.data)
-        self.assertIn(b"Op&amp;B", page.data)
-        self.assertIn(b">Op<", page.data)
-        self.assertIn(b">B<", page.data)
-        self.assertIn(b"day-status--short", page.data)
-        self.assertIn(b"legend-label--short", page.data)
+        self.assertIn(b'data-short="Op&amp;B"', page.data)
+        self.assertIn(b'data-short="Op"', page.data)
+        self.assertIn(b'data-short="B"', page.data)
+        self.assertIn(b'data-full="Open + booked"', page.data)
+        self.assertNotIn(b"day-status--short", page.data)
+        self.assertNotIn(b"day-status--full", page.data)
+        self.assertEqual(
+            page.data.count(b'class="day-status"'),
+            page.data.count(b'class="day-number"'),
+        )
         self.assertIn(b"No slots", page.data)
         self.assertIn(b"No bookings", page.data)
         self.assertIn(b"past-booked", page.data)
@@ -345,8 +350,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"background-clip: padding-box", css.data)
         self.assertIn(b".day.today.has-open.has-booked:not(.passed)", css.data)
         self.assertIn(b".legend-swatch.mixed", css.data)
-        self.assertIn(b".day-status--short", css.data)
-        self.assertIn(b".legend-label--short", css.data)
+        self.assertIn(b"attr(data-full)", css.data)
+        self.assertIn(b"attr(data-short)", css.data)
+        self.assertNotIn(b".day-status--short", css.data)
 
     def test_client_calendar_shows_only_own_bookings(self):
         from datetime import datetime, timedelta

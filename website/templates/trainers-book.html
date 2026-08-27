@@ -63,23 +63,20 @@
     <li><span class="legend-swatch today" aria-hidden="true"></span> Today (frame)</li>
     <li>
       <span class="legend-swatch available" aria-hidden="true"></span>
-      <span class="legend-label--full">Open slots</span>
-      <span class="legend-label--short">Op</span>
+      <span class="legend-label" data-full="Open slots" data-short="Op"></span>
     </li>
     <li>
       <span class="legend-swatch booked" aria-hidden="true"></span>
-      <span class="legend-label--full">Booked</span>
-      <span class="legend-label--short">B</span>
+      <span class="legend-label" data-full="Booked" data-short="B"></span>
     </li>
     <li>
       <span class="legend-swatch mixed" aria-hidden="true"></span>
-      <span class="legend-label--full">Open + booked</span>
-      <span class="legend-label--short">Op&amp;B</span>
+      <span class="legend-label" data-full="Open + booked" data-short="Op&amp;B"></span>
     </li>
     <li><span class="legend-swatch none" aria-hidden="true"></span> No slots</li>
     <li>
       <span class="legend-swatch past-booked" aria-hidden="true"></span>
-      Past - <span class="legend-label--full">booked</span><span class="legend-label--short">B</span>
+      Past - <span class="legend-label" data-full="booked" data-short="B"></span>
     </li>
     <li><span class="legend-swatch past-empty" aria-hidden="true"></span> Past - no bookings</li>
   </ul>
@@ -130,9 +127,8 @@
         <span class="{{ day_classes }} day-disabled" aria-disabled="true">
           <span class="day-number">{{ day.day }}</span>
           {% if is_today %}<span class="today-chip">Today</span>{% endif %}
-          <span class="visually-hidden">{{ day.strftime('%A %d %B %Y') }} {{ status_text }}, not available</span>
-          <span class="day-status day-status--full" aria-hidden="true">{{ status_text }}</span>
-          <span class="day-status day-status--short" aria-hidden="true">{{ status_short }}</span>
+          <span class="visually-hidden">{{ day.strftime('%A %d %B %Y') }} {{ status_text|trim }}, not available</span>
+          <span class="day-status" aria-hidden="true" data-full="{{ status_text|trim }}" data-short="{{ status_short|trim }}"></span>
         </span>
         {% else %}
         <a
@@ -142,10 +138,9 @@
           <span class="day-number">{{ day.day }}</span>
           {% if is_today %}<span class="today-chip">Today</span>{% endif %}
           <span class="visually-hidden">
-            {{ day.strftime('%A %d %B %Y') }} {{ status_text }}
+            {{ day.strftime('%A %d %B %Y') }} {{ status_text|trim }}
           </span>
-          <span class="day-status day-status--full" aria-hidden="true">{{ status_text }}</span>
-          <span class="day-status day-status--short" aria-hidden="true">{{ status_short }}</span>
+          <span class="day-status" aria-hidden="true" data-full="{{ status_text|trim }}" data-short="{{ status_short|trim }}"></span>
         </a>
         {% endif %}
       {% endfor %}
