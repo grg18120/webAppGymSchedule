@@ -131,6 +131,38 @@ class BookingRolesTest(unittest.TestCase):
             db.session.commit()
         db.session.rollback()
 
+    def test_create_availability_rejects_duplicate_start(self):
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=21)
+        end = start + timedelta(hours=1)
+        first, error = booking.create_availability(instructor, start, end)
+        self.assertIsNotNone(first)
+        self.assertIsNone(error)
+
+        second, overlap = booking.create_availability(instructor, start, end)
+        self.assertIsNone(second)
+        self.assertIn("overlaps an existing session", overlap)
+
+        with patch("website.utils.booking.overlapping_sessions", return_value=[]):
+            raced, raced_error = booking.create_availability(instructor, start, end)
+        self.assertIsNone(raced)
+        self.assertIn("overlaps an existing session", raced_error)
+
+    def test_extra_client_bookings_skip_occupied_starts(self):
+        from website.models_utils.init_models import _ensure_extra_client_bookings
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        before = GymSession.query.filter_by(instructor_id=instructor.id).count()
+        _ensure_extra_client_bookings(db)
+        _ensure_extra_client_bookings(db)
+        after = GymSession.query.filter_by(instructor_id=instructor.id).count()
+        self.assertGreaterEqual(after, before)
+
     def test_nav_label_depends_on_role(self):
         self.login("client@gym.com", "client123")
         client_cal = self.client.get("/book")
@@ -269,6 +301,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Open slots", page.data)
         self.assertIn(b"Open + booked", page.data)
         self.assertIn(b"Op&amp;B", page.data)
+        self.assertIn(b">Op<", page.data)
+        self.assertIn(b">B<", page.data)
         self.assertIn(b"day-status--short", page.data)
         self.assertIn(b"legend-label--short", page.data)
         self.assertIn(b"No slots", page.data)

@@ -8,6 +8,7 @@ from website.models import (
     ROLE_INSTRUCTOR,
     SESSION_AVAILABLE,
     SESSION_BOOKED,
+    SESSION_CANCELLED,
     GymSession,
     User,
 )
@@ -171,32 +172,21 @@ def _ensure_extra_client_bookings(db):
         if not client:
             continue
         start = base + timedelta(hours=hour_offset)
-        already_booked = GymSession.query.filter_by(
-            client_id=client.id,
-            instructor_id=instructor.id,
-            status=SESSION_BOOKED,
-            datetime_start=start,
-        ).first()
-        if already_booked:
-            continue
-        db.session.add(
-            GymSession(
-                instructor_id=instructor.id,
-                client_id=client.id,
-                datetime_start=start,
-                datetime_end=start + timedelta(hours=1),
-                status=SESSION_BOOKED,
+        created = (
+            _add_session_if_missing(
+                db, instructor, start, start + timedelta(hours=1), client
             )
+            or created
         )
-        created = True
     if created:
         db.session.commit()
 
 
 def _add_session_if_missing(db, instructor, start, end, client=None):
-    existing = GymSession.query.filter_by(
-        instructor_id=instructor.id,
-        datetime_start=start,
+    existing = GymSession.query.filter(
+        GymSession.instructor_id == instructor.id,
+        GymSession.datetime_start == start,
+        GymSession.status != SESSION_CANCELLED,
     ).first()
     if existing:
         return False
