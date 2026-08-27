@@ -29,13 +29,6 @@ DEMO_ACCOUNTS = (
         "role": ROLE_INSTRUCTOR,
     },
     {
-        "email": "sam@gym.com",
-        "password": "instructor123",
-        "name_first": "Sam",
-        "name_last": "Rivera",
-        "role": ROLE_INSTRUCTOR,
-    },
-    {
         "email": "client@gym.com",
         "password": "client123",
         "name_first": "Casey",
@@ -68,6 +61,7 @@ DEMO_ACCOUNTS = (
 
 def init_database(db):
     _ensure_demo_users(db)
+    _ensure_single_instructor(db)
     _ensure_demo_sessions(db)
     _ensure_extra_client_bookings(db)
     _ensure_jul_aug_sep_sessions(db)
@@ -88,6 +82,33 @@ def _ensure_demo_users(db):
                 status=1,
             )
         )
+    db.session.commit()
+
+
+def _ensure_single_instructor(db):
+    keep = User.query.filter_by(email="instructor@gym.com").first()
+    extras_query = User.query.filter(User.role == ROLE_INSTRUCTOR)
+    if keep:
+        extras_query = extras_query.filter(User.id != keep.id)
+    extras = extras_query.all()
+    if not extras:
+        return
+    if not keep:
+        keep = extras[0]
+        extras = extras[1:]
+        if not extras:
+            return
+    for extra in extras:
+        for session in GymSession.query.filter_by(instructor_id=extra.id).all():
+            clash = GymSession.query.filter_by(
+                instructor_id=keep.id,
+                datetime_start=session.datetime_start,
+            ).first()
+            if clash:
+                db.session.delete(session)
+            else:
+                session.instructor_id = keep.id
+        db.session.delete(extra)
     db.session.commit()
 
 
@@ -122,23 +143,22 @@ def _ensure_demo_sessions(db):
 
 
 def _ensure_extra_client_bookings(db):
-    alex = User.query.filter_by(email="instructor@gym.com").first()
-    sam = User.query.filter_by(email="sam@gym.com").first()
-    if not alex:
+    instructor = User.query.filter_by(email="instructor@gym.com").first()
+    if not instructor:
         return
 
     extra_bookings = (
-        ("jordan@gym.com", alex, 48),
-        ("riley@gym.com", alex, 50),
-        ("morgan@gym.com", sam or alex, 72),
-        ("client@gym.com", alex, -72),
-        ("jordan@gym.com", alex, -48),
+        ("jordan@gym.com", 48),
+        ("riley@gym.com", 50),
+        ("morgan@gym.com", 72),
+        ("client@gym.com", -72),
+        ("jordan@gym.com", -48),
     )
     base = _next_hour()
     created = False
-    for email, instructor, hour_offset in extra_bookings:
+    for email, hour_offset in extra_bookings:
         client = User.query.filter_by(email=email).first()
-        if not client or not instructor:
+        if not client:
             continue
         start = base + timedelta(hours=hour_offset)
         already_booked = GymSession.query.filter_by(
@@ -182,45 +202,44 @@ def _add_session_if_missing(db, instructor, start, end, client=None):
 
 
 def _ensure_jul_aug_sep_sessions(db):
-    alex = User.query.filter_by(email="instructor@gym.com").first()
-    sam = User.query.filter_by(email="sam@gym.com").first() or alex
+    instructor = User.query.filter_by(email="instructor@gym.com").first()
     clients = [
         User.query.filter_by(email=email).first()
         for email in ("client@gym.com", "jordan@gym.com", "riley@gym.com", "morgan@gym.com")
     ]
     clients = [client for client in clients if client]
-    if not alex or not clients:
+    if not instructor or not clients:
         return
 
     year = datetime.now().year
     booked_days = (
-        (7, 3, 10, alex, clients[0]),
-        (7, 8, 11, alex, clients[1 % len(clients)]),
-        (7, 15, 9, sam, clients[2 % len(clients)]),
-        (7, 22, 16, alex, clients[0]),
-        (7, 28, 10, sam, clients[1 % len(clients)]),
-        (8, 5, 10, alex, clients[2 % len(clients)]),
-        (8, 12, 14, sam, clients[0]),
-        (8, 20, 9, alex, clients[3 % len(clients)]),
-        (8, 27, 11, alex, clients[1 % len(clients)]),
-        (9, 2, 10, alex, clients[0]),
-        (9, 10, 15, sam, clients[2 % len(clients)]),
-        (9, 18, 9, alex, clients[1 % len(clients)]),
+        (7, 3, 10, clients[0]),
+        (7, 8, 11, clients[1 % len(clients)]),
+        (7, 15, 9, clients[2 % len(clients)]),
+        (7, 22, 16, clients[0]),
+        (7, 28, 10, clients[1 % len(clients)]),
+        (8, 5, 10, clients[2 % len(clients)]),
+        (8, 12, 14, clients[0]),
+        (8, 20, 9, clients[3 % len(clients)]),
+        (8, 27, 11, clients[1 % len(clients)]),
+        (9, 2, 10, clients[0]),
+        (9, 10, 15, clients[2 % len(clients)]),
+        (9, 18, 9, clients[1 % len(clients)]),
     )
     open_days = (
-        (8, 28, 9, alex),
-        (8, 30, 11, sam),
-        (9, 3, 10, alex),
-        (9, 8, 13, sam),
-        (9, 15, 9, alex),
-        (9, 22, 16, sam),
-        (9, 25, 10, alex),
+        (8, 28, 9),
+        (8, 30, 11),
+        (9, 3, 10),
+        (9, 8, 13),
+        (9, 15, 9),
+        (9, 22, 16),
+        (9, 25, 10),
     )
     created = False
-    for month, day, hour, instructor, client in booked_days:
+    for month, day, hour, client in booked_days:
         start = datetime(year, month, day, hour, 0)
         created = _add_session_if_missing(db, instructor, start, start + timedelta(hours=1), client) or created
-    for month, day, hour, instructor in open_days:
+    for month, day, hour in open_days:
         start = datetime(year, month, day, hour, 0)
         created = _add_session_if_missing(db, instructor, start, start + timedelta(hours=1), None) or created
     if created:

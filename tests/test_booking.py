@@ -91,8 +91,10 @@ class BookingRolesTest(unittest.TestCase):
         clients = User.query.filter(User.email.in_(emails)).all()
         self.assertEqual(len(clients), 4)
         self.assertTrue(all(user.role == ROLE_CLIENT for user in clients))
-        self.assertEqual(User.query.filter_by(role="instructor").count(), 2)
+        self.assertEqual(User.query.filter_by(role="instructor").count(), 1)
         self.assertEqual(User.query.filter_by(role="admin").count(), 1)
+        self.assertIsNotNone(User.query.filter_by(email="instructor@gym.com").first())
+        self.assertIsNone(User.query.filter_by(email="sam@gym.com").first())
 
         self.login("jordan@gym.com", "client123")
         home = self.client.get("/")
@@ -104,9 +106,13 @@ class BookingRolesTest(unittest.TestCase):
         self.login("admin@gym.com", "admin123")
         users_page = self.client.get("/users")
         self.assertEqual(users_page.status_code, 200)
-        for email in emails + ["sam@gym.com", "instructor@gym.com"]:
+        for email in emails + ["instructor@gym.com"]:
             self.assertIn(email.encode(), users_page.data)
+        self.assertNotIn(b"sam@gym.com", users_page.data)
         self.assertIn(b"filterRole", users_page.data)
+        login_page = self.client.get("/logout", follow_redirects=True)
+        self.assertIn(b"instructor@gym.com", login_page.data)
+        self.assertNotIn(b"sam@gym.com", login_page.data)
 
     def test_calendar_labels_open_slots_and_past_bookings(self):
         from datetime import datetime, timedelta
