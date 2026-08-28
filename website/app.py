@@ -393,9 +393,8 @@ def book_session(session_id):
     session = _session_or_404(session_id)
     ok, message = booking.book_session(session, current_user)
     flash(message, "success" if ok else "error")
-    if ok:
-        return redirect(url_for("app.my_sessions"))
-    return redirect(url_for("app.book_calendar"))
+    fallback = url_for("app.my_sessions") if ok else url_for("app.book_calendar")
+    return redirect(_safe_timeline_next(fallback))
 
 
 @app.route("/sessions/<int:session_id>/cancel", methods=["POST"])

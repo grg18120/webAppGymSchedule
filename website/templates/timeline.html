@@ -56,19 +56,16 @@
           {% endfor %}
           {% for block in day.blocks %}
           {% set session = block.session %}
-          {% set day_href = url_for('app.book_day', year=day.date.year, month=day.date.month, day=day.date.day) %}
           {% set block_style = 'top: ' ~ block.top ~ '%; height: ' ~ block.height ~ '%; left: calc(' ~ block.col ~ ' / ' ~ block.cols ~ ' * 100% + 3px); width: calc(100% / ' ~ block.cols ~ ' - 6px);' %}
           {% set show_delete = user.is_instructor and session.status == SESSION_AVAILABLE and not session.is_past %}
           {% set show_instructor_cancel = user.is_instructor and session.status == SESSION_BOOKED and not session.is_past %}
           {% set show_client_cancel = user.is_client and session.status == SESSION_BOOKED and session.client_id == user.id and not session.is_past %}
-          {% if show_delete or show_instructor_cancel or show_client_cancel %}
+          {% set show_client_book = user.is_client and session.status == SESSION_AVAILABLE and not session.is_past %}
           <div
             class="timeline__block timeline__block--{{ session.status }}{% if session.is_past %} timeline__block--past{% endif %}"
             style="{{ block_style }}"
           >
-            <a class="timeline__block-link" href="{{ day_href }}">
-              {{ timeline_block_caption(session) }}
-            </a>
+            {{ timeline_block_caption(session) }}
             {% if show_delete %}
             <form
               class="timeline__block-action"
@@ -89,7 +86,7 @@
               <input type="hidden" name="next" value="{{ timeline_next }}">
               <button type="submit">Cancel</button>
             </form>
-            {% else %}
+            {% elif show_client_cancel %}
             <form
               class="timeline__block-action"
               method="POST"
@@ -99,17 +96,18 @@
               <input type="hidden" name="next" value="{{ timeline_next }}">
               <button type="submit">Cancel</button>
             </form>
+            {% elif show_client_book %}
+            <form
+              class="timeline__block-action timeline__block-action--book"
+              method="POST"
+              action="{{ url_for('app.book_session', session_id=session.id) }}"
+              onsubmit="return confirm('Book this session?');"
+            >
+              <input type="hidden" name="next" value="{{ timeline_next }}">
+              <button type="submit">Book</button>
+            </form>
             {% endif %}
           </div>
-          {% else %}
-          <a
-            class="timeline__block timeline__block--{{ session.status }}{% if session.is_past %} timeline__block--past{% endif %}"
-            href="{{ day_href }}"
-            style="{{ block_style }}"
-          >
-            {{ timeline_block_caption(session) }}
-          </a>
-          {% endif %}
           {% endfor %}
         </div>
         {% endfor %}

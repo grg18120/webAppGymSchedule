@@ -966,6 +966,7 @@ class BookingRolesTest(unittest.TestCase):
         open_id = open_slot.id
         booked_id = booked_slot.id
         remove_path = f"/sessions/{open_id}/remove".encode()
+        book_path = f"/sessions/{open_id}/book".encode()
         cancel_path = f"/sessions/{booked_id}/cancel".encode()
 
         guest = self.client.get("/timeline")
@@ -985,12 +986,14 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b">23:00<", html)
         self.assertIn(b"Tue", html)
         self.assertIn(b"16 Jun", html)
-        self.assertIn(b"/book/2099/6/16", html)
+        self.assertNotIn(b"/book/2099/6/16", html)
+        self.assertNotIn(b"timeline__block-link", html)
         self.assertIn(b"Previous week", html)
         self.assertIn(b"Next week", html)
         self.assertIn(b"timeline__block-action", html)
         self.assertIn(remove_path, html)
         self.assertIn(cancel_path, html)
+        self.assertNotIn(book_path, html)
         self.assertIn(b"Delete this available slot?", html)
         self.assertIn(b"Cancel this booked session? The client will lose the booking.", html)
         self.assertIn(b'name="next"', html)
@@ -1003,7 +1006,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b'timeline__block-label">Available Slot', casey_page.data)
         self.assertIn(b'timeline__block-label">Booked Slot', casey_page.data)
         self.assertIn(cancel_path, casey_page.data)
+        self.assertIn(book_path, casey_page.data)
         self.assertIn(b"timeline__block-action", casey_page.data)
+        self.assertIn(b"Book this session?", casey_page.data)
         self.assertIn(b"Cancel this booking? The slot will become available again.", casey_page.data)
         self.assertNotIn(remove_path, casey_page.data)
         self.assertNotIn(b"/remove", casey_page.data)
@@ -1017,8 +1022,10 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b'timeline__block-label">Available Slot', jordan_page.data)
         self.assertNotIn(b'timeline__block-label">Booked Slot', jordan_page.data)
         self.assertNotIn(b"timeline__block--booked", jordan_page.data)
+        self.assertIn(book_path, jordan_page.data)
+        self.assertIn(b"Book this session?", jordan_page.data)
+        self.assertIn(b"timeline__block-action", jordan_page.data)
         self.assertNotIn(cancel_path, jordan_page.data)
-        self.assertNotIn(b"timeline__block-action", jordan_page.data)
         self.assertNotIn(b"/remove", jordan_page.data)
 
         self.client.get("/logout")
@@ -1030,15 +1037,18 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"timeline__block-action", admin_page.data)
         self.assertNotIn(remove_path, admin_page.data)
         self.assertNotIn(cancel_path, admin_page.data)
+        self.assertNotIn(book_path, admin_page.data)
 
         css = self.client.get("/static/css/timeline.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(b".timeline__block--available", css.data)
         self.assertIn(b".timeline__block--booked", css.data)
         self.assertIn(b".timeline__block-action", css.data)
+        self.assertIn(b".timeline__block-action--book", css.data)
         self.assertIn(b".timeline__block:hover .timeline__block-action", css.data)
         self.assertIn(b".timeline__block:focus-within .timeline__block-action", css.data)
         self.assertIn(b"font-size: 0.56rem", css.data)
+        self.assertNotIn(b".timeline__block-link", css.data)
 
     def test_timeline_hover_actions_post_back_to_week(self):
         from datetime import datetime, timedelta
@@ -1077,12 +1087,20 @@ class BookingRolesTest(unittest.TestCase):
             datetime_end=trap_start + timedelta(hours=1),
             status=SESSION_AVAILABLE,
         )
-        db.session.add_all([open_slot, instructor_booked, client_booked, trap_slot])
+        client_open_start = datetime(2099, 6, 16, 17, 0)
+        client_open = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=client_open_start,
+            datetime_end=client_open_start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+        )
+        db.session.add_all([open_slot, instructor_booked, client_booked, trap_slot, client_open])
         db.session.commit()
         open_id = open_slot.id
         instructor_booked_id = instructor_booked.id
         client_booked_id = client_booked.id
         trap_id = trap_slot.id
+        client_open_id = client_open.id
 
         self.login("instructor@gym.com", "instructor123")
         deleted = self.client.post(
@@ -1127,6 +1145,18 @@ class BookingRolesTest(unittest.TestCase):
         client_refreshed = db.session.get(GymSession, client_booked_id)
         self.assertEqual(client_refreshed.status, SESSION_AVAILABLE)
         self.assertIsNone(client_refreshed.client_id)
+
+        booked = self.client.post(
+            f"/sessions/{client_open_id}/book",
+            data={"next": next_week},
+            follow_redirects=True,
+        )
+        self.assertEqual(booked.status_code, 200)
+        self.assertIn(b"Session timeline", booked.data)
+        self.assertIn(b"Session booked", booked.data)
+        open_refreshed = db.session.get(GymSession, client_open_id)
+        self.assertEqual(open_refreshed.status, SESSION_BOOKED)
+        self.assertEqual(open_refreshed.client_id, casey.id)
 
 
 if __name__ == "__main__":
