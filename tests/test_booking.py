@@ -172,7 +172,10 @@ class BookingRolesTest(unittest.TestCase):
         self.client.get("/logout")
         self.login("instructor@gym.com", "instructor123")
         instructor_cal = self.client.get("/book")
-        self.assertIn(b">Calendar</a>", instructor_cal.data)
+        self.assertRegex(
+            instructor_cal.data.decode(),
+            r'id="mainNav"[\s\S]*href="/book">\s*Calendar\s*</a>',
+        )
         self.assertNotIn(b"Book a session", instructor_cal.data)
         self.assertNotIn(b"My availability", instructor_cal.data)
 
