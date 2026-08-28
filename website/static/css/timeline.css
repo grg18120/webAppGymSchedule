@@ -292,16 +292,18 @@
   letter-spacing: 0.02em;
   padding: 0.1rem 0.38rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  background: #c62828;
-  color: #ffffff;
+  border: 1px solid #c62828;
+  background: #ffffff;
+  color: #c62828;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .timeline__block-action button:hover,
 .timeline__block-action button:focus-visible {
-  background: #8e0000;
+  background: #ffffff;
+  color: #8e0000;
+  border-color: #8e0000;
   outline: 2px solid #ffffff;
   outline-offset: 1px;
 }
