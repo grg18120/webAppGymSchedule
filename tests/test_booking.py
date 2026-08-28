@@ -1062,6 +1062,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline__block--booked", css.data)
         self.assertIn(b".timeline__block-action", css.data)
         self.assertIn(b".timeline__block-action--book", css.data)
+        self.assertIn(b".timeline__block--available {\n  background: #2e7d32;", css.data)
+        self.assertIn(b".timeline__block-action--book button {\n  background: #ffffff;", css.data)
         self.assertIn(b".timeline__block:hover .timeline__block-action", css.data)
         self.assertIn(b".timeline__block:focus-within .timeline__block-action", css.data)
         self.assertIn(b"font-size: 0.56rem", css.data)

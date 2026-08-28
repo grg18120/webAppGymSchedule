@@ -127,7 +127,7 @@
 }
 
 .timeline-swatch--available {
-  background: rgba(46, 125, 50, 0.18);
+  background: #2e7d32;
   border: 2px solid #2e7d32;
   box-sizing: border-box;
 }
@@ -307,19 +307,22 @@
 }
 
 .timeline__block-action--book button {
-  background: #2e7d32;
-  border-color: #1b5e20;
+  background: #ffffff;
+  border-color: #2e7d32;
+  color: #2e7d32;
 }
 
 .timeline__block-action--book button:hover,
 .timeline__block-action--book button:focus-visible {
-  background: #1b5e20;
+  background: #ffffff;
+  color: #1b5e20;
+  border-color: #1b5e20;
 }
 
 .timeline__block--available {
-  background: rgba(232, 245, 233, 0.95);
-  border: 2px solid #2e7d32;
-  color: #1b5e20;
+  background: #2e7d32;
+  border: 2px solid #1b5e20;
+  color: #ffffff;
 }
 
 .timeline__block--booked {
