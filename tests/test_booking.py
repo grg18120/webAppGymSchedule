@@ -172,8 +172,9 @@ class BookingRolesTest(unittest.TestCase):
         self.client.get("/logout")
         self.login("instructor@gym.com", "instructor123")
         instructor_cal = self.client.get("/book")
-        self.assertIn(b"My availability", instructor_cal.data)
+        self.assertIn(b">Calendar</a>", instructor_cal.data)
         self.assertNotIn(b"Book a session", instructor_cal.data)
+        self.assertNotIn(b"My availability", instructor_cal.data)
 
         self.client.get("/logout")
         self.login("admin@gym.com", "admin123")
