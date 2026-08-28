@@ -49,9 +49,6 @@
           <tr>
             <th scope="col">Month</th>
             <th scope="col">Booked</th>
-            {% if dashboard.include_open %}
-            <th scope="col">Unbooked</th>
-            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -59,9 +56,6 @@
           <tr>
             <th scope="row">{{ row.label }}</th>
             <td>{{ row.booked }}</td>
-            {% if dashboard.include_open %}
-            <td>{{ row.open }}</td>
-            {% endif %}
           </tr>
           {% endfor %}
         </tbody>

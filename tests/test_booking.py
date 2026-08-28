@@ -1291,6 +1291,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertRegex(instructor_home.data, rb"stat-table[\s\S]*\d+ h \d+ min")
         self.assertIn(b" h ", instructor_home.data)
         self.assertIn(b" min", instructor_home.data)
+        table_html = instructor_home.data.split(b'stat-table', 1)[-1]
+        self.assertNotIn(b"Unbooked", table_html)
 
         self.client.get("/logout")
         self.login("client@gym.com", "client123")
