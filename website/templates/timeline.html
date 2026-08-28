@@ -40,6 +40,7 @@
           {% for hour in hours %}
           <div class="timeline__hour">{{ '%02d'|format(hour) }}:00</div>
           {% endfor %}
+          <div class="timeline__hour timeline__hour--end">{{ '%02d'|format(end_hour) }}:00</div>
         </div>
         {% for day in days %}
         <div class="timeline__lane{% if day.date == today %} timeline__lane--today{% endif %}">
@@ -53,7 +54,7 @@
             href="{{ url_for('app.book_day', year=day.date.year, month=day.date.month, day=day.date.day) }}"
             style="top: {{ block.top }}%; height: {{ block.height }}%; left: calc({{ block.col }} / {{ block.cols }} * 100% + 3px); width: calc(100% / {{ block.cols }} - 6px);"
           >
-            <span class="timeline__block-time">{{ session.datetime_start.strftime('%H:%M') }}</span>
+            <span class="timeline__block-label">{% if session.status == SESSION_BOOKED %}Booked Slot{% else %}Available Slot{% endif %}</span>
             <span class="visually-hidden">
               {{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
               instructor {{ session.instructor.display_name }}{% if session.client %}, client {{ session.client.display_name }}{% else %}, no client yet{% endif %}

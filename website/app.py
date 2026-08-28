@@ -465,6 +465,7 @@ def timeline():
         user=current_user,
         days=days,
         hours=timeline_view.HOURS,
+        end_hour=timeline_view.END_HOUR,
         hour_height=timeline_view.HOUR_HEIGHT_PX,
         today=today,
         week_label=f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}",

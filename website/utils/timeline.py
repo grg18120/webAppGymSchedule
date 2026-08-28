@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 
 from website.models import SESSION_CANCELLED, GymSession
 
-START_HOUR = 8
-END_HOUR = 22
+START_HOUR = 6
+END_HOUR = 23
 HOURS = tuple(range(START_HOUR, END_HOUR))
 HOUR_HEIGHT_PX = 48
 
