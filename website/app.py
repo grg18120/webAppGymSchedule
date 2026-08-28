@@ -61,6 +61,21 @@ def _session_or_404(session_id):
     return session
 
 
+def _safe_timeline_next(fallback):
+    raw = request.form.get("next")
+    if not isinstance(raw, str):
+        return fallback
+    nxt = raw.strip()
+    if not nxt or "\n" in nxt or "\r" in nxt or "\\" in nxt:
+        return fallback
+    if nxt.startswith("//") or "://" in nxt:
+        return fallback
+    path = nxt.split("?", 1)[0].split("#", 1)[0]
+    if path != "/timeline":
+        return fallback
+    return nxt
+
+
 @app.route("/")
 def home():
     dashboard = None
@@ -387,12 +402,14 @@ def book_session(session_id):
 @login_required
 def cancel_session(session_id):
     session = _session_or_404(session_id)
+    start = session.datetime_start
     ok, message = booking.cancel_session(session, current_user)
     flash(message, "success" if ok else "error")
     if current_user.is_client:
-        return redirect(url_for("app.my_sessions"))
-    start = session.datetime_start
-    return redirect(url_for("app.book_day", year=start.year, month=start.month, day=start.day))
+        fallback = url_for("app.my_sessions")
+    else:
+        fallback = url_for("app.book_day", year=start.year, month=start.month, day=start.day)
+    return redirect(_safe_timeline_next(fallback))
 
 
 @app.route("/sessions/<int:session_id>/remove", methods=["POST"])
@@ -401,17 +418,17 @@ def cancel_session(session_id):
 def remove_availability(session_id):
     session = _session_or_404(session_id)
     start = session.datetime_start
+    instructor_id = session.instructor_id
     ok, message = booking.remove_availability(session, current_user)
     flash(message, "success" if ok else "error")
-    return redirect(
-        url_for(
-            "app.book_day",
-            year=start.year,
-            month=start.month,
-            day=start.day,
-            instructor_id=session.instructor_id,
-        )
+    fallback = url_for(
+        "app.book_day",
+        year=start.year,
+        month=start.month,
+        day=start.day,
+        instructor_id=instructor_id,
     )
+    return redirect(_safe_timeline_next(fallback))
 
 
 MY_SESSIONS_PER_PAGE = 10
@@ -471,6 +488,7 @@ def timeline():
         week_label=f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}",
         prev_url=url_for("app.timeline", start=prev_monday.isoformat()),
         next_url=url_for("app.timeline", start=next_monday.isoformat()),
+        timeline_next=url_for("app.timeline", start=selected.isoformat()),
     )
 
 

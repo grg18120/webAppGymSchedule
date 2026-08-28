@@ -184,7 +184,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0.2rem 0.3rem;
+  padding: 0.12rem 0.22rem;
   border-radius: 6px;
   text-decoration: none;
   overflow: hidden;
@@ -192,10 +192,61 @@
 }
 
 .timeline__block:hover,
-.timeline__block:focus-visible {
+.timeline__block:focus-visible,
+.timeline__block:focus-within {
   outline: 2px solid #ffffff;
   outline-offset: 1px;
+  z-index: 3;
+  overflow: visible;
+}
+
+.timeline__block-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.12rem 0.22rem;
+}
+
+.timeline__block-action {
+  display: none;
+  position: absolute;
   z-index: 2;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  margin: 0;
+}
+
+.timeline__block:hover .timeline__block-action,
+.timeline__block:focus-within .timeline__block-action {
+  display: block;
+}
+
+.timeline__block-action button {
+  font-size: 0.52rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  padding: 0.1rem 0.38rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: #c62828;
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.timeline__block-action button:hover,
+.timeline__block-action button:focus-visible {
+  background: #8e0000;
+  outline: 2px solid #ffffff;
+  outline-offset: 1px;
 }
 
 .timeline__block--available {
@@ -217,9 +268,9 @@
 }
 
 .timeline__block-label {
-  font-size: 0.7rem;
+  font-size: 0.56rem;
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 
 @media (max-width: 768px) {

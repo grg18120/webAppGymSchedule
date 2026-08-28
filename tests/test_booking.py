@@ -946,27 +946,27 @@ class BookingRolesTest(unittest.TestCase):
 
         instructor = User.query.filter_by(email="instructor@gym.com").first()
         casey = User.query.filter_by(email="client@gym.com").first()
-        jordan = User.query.filter_by(email="jordan@gym.com").first()
         open_start = datetime(2099, 6, 16, 10, 0)
         casey_start = datetime(2099, 6, 16, 14, 0)
-        db.session.add(
-            GymSession(
-                instructor_id=instructor.id,
-                datetime_start=open_start,
-                datetime_end=open_start + timedelta(hours=1),
-                status=SESSION_AVAILABLE,
-            )
+        open_slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=open_start,
+            datetime_end=open_start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
         )
-        db.session.add(
-            GymSession(
-                instructor_id=instructor.id,
-                client_id=casey.id,
-                datetime_start=casey_start,
-                datetime_end=casey_start + timedelta(hours=1),
-                status=SESSION_BOOKED,
-            )
+        booked_slot = GymSession(
+            instructor_id=instructor.id,
+            client_id=casey.id,
+            datetime_start=casey_start,
+            datetime_end=casey_start + timedelta(hours=1),
+            status=SESSION_BOOKED,
         )
+        db.session.add_all([open_slot, booked_slot])
         db.session.commit()
+        open_id = open_slot.id
+        booked_id = booked_slot.id
+        remove_path = f"/sessions/{open_id}/remove".encode()
+        cancel_path = f"/sessions/{booked_id}/cancel".encode()
 
         guest = self.client.get("/timeline")
         self.assertEqual(guest.status_code, 302)
@@ -988,6 +988,13 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"/book/2099/6/16", html)
         self.assertIn(b"Previous week", html)
         self.assertIn(b"Next week", html)
+        self.assertIn(b"timeline__block-action", html)
+        self.assertIn(remove_path, html)
+        self.assertIn(cancel_path, html)
+        self.assertIn(b"Delete this available slot?", html)
+        self.assertIn(b"Cancel this booked session? The client will lose the booking.", html)
+        self.assertIn(b'name="next"', html)
+        self.assertIn(b"/timeline?start=2099-06-16", html)
 
         self.client.get("/logout")
         self.login("client@gym.com", "client123")
@@ -995,6 +1002,13 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(casey_page.status_code, 200)
         self.assertIn(b'timeline__block-label">Available Slot', casey_page.data)
         self.assertIn(b'timeline__block-label">Booked Slot', casey_page.data)
+        self.assertIn(cancel_path, casey_page.data)
+        self.assertIn(b"timeline__block-action", casey_page.data)
+        self.assertIn(b"Cancel this booking? The slot will become available again.", casey_page.data)
+        self.assertNotIn(remove_path, casey_page.data)
+        self.assertNotIn(b"/remove", casey_page.data)
+        self.assertNotIn(b"Delete this available slot?", casey_page.data)
+        self.assertNotIn(b"Cancel this booked session? The client will lose the booking.", casey_page.data)
 
         self.client.get("/logout")
         self.login("jordan@gym.com", "client123")
@@ -1003,6 +1017,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b'timeline__block-label">Available Slot', jordan_page.data)
         self.assertNotIn(b'timeline__block-label">Booked Slot', jordan_page.data)
         self.assertNotIn(b"timeline__block--booked", jordan_page.data)
+        self.assertNotIn(cancel_path, jordan_page.data)
+        self.assertNotIn(b"timeline__block-action", jordan_page.data)
+        self.assertNotIn(b"/remove", jordan_page.data)
 
         self.client.get("/logout")
         self.login("admin@gym.com", "admin123")
@@ -1010,11 +1027,106 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(admin_page.status_code, 200)
         self.assertIn(b"Timeline", admin_page.data)
         self.assertIn(b"14:00", admin_page.data)
+        self.assertNotIn(b"timeline__block-action", admin_page.data)
+        self.assertNotIn(remove_path, admin_page.data)
+        self.assertNotIn(cancel_path, admin_page.data)
 
         css = self.client.get("/static/css/timeline.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(b".timeline__block--available", css.data)
         self.assertIn(b".timeline__block--booked", css.data)
+        self.assertIn(b".timeline__block-action", css.data)
+        self.assertIn(b".timeline__block:hover .timeline__block-action", css.data)
+        self.assertIn(b".timeline__block:focus-within .timeline__block-action", css.data)
+        self.assertIn(b"font-size: 0.56rem", css.data)
+
+    def test_timeline_hover_actions_post_back_to_week(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        next_week = "/timeline?start=2099-06-16"
+
+        open_start = datetime(2099, 6, 16, 9, 0)
+        instructor_booked_start = datetime(2099, 6, 16, 11, 0)
+        client_booked_start = datetime(2099, 6, 16, 15, 0)
+        trap_start = datetime(2099, 6, 16, 16, 0)
+        open_slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=open_start,
+            datetime_end=open_start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+        )
+        instructor_booked = GymSession(
+            instructor_id=instructor.id,
+            client_id=casey.id,
+            datetime_start=instructor_booked_start,
+            datetime_end=instructor_booked_start + timedelta(hours=1),
+            status=SESSION_BOOKED,
+        )
+        client_booked = GymSession(
+            instructor_id=instructor.id,
+            client_id=casey.id,
+            datetime_start=client_booked_start,
+            datetime_end=client_booked_start + timedelta(hours=1),
+            status=SESSION_BOOKED,
+        )
+        trap_slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=trap_start,
+            datetime_end=trap_start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+        )
+        db.session.add_all([open_slot, instructor_booked, client_booked, trap_slot])
+        db.session.commit()
+        open_id = open_slot.id
+        instructor_booked_id = instructor_booked.id
+        client_booked_id = client_booked.id
+        trap_id = trap_slot.id
+
+        self.login("instructor@gym.com", "instructor123")
+        deleted = self.client.post(
+            f"/sessions/{open_id}/remove",
+            data={"next": next_week},
+            follow_redirects=False,
+        )
+        self.assertEqual(deleted.status_code, 302)
+        self.assertIn(next_week, deleted.headers["Location"])
+        self.assertIsNone(db.session.get(GymSession, open_id))
+
+        cancelled = self.client.post(
+            f"/sessions/{instructor_booked_id}/cancel",
+            data={"next": next_week},
+            follow_redirects=True,
+        )
+        self.assertEqual(cancelled.status_code, 200)
+        self.assertIn(b"Session timeline", cancelled.data)
+        self.assertIn(b"Session cancelled", cancelled.data)
+        instructor_refreshed = db.session.get(GymSession, instructor_booked_id)
+        self.assertEqual(instructor_refreshed.status, SESSION_CANCELLED)
+
+        blocked = self.client.post(
+            f"/sessions/{trap_id}/remove",
+            data={"next": "https://evil.example/timeline"},
+            follow_redirects=False,
+        )
+        self.assertEqual(blocked.status_code, 302)
+        self.assertNotIn("evil.example", blocked.headers["Location"])
+        self.assertIsNone(db.session.get(GymSession, trap_id))
+
+        self.client.get("/logout")
+        self.login("client@gym.com", "client123")
+        client_cancel = self.client.post(
+            f"/sessions/{client_booked_id}/cancel",
+            data={"next": next_week},
+            follow_redirects=True,
+        )
+        self.assertEqual(client_cancel.status_code, 200)
+        self.assertIn(b"Session timeline", client_cancel.data)
+        self.assertIn(b"available again", client_cancel.data)
+        client_refreshed = db.session.get(GymSession, client_booked_id)
+        self.assertEqual(client_refreshed.status, SESSION_AVAILABLE)
+        self.assertIsNone(client_refreshed.client_id)
 
 
 if __name__ == "__main__":
