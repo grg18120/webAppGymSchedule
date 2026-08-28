@@ -42,6 +42,24 @@ class BookingRolesTest(unittest.TestCase):
             follow_redirects=True,
         )
 
+    def static_bytes(self, path):
+        response = self.client.get(path)
+        try:
+            return response.status_code, response.get_data()
+        finally:
+            response.close()
+
+    def cancel_active_start(self, instructor_id, start):
+        slots = GymSession.query.filter_by(
+            instructor_id=instructor_id,
+            datetime_start=start,
+        ).all()
+        for slot in slots:
+            if slot.status != SESSION_CANCELLED:
+                slot.status = SESSION_CANCELLED
+                slot.client_id = None
+        db.session.flush()
+
     def test_client_cannot_open_users(self):
         self.login("client@gym.com", "client123")
         response = self.client.get("/users")
@@ -132,13 +150,13 @@ class BookingRolesTest(unittest.TestCase):
         db.session.rollback()
 
     def test_create_availability_rejects_duplicate_start(self):
-        from datetime import timedelta
+        from datetime import datetime, timedelta
         from unittest.mock import patch
 
         from website.utils import booking
 
         instructor = User.query.filter_by(email="instructor@gym.com").first()
-        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=21)
+        start = datetime(2099, 12, 15, 6, 0)
         end = start + timedelta(hours=1)
         first, error = booking.create_availability(instructor, start, end)
         self.assertIsNotNone(first)
@@ -343,23 +361,23 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(admin_past_empty.status_code, 302)
 
     def test_calendar_booked_is_blue_and_hover_keeps_letter_colors(self):
-        css = self.client.get("/static/css/trainers_book.css")
-        self.assertEqual(css.status_code, 200)
-        self.assertIn(b"#1565c0", css.data)
-        self.assertIn(b"rgba(21, 101, 192", css.data)
-        self.assertNotIn(b"#8e24aa", css.data)
-        self.assertNotIn(b"#ce93d8", css.data)
-        self.assertIn(b"a.day.no-slots:hover", css.data)
-        self.assertIn(b"color: #ffffff", css.data)
-        self.assertIn(b"color: #000000", css.data)
-        self.assertIn(b".day.has-open.has-booked:not(.passed)", css.data)
-        self.assertIn(b"linear-gradient(135deg, #2e7d32 50%, #1565c0 50%)", css.data)
-        self.assertIn(b"background-clip: padding-box", css.data)
-        self.assertIn(b".day.today.has-open.has-booked:not(.passed)", css.data)
-        self.assertIn(b".legend-swatch.mixed", css.data)
-        self.assertIn(b"attr(data-full)", css.data)
-        self.assertIn(b"attr(data-short)", css.data)
-        self.assertNotIn(b".day-status--short", css.data)
+        status, css = self.static_bytes("/static/css/trainers_book.css")
+        self.assertEqual(status, 200)
+        self.assertIn(b"#1565c0", css)
+        self.assertIn(b"rgba(21, 101, 192", css)
+        self.assertNotIn(b"#8e24aa", css)
+        self.assertNotIn(b"#ce93d8", css)
+        self.assertIn(b"a.day.no-slots:hover", css)
+        self.assertIn(b"color: #ffffff", css)
+        self.assertIn(b"color: #000000", css)
+        self.assertIn(b".day.has-open.has-booked:not(.passed)", css)
+        self.assertIn(b"linear-gradient(135deg, #2e7d32 50%, #1565c0 50%)", css)
+        self.assertIn(b"background-clip: padding-box", css)
+        self.assertIn(b".day.today.has-open.has-booked:not(.passed)", css)
+        self.assertIn(b".legend-swatch.mixed", css)
+        self.assertIn(b"attr(data-full)", css)
+        self.assertIn(b"attr(data-short)", css)
+        self.assertNotIn(b".day-status--short", css)
 
     def test_client_calendar_shows_only_own_bookings(self):
         from datetime import datetime, timedelta
@@ -446,11 +464,15 @@ class BookingRolesTest(unittest.TestCase):
         instructor = User.query.filter_by(email="instructor@gym.com").first()
         client = User.query.filter_by(email="client@gym.com").first()
         today = now_gym().replace(minute=0, second=0, microsecond=0)
+        open_start = today.replace(hour=8)
+        booked_start = today.replace(hour=10)
+        self.cancel_active_start(instructor.id, open_start)
+        self.cancel_active_start(instructor.id, booked_start)
         db.session.add(
             GymSession(
                 instructor_id=instructor.id,
-                datetime_start=today.replace(hour=8),
-                datetime_end=today.replace(hour=8) + timedelta(hours=1),
+                datetime_start=open_start,
+                datetime_end=open_start + timedelta(hours=1),
                 status=SESSION_AVAILABLE,
             )
         )
@@ -458,8 +480,8 @@ class BookingRolesTest(unittest.TestCase):
             GymSession(
                 instructor_id=instructor.id,
                 client_id=client.id,
-                datetime_start=today.replace(hour=10),
-                datetime_end=today.replace(hour=10) + timedelta(hours=1),
+                datetime_start=booked_start,
+                datetime_end=booked_start + timedelta(hours=1),
                 status=SESSION_BOOKED,
             )
         )
@@ -757,12 +779,12 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"Instructor: Alex Instructor", html)
         self.assertNotIn(" · Client:".encode(), html)
 
-        css = self.client.get("/static/css/app.css")
-        self.assertIn(b".session-people", css.data)
-        self.assertIn(b".session-person--open", css.data)
-        self.assertNotIn(b"#d6f3f7", css.data)
-        self.assertNotIn(b"#f1f8e9", css.data)
-        self.assertIn(b"#607d8b", css.data)
+        _status, css = self.static_bytes("/static/css/app.css")
+        self.assertIn(b".session-people", css)
+        self.assertIn(b".session-person--open", css)
+        self.assertNotIn(b"#d6f3f7", css)
+        self.assertNotIn(b"#f1f8e9", css)
+        self.assertIn(b"#607d8b", css)
 
     def test_publish_range_with_thirty_minute_slots(self):
         from datetime import datetime
@@ -1059,22 +1081,22 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Publish this week", admin_page.data)
         self.assertIn(b"week-instructor", admin_page.data)
 
-        css = self.client.get("/static/css/timeline.css")
-        self.assertEqual(css.status_code, 200)
-        self.assertIn(b".timeline__block--available", css.data)
-        self.assertIn(b".timeline__block--booked", css.data)
-        self.assertIn(b".timeline__block-action", css.data)
-        self.assertIn(b".timeline__block-action--book", css.data)
-        self.assertIn(b".timeline__block--available {\n  background: #2e7d32;", css.data)
-        self.assertIn(b".timeline__block-action--book button {\n  background: #ffffff;", css.data)
-        self.assertIn(b".timeline__block-action button {\n  font-size: 0.52rem;", css.data)
-        self.assertIn(b"color: #c62828;", css.data)
-        self.assertIn(b".timeline__block:hover .timeline__block-action", css.data)
-        self.assertIn(b".timeline__block:focus-within .timeline__block-action", css.data)
-        self.assertIn(b"font-size: 0.56rem", css.data)
-        self.assertNotIn(b".timeline__block-link", css.data)
-        self.assertIn(b".timeline-publish", css.data)
-        self.assertIn(b".timeline-day-chip", css.data)
+        status, css = self.static_bytes("/static/css/timeline.css")
+        self.assertEqual(status, 200)
+        self.assertIn(b".timeline__block--available", css)
+        self.assertIn(b".timeline__block--booked", css)
+        self.assertIn(b".timeline__block-action", css)
+        self.assertIn(b".timeline__block-action--book", css)
+        self.assertIn(b".timeline__block--available {\n  background: #2e7d32;", css)
+        self.assertIn(b".timeline__block-action--book button {\n  background: #ffffff;", css)
+        self.assertIn(b".timeline__block-action button {\n  font-size: 0.52rem;", css)
+        self.assertIn(b"color: #c62828;", css)
+        self.assertIn(b".timeline__block:hover .timeline__block-action", css)
+        self.assertIn(b".timeline__block:focus-within .timeline__block-action", css)
+        self.assertIn(b"font-size: 0.56rem", css)
+        self.assertNotIn(b".timeline__block-link", css)
+        self.assertIn(b".timeline-publish", css)
+        self.assertIn(b".timeline-day-chip", css)
 
     def test_instructor_can_publish_week_from_timeline(self):
         from datetime import datetime
@@ -1320,9 +1342,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Fill rate this month", admin_home.data)
         self.assertIn(b"Users", admin_home.data)
 
-        css = self.client.get("/static/css/app.css")
-        self.assertIn(b".stat-grid", css.data)
-        self.assertIn(b".stat-card", css.data)
+        _status, css = self.static_bytes("/static/css/app.css")
+        self.assertIn(b".stat-grid", css)
+        self.assertIn(b".stat-card", css)
 
 
 if __name__ == "__main__":
