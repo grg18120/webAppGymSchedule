@@ -36,15 +36,16 @@ def _last_months(now, count=MONTH_WINDOW):
     return months
 
 
-def _hours(session):
-    return session.duration_minutes / 60.0
+def _minutes(session):
+    return max(0, session.duration_minutes)
 
 
-def _format_hours(value):
-    rounded = round(value, 1)
-    if abs(rounded - round(rounded)) < 0.05:
-        return f"{int(round(rounded))} h"
-    return f"{rounded:.1f} h"
+def _format_duration(total_minutes):
+    total = int(round(total_minutes))
+    if total < 0:
+        total = 0
+    hours, minutes = divmod(total, 60)
+    return f"{hours} h {minutes} min"
 
 
 def _format_percent(part, whole):
@@ -55,8 +56,8 @@ def _format_percent(part, whole):
 
 def _empty_bucket():
     return {
-        "booked_hours": 0.0,
-        "open_hours": 0.0,
+        "booked_minutes": 0,
+        "open_minutes": 0,
         "booked_count": 0,
         "open_count": 0,
         "clients": set(),
@@ -85,14 +86,14 @@ def _fill_months(sessions, months, client_only=False):
         bucket = buckets.get(key)
         if not bucket:
             continue
-        hours = _hours(session)
+        minutes = _minutes(session)
         if session.status == SESSION_BOOKED:
-            bucket["booked_hours"] += hours
+            bucket["booked_minutes"] += minutes
             bucket["booked_count"] += 1
             if session.client_id:
                 bucket["clients"].add(session.client_id)
         elif not client_only and session.status == SESSION_AVAILABLE:
-            bucket["open_hours"] += hours
+            bucket["open_minutes"] += minutes
             bucket["open_count"] += 1
     return buckets
 
@@ -103,12 +104,12 @@ def _month_rows(months, buckets, include_open):
         bucket = buckets[(year, month)]
         row = {
             "label": datetime(year, month, 1).strftime("%b %Y"),
-            "booked": _format_hours(bucket["booked_hours"]),
-            "booked_hours": bucket["booked_hours"],
+            "booked": _format_duration(bucket["booked_minutes"]),
+            "booked_hours": bucket["booked_minutes"] / 60.0,
         }
         if include_open:
-            row["open"] = _format_hours(bucket["open_hours"])
-            row["open_hours"] = bucket["open_hours"]
+            row["open"] = _format_duration(bucket["open_minutes"])
+            row["open_hours"] = bucket["open_minutes"] / 60.0
         rows.append(row)
     return rows
 
@@ -145,8 +146,8 @@ def instructor_dashboard(user, now):
     sessions = _query_sessions(now, months, instructor_id=user.id)
     buckets = _fill_months(sessions, months)
     current = buckets[(now.year, now.month)]
-    booked_values = [buckets[key]["booked_hours"] for key in months]
-    open_values = [buckets[key]["open_hours"] for key in months]
+    booked_values = [buckets[key]["booked_minutes"] for key in months]
+    open_values = [buckets[key]["open_minutes"] for key in months]
     upcoming = _upcoming(now, instructor_id=user.id)
     upcoming_booked = sum(1 for session in upcoming if session.status == SESSION_BOOKED)
     return {
@@ -154,15 +155,15 @@ def instructor_dashboard(user, now):
         "window_label": f"Last {MONTH_WINDOW} months",
         "include_open": True,
         "cards": [
-            {"label": "Booked this month", "value": _format_hours(current["booked_hours"])},
-            {"label": "Unbooked this month", "value": _format_hours(current["open_hours"])},
-            {"label": "Average booked / month", "value": _format_hours(_average(booked_values))},
-            {"label": "Average unbooked / month", "value": _format_hours(_average(open_values))},
+            {"label": "Booked this month", "value": _format_duration(current["booked_minutes"])},
+            {"label": "Unbooked this month", "value": _format_duration(current["open_minutes"])},
+            {"label": "Average booked / month", "value": _format_duration(_average(booked_values))},
+            {"label": "Average unbooked / month", "value": _format_duration(_average(open_values))},
             {
                 "label": "Fill rate this month",
                 "value": _format_percent(
-                    current["booked_hours"],
-                    current["booked_hours"] + current["open_hours"],
+                    current["booked_minutes"],
+                    current["booked_minutes"] + current["open_minutes"],
                 ),
             },
             {"label": "Clients this month", "value": str(len(current["clients"]))},
@@ -179,7 +180,7 @@ def client_dashboard(user, now):
     sessions = _query_sessions(now, months, client_id=user.id)
     buckets = _fill_months(sessions, months, client_only=True)
     current = buckets[(now.year, now.month)]
-    booked_values = [buckets[key]["booked_hours"] for key in months]
+    booked_values = [buckets[key]["booked_minutes"] for key in months]
     upcoming = _upcoming(now, client_id=user.id)
     total_booked = sum(booked_values)
     return {
@@ -187,10 +188,10 @@ def client_dashboard(user, now):
         "window_label": f"Last {MONTH_WINDOW} months",
         "include_open": False,
         "cards": [
-            {"label": "Booked this month", "value": _format_hours(current["booked_hours"])},
-            {"label": "Average booked / month", "value": _format_hours(_average(booked_values))},
+            {"label": "Booked this month", "value": _format_duration(current["booked_minutes"])},
+            {"label": "Average booked / month", "value": _format_duration(_average(booked_values))},
             {"label": "Sessions this month", "value": str(current["booked_count"])},
-            {"label": "Hours in the last 6 months", "value": _format_hours(total_booked)},
+            {"label": "Hours in the last 6 months", "value": _format_duration(total_booked)},
             {"label": "Upcoming sessions", "value": str(len(upcoming))},
             {"label": "Next session", "value": _next_label(upcoming)},
         ],
@@ -204,8 +205,8 @@ def admin_dashboard(now):
     sessions = _query_sessions(now, months)
     buckets = _fill_months(sessions, months)
     current = buckets[(now.year, now.month)]
-    booked_values = [buckets[key]["booked_hours"] for key in months]
-    open_values = [buckets[key]["open_hours"] for key in months]
+    booked_values = [buckets[key]["booked_minutes"] for key in months]
+    open_values = [buckets[key]["open_minutes"] for key in months]
     upcoming = _upcoming(now, admin=True)
     return {
         "title": "Gym stats",
@@ -218,15 +219,15 @@ def admin_dashboard(now):
                 "value": str(User.query.filter_by(role=ROLE_INSTRUCTOR).count()),
             },
             {"label": "Clients", "value": str(User.query.filter_by(role=ROLE_CLIENT).count())},
-            {"label": "Booked this month", "value": _format_hours(current["booked_hours"])},
-            {"label": "Unbooked this month", "value": _format_hours(current["open_hours"])},
-            {"label": "Average booked / month", "value": _format_hours(_average(booked_values))},
-            {"label": "Average unbooked / month", "value": _format_hours(_average(open_values))},
+            {"label": "Booked this month", "value": _format_duration(current["booked_minutes"])},
+            {"label": "Unbooked this month", "value": _format_duration(current["open_minutes"])},
+            {"label": "Average booked / month", "value": _format_duration(_average(booked_values))},
+            {"label": "Average unbooked / month", "value": _format_duration(_average(open_values))},
             {
                 "label": "Fill rate this month",
                 "value": _format_percent(
-                    current["booked_hours"],
-                    current["booked_hours"] + current["open_hours"],
+                    current["booked_minutes"],
+                    current["booked_minutes"] + current["open_minutes"],
                 ),
             },
             {"label": "Active clients this month", "value": str(len(current["clients"]))},
