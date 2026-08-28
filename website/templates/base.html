@@ -43,7 +43,7 @@
             {% if user and user.is_authenticated %}
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('app.book_calendar') }}">
-                {% if user.is_client %}Book a session{% else %}Calendar{% endif %}
+                {% if user.is_client %}Book session monthly{% else %}Calendar{% endif %}
               </a>
             </li>
             <li class="nav-item">
