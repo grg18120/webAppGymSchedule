@@ -4,7 +4,7 @@
   "terminals": [
     {
       "name": "flask-app",
-      "command": "./.venv/bin/python main.py",
+      "command": "FLASK_DEBUG=1 SEED_DEMO=1 SECRET_KEY=dev ./.venv/bin/python main.py",
       "description": "Runs the Flask gym schedule web app (dev server) on http://127.0.0.1:5000"
     }
   ],
