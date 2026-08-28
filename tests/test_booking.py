@@ -940,6 +940,10 @@ class BookingRolesTest(unittest.TestCase):
             self.client.post("/book/2099/6/15/availability/range").status_code,
             403,
         )
+        self.assertEqual(
+            self.client.post("/timeline/availability").status_code,
+            403,
+        )
 
     def test_timeline_is_available_to_every_role(self):
         from datetime import datetime, timedelta
@@ -998,6 +1002,11 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Cancel this booked session? The client will lose the booking.", html)
         self.assertIn(b'name="next"', html)
         self.assertIn(b"/timeline?start=2099-06-16", html)
+        self.assertIn(b"Publish this week", html)
+        self.assertIn(b"/timeline/availability", html)
+        self.assertIn(b'timeline-day-chip', html)
+        self.assertIn(b'value="2099-06-15"', html)
+        self.assertIn(b'value="2099-06-19"', html)
 
         self.client.get("/logout")
         self.login("client@gym.com", "client123")
@@ -1014,6 +1023,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"/remove", casey_page.data)
         self.assertNotIn(b"Delete this available slot?", casey_page.data)
         self.assertNotIn(b"Cancel this booked session? The client will lose the booking.", casey_page.data)
+        self.assertNotIn(b"Publish this week", casey_page.data)
+        self.assertNotIn(b"/timeline/availability", casey_page.data)
 
         self.client.get("/logout")
         self.login("jordan@gym.com", "client123")
@@ -1038,6 +1049,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(remove_path, admin_page.data)
         self.assertNotIn(cancel_path, admin_page.data)
         self.assertNotIn(book_path, admin_page.data)
+        self.assertIn(b"Publish this week", admin_page.data)
+        self.assertIn(b"week-instructor", admin_page.data)
 
         css = self.client.get("/static/css/timeline.css")
         self.assertEqual(css.status_code, 200)
@@ -1049,6 +1062,80 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline__block:focus-within .timeline__block-action", css.data)
         self.assertIn(b"font-size: 0.56rem", css.data)
         self.assertNotIn(b".timeline__block-link", css.data)
+        self.assertIn(b".timeline-publish", css.data)
+        self.assertIn(b".timeline-day-chip", css.data)
+
+    def test_instructor_can_publish_week_from_timeline(self):
+        from datetime import datetime
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        self.login("instructor@gym.com", "instructor123")
+        published = self.client.post(
+            "/timeline/availability",
+            data={
+                "week_start": "2099-06-16",
+                "days": ["2099-06-15", "2099-06-17"],
+                "range_start_hour": "9",
+                "range_start_minute": "0",
+                "range_end_hour": "11",
+                "range_end_minute": "0",
+                "slot_minutes": "60",
+                "break_minutes": "0",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(published.status_code, 200)
+        self.assertIn(b"Session timeline", published.data)
+        self.assertIn(b"Published 4 slot", published.data)
+        slots = (
+            GymSession.query.filter_by(instructor_id=instructor.id, status=SESSION_AVAILABLE)
+            .filter(GymSession.datetime_start >= datetime(2099, 6, 15))
+            .filter(GymSession.datetime_start < datetime(2099, 6, 18))
+            .order_by(GymSession.datetime_start)
+            .all()
+        )
+        times = [(s.datetime_start.strftime("%Y-%m-%d %H:%M"), s.datetime_end.strftime("%H:%M")) for s in slots]
+        self.assertEqual(
+            times,
+            [
+                ("2099-06-15 09:00", "10:00"),
+                ("2099-06-15 10:00", "11:00"),
+                ("2099-06-17 09:00", "10:00"),
+                ("2099-06-17 10:00", "11:00"),
+            ],
+        )
+
+        again = self.client.post(
+            "/timeline/availability",
+            data={
+                "week_start": "2099-06-15",
+                "days": ["2099-06-15"],
+                "range_start_hour": "9",
+                "range_start_minute": "0",
+                "range_end_hour": "11",
+                "range_end_minute": "0",
+                "slot_minutes": "60",
+                "break_minutes": "0",
+            },
+            follow_redirects=True,
+        )
+        self.assertIn(b"No new slots were published", again.data)
+
+        skipped_day = self.client.post(
+            "/timeline/availability",
+            data={
+                "week_start": "2099-06-15",
+                "days": ["2099-06-22"],
+                "range_start_hour": "9",
+                "range_start_minute": "0",
+                "range_end_hour": "11",
+                "range_end_minute": "0",
+                "slot_minutes": "60",
+                "break_minutes": "0",
+            },
+            follow_redirects=True,
+        )
+        self.assertIn(b"Choose at least one remaining day in this week.", skipped_day.data)
 
     def test_timeline_hover_actions_post_back_to_week(self):
         from datetime import datetime, timedelta

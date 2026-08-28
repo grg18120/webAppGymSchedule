@@ -484,11 +484,85 @@ def timeline():
         end_hour=timeline_view.END_HOUR,
         hour_height=timeline_view.HOUR_HEIGHT_PX,
         today=today,
+        week_start=monday,
         week_label=f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}",
         prev_url=url_for("app.timeline", start=prev_monday.isoformat()),
         next_url=url_for("app.timeline", start=next_monday.isoformat()),
         timeline_next=url_for("app.timeline", start=selected.isoformat()),
+        clock_hours=booking.CLOCK_HOURS,
+        clock_minutes=booking.CLOCK_MINUTES,
+        slot_length_minutes=booking.SLOT_LENGTH_MINUTES,
+        break_minutes=booking.BREAK_MINUTES,
+        instructors=booking.instructors() if current_user.is_admin else [],
+        can_publish_week=current_user.is_instructor or current_user.is_admin,
+        has_publishable_days=any(day["date"] >= today for day in days),
     )
+
+
+@app.route("/timeline/availability", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def publish_timeline_week():
+    raw_start = request.form.get("week_start")
+    try:
+        selected = datetime.strptime(raw_start, "%Y-%m-%d").date() if raw_start else now_gym().date()
+    except ValueError:
+        selected = now_gym().date()
+    monday = timeline_view.monday_of(selected)
+    redirect_url = url_for("app.timeline", start=monday.isoformat())
+    allowed = set(timeline_view.week_dates(monday))
+    today = now_gym().date()
+    chosen = []
+    for raw in request.form.getlist("days"):
+        try:
+            day = datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if day in allowed and day >= today:
+            chosen.append(day)
+    chosen = sorted(set(chosen))
+    instructor = _day_instructor()
+    if not instructor:
+        flash("Choose an instructor first.", "error")
+        return redirect(redirect_url)
+    if not booking.actor_can_manage_instructor(current_user, instructor):
+        flash("You can only publish your own slots.", "error")
+        return redirect(redirect_url)
+    if not chosen:
+        flash("Choose at least one remaining day in this week.", "error")
+        return redirect(redirect_url)
+    try:
+        start_hour = int(request.form.get("range_start_hour"))
+        start_minute = int(request.form.get("range_start_minute"))
+        end_hour = int(request.form.get("range_end_hour"))
+        end_minute = int(request.form.get("range_end_minute"))
+        slot_minutes = int(request.form.get("slot_minutes"))
+        break_minutes = int(request.form.get("break_minutes", 0))
+    except (TypeError, ValueError):
+        flash("Choose a range, slot length, and break using minutes.", "error")
+        return redirect(redirect_url)
+    created, skipped, error = booking.publish_week_slots(
+        instructor,
+        chosen,
+        start_hour,
+        start_minute,
+        end_hour,
+        end_minute,
+        slot_minutes,
+        break_minutes,
+    )
+    if error:
+        flash(error, "error")
+    elif created and skipped:
+        flash(
+            f"Published {created} slot(s) on this week. Skipped {skipped} overlapping or past times.",
+            "success",
+        )
+    elif created:
+        flash(f"Published {created} slot(s) on this week.", "success")
+    else:
+        flash("No new slots were published. They overlap existing sessions or are in the past.", "error")
+    return redirect(redirect_url)
 
 
 @app.route("/my-sessions")

@@ -25,6 +25,117 @@
     </a>
   </nav>
 
+  {% if can_publish_week %}
+  <section class="publish-card publish-card--range timeline-publish" aria-labelledby="week-publish-heading">
+    <form method="POST" action="{{ url_for('app.publish_timeline_week') }}">
+      <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}">
+      <h2 class="publish-card__title" id="week-publish-heading">
+        <i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>
+        Publish this week
+      </h2>
+      <p class="mb-3">Create available 1-on-1 slots for the week on the timeline. Pick days, then a time range. Overlaps and past times are skipped.</p>
+      {% if user.is_admin %}
+      <div class="mb-3">
+        <label class="form-label" for="week-instructor">Instructor</label>
+        <select class="form-select tap-target" id="week-instructor" name="instructor_id" required>
+          <option value="">Select instructor</option>
+          {% for instructor in instructors %}
+          <option value="{{ instructor.id }}">{{ instructor.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <fieldset class="clock-fieldset mb-3">
+        <legend class="form-label">Days</legend>
+        <div class="timeline-days">
+          {% for day in days %}
+          {% set remaining = day.date >= today %}
+          <label class="timeline-day-chip{% if not remaining %} timeline-day-chip--past{% endif %}">
+            <input
+              type="checkbox"
+              name="days"
+              value="{{ day.date.isoformat() }}"
+              {% if remaining and day.date.weekday() < 5 %}checked{% endif %}
+              {% if not remaining %}disabled{% endif %}
+            >
+            <span class="timeline-day-chip__name">{{ day.label }}</span>
+            <span class="timeline-day-chip__date">{{ day.day_number }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-6">
+          <fieldset class="clock-fieldset">
+            <legend class="form-label">From</legend>
+            <div class="clock-selects">
+              <label class="visually-hidden" for="week_range_start_hour">Range start hour</label>
+              <select class="form-select tap-target" id="week_range_start_hour" name="range_start_hour" required>
+                {% for hour in clock_hours %}
+                  <option value="{{ hour }}" {% if hour == 9 %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>
+                {% endfor %}
+              </select>
+              <span class="clock-sep" aria-hidden="true">:</span>
+              <label class="visually-hidden" for="week_range_start_minute">Range start minutes</label>
+              <select class="form-select tap-target" id="week_range_start_minute" name="range_start_minute" required>
+                {% for minute in clock_minutes %}
+                  <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ '%02d'|format(minute) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </fieldset>
+        </div>
+        <div class="col-12 col-md-6">
+          <fieldset class="clock-fieldset">
+            <legend class="form-label">To</legend>
+            <div class="clock-selects">
+              <label class="visually-hidden" for="week_range_end_hour">Range end hour</label>
+              <select class="form-select tap-target" id="week_range_end_hour" name="range_end_hour" required>
+                {% for hour in clock_hours %}
+                  <option value="{{ hour }}" {% if hour == 22 %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>
+                {% endfor %}
+              </select>
+              <span class="clock-sep" aria-hidden="true">:</span>
+              <label class="visually-hidden" for="week_range_end_minute">Range end minutes</label>
+              <select class="form-select tap-target" id="week_range_end_minute" name="range_end_minute" required>
+                {% for minute in clock_minutes %}
+                  <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ '%02d'|format(minute) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </fieldset>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label" for="week_slot_minutes">Slot length</label>
+          <select class="form-select tap-target" id="week_slot_minutes" name="slot_minutes" required>
+            {% for minute in slot_length_minutes %}
+              <option value="{{ minute }}" {% if minute == 60 %}selected{% endif %}>{{ minute }} min</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label" for="week_break_minutes">Break between slots</label>
+          <select class="form-select tap-target" id="week_break_minutes" name="break_minutes" required>
+            {% for minute in break_minutes %}
+              <option value="{{ minute }}" {% if minute == 0 %}selected{% endif %}>{{ minute }} min</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-success tap-target" {% if not has_publishable_days %}disabled{% endif %}>
+            Publish selected days
+          </button>
+          {% if not has_publishable_days %}
+          <span class="form-text d-block mt-2">This week is in the past, so new slots cannot be published here.</span>
+          {% else %}
+          <span class="form-text d-block mt-2">Default range is 09:00 to 22:00, 60 min slots, weekdays selected.</span>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+
   <ul class="timeline-legend" aria-label="Timeline legend">
     <li><span class="timeline-swatch timeline-swatch--available" aria-hidden="true"></span> Open slot</li>
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Booked</li>

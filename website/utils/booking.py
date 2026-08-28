@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import extract, update
 from sqlalchemy.exc import IntegrityError
@@ -99,6 +99,63 @@ def publish_range_slots(instructor, range_start, range_end, slot_minutes, break_
         else:
             created += 1
         start = end + pause
+    if created:
+        db.session.commit()
+    else:
+        db.session.rollback()
+    return created, skipped, None
+
+
+def _datetime_at(day, hour, minute):
+    midnight = datetime(day.year, day.month, day.day)
+    if hour == 24:
+        return midnight + timedelta(days=1)
+    return midnight.replace(hour=hour, minute=minute)
+
+
+def publish_week_slots(
+    instructor,
+    days,
+    start_hour,
+    start_minute,
+    end_hour,
+    end_minute,
+    slot_minutes,
+    break_minutes=0,
+):
+    if start_hour not in CLOCK_HOURS or end_hour not in CLOCK_HOURS:
+        return 0, 0, "Choose a range using 24-hour hours."
+    if start_minute not in CLOCK_MINUTES or end_minute not in CLOCK_MINUTES:
+        return 0, 0, "Choose minutes in 5-minute steps."
+    if start_hour == 24 and start_minute != 0:
+        return 0, 0, "Hour 24 must be 24:00."
+    if end_hour == 24 and end_minute != 0:
+        return 0, 0, "Hour 24 must be 24:00."
+    if slot_minutes not in SLOT_LENGTH_MINUTES:
+        return 0, 0, "Choose a valid slot length."
+    if break_minutes not in BREAK_MINUTES:
+        return 0, 0, "Choose a valid break time."
+    start_mins = start_hour * 60 + start_minute
+    end_mins = end_hour * 60 + end_minute
+    if end_mins <= start_mins:
+        return 0, 0, "Range end must be after range start."
+
+    created = 0
+    skipped = 0
+    slot = timedelta(minutes=slot_minutes)
+    pause = timedelta(minutes=break_minutes)
+    for day in days:
+        range_start = _datetime_at(day, start_hour, start_minute)
+        range_end = _datetime_at(day, end_hour, end_minute)
+        start = range_start
+        while start + slot <= range_end:
+            end = start + slot
+            _session, error = create_availability(instructor, start, end, commit=False)
+            if error:
+                skipped += 1
+            else:
+                created += 1
+            start = end + pause
     if created:
         db.session.commit()
     else:
