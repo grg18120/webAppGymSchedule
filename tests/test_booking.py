@@ -1249,6 +1249,69 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(open_refreshed.status, SESSION_BOOKED)
         self.assertEqual(open_refreshed.client_id, casey.id)
 
+    def test_home_shows_stats_for_each_role(self):
+        from datetime import datetime, timedelta
+
+        from website.utils import stats as home_stats
+        from website.utils.timeutils import now_gym
+
+        now = now_gym()
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        start = datetime(now.year, now.month, 1, 5, 5)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=casey.id,
+                datetime_start=start,
+                datetime_end=start + timedelta(hours=2),
+                status=SESSION_BOOKED,
+            )
+        )
+        db.session.commit()
+
+        instructor_dash = home_stats.instructor_dashboard(instructor, now)
+        self.assertGreaterEqual(instructor_dash["months"][-1]["booked_hours"], 2.0)
+        self.assertTrue(instructor_dash["include_open"])
+        labels = [card["label"] for card in instructor_dash["cards"]]
+        self.assertIn("Booked this month", labels)
+        self.assertIn("Average booked / month", labels)
+        self.assertIn("Average unbooked / month", labels)
+        self.assertIn("Fill rate this month", labels)
+        self.assertIn("Clients this month", labels)
+
+        self.login("instructor@gym.com", "instructor123")
+        instructor_home = self.client.get("/")
+        self.assertEqual(instructor_home.status_code, 200)
+        self.assertIn(b"Your teaching stats", instructor_home.data)
+        self.assertIn(b"Booked this month", instructor_home.data)
+        self.assertIn(b"Average unbooked / month", instructor_home.data)
+        self.assertIn(b"Fill rate this month", instructor_home.data)
+        self.assertIn(b"stat-table", instructor_home.data)
+
+        self.client.get("/logout")
+        self.login("client@gym.com", "client123")
+        client_home = self.client.get("/")
+        self.assertEqual(client_home.status_code, 200)
+        self.assertIn(b"Your training stats", client_home.data)
+        self.assertIn(b"Booked this month", client_home.data)
+        self.assertIn(b"Average booked / month", client_home.data)
+        self.assertNotIn(b"Average unbooked / month", client_home.data)
+        self.assertIn(b"Hours in the last 6 months", client_home.data)
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        admin_home = self.client.get("/")
+        self.assertEqual(admin_home.status_code, 200)
+        self.assertIn(b"Gym stats", admin_home.data)
+        self.assertIn(b"Active clients this month", admin_home.data)
+        self.assertIn(b"Fill rate this month", admin_home.data)
+        self.assertIn(b"Users", admin_home.data)
+
+        css = self.client.get("/static/css/app.css")
+        self.assertIn(b".stat-grid", css.data)
+        self.assertIn(b".stat-card", css.data)
+
 
 if __name__ == "__main__":
     unittest.main()

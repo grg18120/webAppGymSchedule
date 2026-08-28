@@ -19,7 +19,7 @@
     <p class="mb-3">You are signed in as <strong>{{ user.role_label }}</strong>.</p>
     <div class="d-flex flex-wrap gap-2">
       <a class="btn btn-primary tap-target" href="{{ url_for('app.book_calendar') }}">
-        {% if user.is_instructor %}Manage availability{% else %}Book a session{% endif %}
+        {% if user.is_client %}Book a session{% else %}Calendar{% endif %}
       </a>
       <a class="btn btn-outline-primary tap-target" href="{{ url_for('app.my_sessions') }}">My sessions</a>
       <a class="btn btn-outline-primary tap-target" href="{{ url_for('app.timeline') }}">Timeline</a>
@@ -29,7 +29,48 @@
     </div>
   </div>
 
-  {% if dashboard and dashboard.upcoming %}
+  {% if dashboard %}
+  <section class="home-stats mt-4" aria-labelledby="stats-heading">
+    <h2 class="h4 text-white" id="stats-heading">{{ dashboard.title }}</h2>
+    <p class="text-white-50 mb-3">{{ dashboard.window_label }}. Hours use gym time.</p>
+    <div class="stat-grid">
+      {% for card in dashboard.cards %}
+      <article class="stat-card">
+        <p class="stat-card__value">{{ card.value }}</p>
+        <p class="stat-card__label">{{ card.label }}</p>
+      </article>
+      {% endfor %}
+    </div>
+    {% if dashboard.months %}
+    <div class="stat-table-wrap" role="region" aria-label="Hours by month">
+      <table class="stat-table">
+        <caption class="visually-hidden">Hours by month</caption>
+        <thead>
+          <tr>
+            <th scope="col">Month</th>
+            <th scope="col">Booked</th>
+            {% if dashboard.include_open %}
+            <th scope="col">Unbooked</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in dashboard.months %}
+          <tr>
+            <th scope="row">{{ row.label }}</th>
+            <td>{{ row.booked }}</td>
+            {% if dashboard.include_open %}
+            <td>{{ row.open }}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+
+  {% if dashboard.upcoming %}
   <h2 class="h5 text-white mt-4">Coming up</h2>
   <ul class="session-list">
     {% for session in dashboard.upcoming %}
@@ -46,8 +87,9 @@
     </li>
     {% endfor %}
   </ul>
-  {% elif dashboard %}
+  {% else %}
   <p class="empty-state mt-4">No upcoming sessions. <a href="{{ url_for('app.book_calendar') }}">Open the calendar</a> to get started.</p>
+  {% endif %}
   {% endif %}
   {% endif %}
 </section>

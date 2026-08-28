@@ -32,6 +32,7 @@ from website.utils.datetime_utils import get_days_in_month, string_to_datetime
 from website.utils.security import role_required
 from website.utils.timeutils import now_gym
 from website.utils import timeline as timeline_view
+from website.utils import stats as home_stats
 
 app = Blueprint("app", __name__)
 
@@ -80,41 +81,7 @@ def _safe_timeline_next(fallback):
 def home():
     dashboard = None
     if current_user.is_authenticated:
-        now = now_gym()
-        if current_user.is_admin:
-            dashboard = {
-                "user_count": User.query.count(),
-                "instructor_count": User.query.filter_by(role=ROLE_INSTRUCTOR).count(),
-                "upcoming": GymSession.query.filter(
-                    GymSession.datetime_start >= now,
-                    GymSession.status != "cancelled",
-                )
-                .order_by(GymSession.datetime_start)
-                .limit(5)
-                .all(),
-            }
-        elif current_user.is_instructor:
-            dashboard = {
-                "upcoming": GymSession.query.filter(
-                    GymSession.instructor_id == current_user.id,
-                    GymSession.datetime_start >= now,
-                    GymSession.status != "cancelled",
-                )
-                .order_by(GymSession.datetime_start)
-                .limit(5)
-                .all(),
-            }
-        else:
-            dashboard = {
-                "upcoming": GymSession.query.filter(
-                    GymSession.client_id == current_user.id,
-                    GymSession.datetime_start >= now,
-                    GymSession.status == "booked",
-                )
-                .order_by(GymSession.datetime_start)
-                .limit(5)
-                .all(),
-            }
+        dashboard = home_stats.home_dashboard(current_user, now_gym())
     return render_template("home.html", user=current_user, dashboard=dashboard)
 
 
