@@ -1346,6 +1346,45 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".stat-grid", css)
         self.assertIn(b".stat-card", css)
 
+    def test_seed_demo_false_skips_demo_accounts(self):
+        handle = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        handle.close()
+        app = create_app(
+            {
+                "TESTING": True,
+                "SEED_DEMO": False,
+                "SECRET_KEY": "test",
+                "SQLALCHEMY_DATABASE_URI": "sqlite:///" + handle.name,
+            }
+        )
+        try:
+            with app.app_context():
+                self.assertIsNone(User.query.filter_by(email="admin@gym.com").first())
+                self.assertEqual(User.query.count(), 0)
+        finally:
+            os.unlink(handle.name)
+
+    def test_secret_key_reads_environment(self):
+        handle = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        handle.close()
+        previous = os.environ.get("SECRET_KEY")
+        os.environ["SECRET_KEY"] = "from-env-test-key"
+        try:
+            app = create_app(
+                {
+                    "TESTING": True,
+                    "SEED_DEMO": False,
+                    "SQLALCHEMY_DATABASE_URI": "sqlite:///" + handle.name,
+                }
+            )
+            self.assertEqual(app.config["SECRET_KEY"], "from-env-test-key")
+        finally:
+            if previous is None:
+                os.environ.pop("SECRET_KEY", None)
+            else:
+                os.environ["SECRET_KEY"] = previous
+            os.unlink(handle.name)
+
 
 if __name__ == "__main__":
     unittest.main()

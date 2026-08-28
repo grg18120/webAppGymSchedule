@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, render_template
 from flask_login import LoginManager, current_user
 from flask_sqlalchemy import SQLAlchemy
@@ -8,16 +10,38 @@ DB_NAME = "database.db"
 db = SQLAlchemy()
 
 
+def _env_flag(name):
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _default_secret_key():
+    return os.environ.get("SECRET_KEY") or "dev-insecure-change-me"
+
+
+def _should_seed(app):
+    if "SEED_DEMO" in app.config:
+        return bool(app.config["SEED_DEMO"])
+    return False
+
+
 def create_app(test_config=None):
     app_flask = Flask(__name__)
+    os.makedirs(app_flask.instance_path, exist_ok=True)
+    db_uri = os.environ.get("DATABASE_URL") or (
+        "sqlite:///" + os.path.join(app_flask.instance_path, DB_NAME)
+    )
     app_flask.config.from_mapping(
-        SECRET_KEY="si0fdmewmfic.k405964305c.fem[serWDO>$K#$%()]",
-        SQLALCHEMY_DATABASE_URI=f"sqlite:///{DB_NAME}",
+        SECRET_KEY=_default_secret_key(),
+        SQLALCHEMY_DATABASE_URI=db_uri,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        GYM_TIMEZONE="Europe/Athens",
+        GYM_TIMEZONE=os.environ.get("GYM_TIMEZONE", "Europe/Athens"),
+        SEED_DEMO=_env_flag("SEED_DEMO") or os.environ.get("FLASK_ENV") == "development",
     )
     if test_config:
+        seed_override = "SEED_DEMO" in test_config
         app_flask.config.update(test_config)
+        if app_flask.config.get("TESTING") and not seed_override:
+            app_flask.config["SEED_DEMO"] = True
 
     db.init_app(app_flask)
 
@@ -94,7 +118,8 @@ def create_database(app):
             _collapse_duplicate_active_slots()
         db.create_all()
         _ensure_active_slot_index()
-        init_database(db)
+        if _should_seed(app):
+            init_database(db)
 
 
 def _collapse_duplicate_active_slots():
