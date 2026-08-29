@@ -1,132 +1,171 @@
 {% extends "base.html" %}
 {% block title %}Users · Gym Sessions{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/users.css') }}">
 {% endblock %}
 {% block content %}
-<div class="container py-4">
-  <h1 class="h3 text-white">Users</h1>
-  <p class="text-white-50">Create instructor or admin accounts. Clients can also register themselves.</p>
+<div class="container py-4 users-page">
+  <h1 class="h3">Users</h1>
+  <p class="users-lead">Gym accounts by role. Create an instructor or admin here; clients can also register themselves.</p>
 
-  <form method="POST" class="availability-form mb-4">
-    <h2 class="h5">Create account</h2>
-    <div class="row g-3 align-items-end">
-      <div class="col-md-4">
-        <label for="email" class="form-label">Email</label>
-        <input class="form-control tap-target" type="email" id="email" name="email" required>
+  <div class="stat-grid" aria-label="User counts">
+    <article class="stat-card">
+      <p class="stat-card__value">{{ role_counts.admin }}</p>
+      <p class="stat-card__label">Admins</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-card__value">{{ role_counts.instructor }}</p>
+      <p class="stat-card__label">Instructors</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-card__value">{{ role_counts.client }}</p>
+      <p class="stat-card__label">Clients</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-card__value">{{ users_list|length }}</p>
+      <p class="stat-card__label">Total accounts</p>
+    </article>
+  </div>
+
+  <details class="users-create">
+    <summary>Create account</summary>
+    <form method="POST" class="users-create__form">
+      <div class="row g-3 align-items-end pt-3">
+        <div class="col-md-4">
+          <label for="email" class="form-label">Email</label>
+          <input class="form-control tap-target" type="email" id="email" name="email" autocomplete="off" required>
+        </div>
+        <div class="col-md-4">
+          <label for="name_first" class="form-label">First name</label>
+          <input class="form-control tap-target" type="text" id="name_first" name="name_first" required>
+        </div>
+        <div class="col-md-4">
+          <label for="name_last" class="form-label">Last name</label>
+          <input class="form-control tap-target" type="text" id="name_last" name="name_last" required>
+        </div>
+        <div class="col-md-4">
+          <label for="password" class="form-label">Temporary password</label>
+          <input class="form-control tap-target" type="password" id="password" name="password" minlength="6" autocomplete="new-password" required>
+        </div>
+        <div class="col-md-4">
+          <label for="role" class="form-label">Role</label>
+          <select class="form-select tap-target" id="role" name="role">
+            <option value="instructor">Instructor</option>
+            <option value="admin">Admin</option>
+            <option value="client">Client</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-primary tap-target w-100">Create</button>
+        </div>
       </div>
-      <div class="col-md-4">
-        <label for="name_first" class="form-label">First name</label>
-        <input class="form-control tap-target" type="text" id="name_first" name="name_first" required>
+    </form>
+  </details>
+
+  <div class="users-toolbar inputs-card">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="searchInput" class="form-label">Search</label>
+        <input id="searchInput" type="search" class="form-control tap-target" placeholder="Name, email, or role" aria-controls="userDirectory">
       </div>
-      <div class="col-md-4">
-        <label for="name_last" class="form-label">Last name</label>
-        <input class="form-control tap-target" type="text" id="name_last" name="name_last" required>
-      </div>
-      <div class="col-md-4">
-        <label for="password" class="form-label">Temporary password</label>
-        <input class="form-control tap-target" type="password" id="password" name="password" minlength="6" required>
-      </div>
-      <div class="col-md-4">
-        <label for="role" class="form-label">Role</label>
-        <select class="form-select tap-target" id="role" name="role">
-          <option value="instructor">Instructor</option>
+      <div class="col-md-3">
+        <label for="filterRole" class="form-label">Role</label>
+        <select id="filterRole" class="form-select tap-target">
+          <option value="">All roles</option>
           <option value="admin">Admin</option>
+          <option value="instructor">Instructor</option>
           <option value="client">Client</option>
         </select>
       </div>
-      <div class="col-md-4">
-        <button type="submit" class="btn btn-primary tap-target w-100">Create</button>
+      <div class="col-md-3">
+        <label for="filterStatus" class="form-label">Status</label>
+        <select id="filterStatus" class="form-select tap-target">
+          <option value="">All users</option>
+          <option value="enabled">Active</option>
+          <option value="disabled">Disabled</option>
+        </select>
       </div>
     </div>
-  </form>
-
-  <div class="row g-3 mb-3">
-    <div class="col-md-6">
-      <label for="searchInput" class="form-label text-white">Search users</label>
-      <input id="searchInput" type="search" class="form-control tap-target" placeholder="Name, email, or role">
-    </div>
-    <div class="col-md-3">
-      <label for="filterRole" class="form-label text-white">Role</label>
-      <select id="filterRole" class="form-select tap-target">
-        <option value="">All roles</option>
-        <option value="admin">Admin</option>
-        <option value="instructor">Instructor</option>
-        <option value="client">Client</option>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <label for="filterStatus" class="form-label text-white">Status</label>
-      <select id="filterStatus" class="form-select tap-target">
-        <option value="">All users</option>
-        <option value="enabled">Active</option>
-        <option value="disabled">Disabled</option>
-      </select>
-    </div>
   </div>
 
-  <div class="table-responsive shadow-sm rounded">
-    <table class="table table-hover align-middle mb-0 users-table" id="userTable">
-      <thead class="table-dark">
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for account in users_list %}
-        <tr data-status="{% if account.status == 0 %}disabled{% else %}enabled{% endif %}" data-role="{{ account.role }}">
-          <td data-label="Name">{{ account.display_name }}</td>
-          <td data-label="Email">{{ account.email }}</td>
-          <td data-label="Role">{{ account.role_label }}</td>
-          <td data-label="Status">{% if account.status == 1 %}Active{% else %}Disabled{% endif %}</td>
-          <td data-label="Actions">
-            <div class="d-flex flex-wrap gap-2">
-              <button type="button" class="btn btn-primary btn-sm tap-target" onclick="editUser('{{ account.id }}')">Edit</button>
-              {% if account.id != user.id %}
-              <button type="button"
-                class="btn btn-sm tap-target {% if account.status == 1 %}btn-danger{% else %}btn-success{% endif %}"
-                onclick="toggleStatusUser('{{ account.id }}', '{{ account.display_name }}', {{ account.status }})">
-                {% if account.status == 1 %}Disable{% else %}Enable{% endif %}
-              </button>
-              {% endif %}
-              <button type="button" class="btn btn-dark btn-sm tap-target" onclick="resetPassword('{{ account.id }}')">Reset password</button>
-            </div>
-          </td>
-        </tr>
+  <div id="userDirectory">
+    {% for role_key, role_heading in role_groups %}
+    {% set group = users_list | selectattr("role", "equalto", role_key) | list %}
+    {% if group %}
+    <section class="user-group" data-role-group="{{ role_key }}">
+      <h2 class="user-group__title">{{ role_heading }}</h2>
+      <ul class="user-grid">
+        {% for account in group %}
+        {% set account_status = "enabled" if account.status == 1 else "disabled" %}
+        <li
+          class="user-card user-card--{{ account.role }}{% if account.status != 1 %} user-card--disabled{% endif %}"
+          data-status="{{ account_status }}"
+          data-role="{{ account.role }}"
+          data-search="{{ (account.display_name ~ ' ' ~ account.email ~ ' ' ~ account.role_label)|lower }}"
+        >
+          <div class="user-card__top">
+            <p class="user-card__name">
+              {{ account.display_name }}
+              {% if account.id == user.id %}<span class="user-card__you">You</span>{% endif %}
+            </p>
+            <span class="user-pill user-pill--{{ account.role }}">{{ account.role_label }}</span>
+          </div>
+          <p class="user-card__email">{{ account.email }}</p>
+          <div class="user-card__meta">
+            <span class="user-pill {% if account.status == 1 %}user-pill--active{% else %}user-pill--disabled{% endif %}">
+              {% if account.status == 1 %}Active{% else %}Disabled{% endif %}
+            </span>
+          </div>
+          <div class="user-card__actions">
+            <button type="button" class="btn tap-target btn-edit js-edit-user" data-user-id="{{ account.id }}">Edit</button>
+            {% if account.id != user.id %}
+            <button
+              type="button"
+              class="btn tap-target js-toggle-user {% if account.status == 1 %}btn-disable{% else %}btn-enable{% endif %}"
+              data-user-id="{{ account.id }}"
+              data-name="{{ account.display_name }}"
+              data-status="{{ account.status }}"
+            >
+              {% if account.status == 1 %}Disable{% else %}Enable{% endif %}
+            </button>
+            {% endif %}
+            <button type="button" class="btn tap-target btn-reset js-reset-user" data-user-id="{{ account.id }}">Reset password</button>
+          </div>
+        </li>
         {% endfor %}
-      </tbody>
-    </table>
+      </ul>
+    </section>
+    {% endif %}
+    {% endfor %}
   </div>
+
+  <p class="users-empty" id="usersEmpty" hidden>No users match those filters.</p>
 </div>
 
-<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+<div class="modal fade users-modal" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title h5" id="editModalLabel">Edit user</h2>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="editForm">
-          <div class="mb-3">
-            <label for="edit_last_name" class="form-label">Last name</label>
-            <input type="text" class="form-control" id="edit_last_name">
-          </div>
+      <form id="editForm">
+        <div class="modal-header">
+          <h2 class="modal-title h5" id="editModalLabel">Edit user</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
           <div class="mb-3">
             <label for="edit_first_name" class="form-label">First name</label>
-            <input type="text" class="form-control" id="edit_first_name">
+            <input type="text" class="form-control tap-target" id="edit_first_name" required>
+          </div>
+          <div class="mb-3">
+            <label for="edit_last_name" class="form-label">Last name</label>
+            <input type="text" class="form-control tap-target" id="edit_last_name" required>
           </div>
           <div class="mb-3">
             <label for="edit_email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="edit_email">
+            <input type="email" class="form-control tap-target" id="edit_email" required>
           </div>
           <div class="mb-3">
             <label for="edit_role" class="form-label">Role</label>
-            <select class="form-select" id="edit_role">
+            <select class="form-select tap-target" id="edit_role">
               <option value="admin">Admin</option>
               <option value="instructor">Instructor</option>
               <option value="client">Client</option>
@@ -134,132 +173,50 @@
           </div>
           <div class="mb-3">
             <label for="edit_date_birth" class="form-label">Birth date</label>
-            <input type="date" class="form-control" id="edit_date_birth">
+            <input type="date" class="form-control tap-target" id="edit_date_birth">
           </div>
-          <div class="mb-3">
+          <div class="mb-3 mb-0">
             <label for="edit_address" class="form-label">Address</label>
-            <input type="text" class="form-control" id="edit_address">
+            <input type="text" class="form-control tap-target" id="edit_address">
           </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary tap-target" onclick="submitEdit()">Save changes</button>
-      </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary tap-target" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary tap-target">Save changes</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
 
-<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+<div class="modal fade users-modal" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title h5" id="resetPasswordModalLabel">Reset password</h2>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="resetPasswordForm">
+      <form id="resetPasswordForm">
+        <div class="modal-header">
+          <h2 class="modal-title h5" id="resetPasswordModalLabel">Reset password</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
           <div class="mb-3">
             <label for="newPassword" class="form-label">New password</label>
-            <input type="password" class="form-control" id="newPassword" minlength="6">
+            <input type="password" class="form-control tap-target" id="newPassword" minlength="6" autocomplete="new-password" required>
           </div>
-          <div class="mb-3">
+          <div class="mb-3 mb-0">
             <label for="confirmPassword" class="form-label">Confirm new password</label>
-            <input type="password" class="form-control" id="confirmPassword" minlength="6">
+            <input type="password" class="form-control tap-target" id="confirmPassword" minlength="6" autocomplete="new-password" required>
           </div>
-          <p id="error-message" class="text-danger" hidden>Passwords do not match.</p>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary tap-target" onclick="submitResetPassword()">Save password</button>
-      </div>
+          <p id="error-message" class="text-danger mt-3 mb-0" hidden>Passwords do not match.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary tap-target" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary tap-target">Save password</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
 {% endblock %}
 {% block extra_scripts %}
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script>
-  let currentEditId = null;
-
-  function editUser(userId) {
-    currentEditId = userId;
-    $.post("/get_user", { user_id: userId }).done(function (data) {
-      $("#edit_last_name").val(data.name_last);
-      $("#edit_first_name").val(data.name_first);
-      $("#edit_email").val(data.email);
-      $("#edit_role").val(data.role);
-      $("#edit_date_birth").val(data.date_birth || "");
-      $("#edit_address").val(data.address || "");
-      bootstrap.Modal.getOrCreateInstance(document.getElementById("editModal")).show();
-    });
-  }
-
-  function submitEdit() {
-    $.post("/edit_user", {
-      user_id: currentEditId,
-      name_last: $("#edit_last_name").val(),
-      name_first: $("#edit_first_name").val(),
-      email: $("#edit_email").val(),
-      role: $("#edit_role").val(),
-      date_birth: $("#edit_date_birth").val(),
-      address: $("#edit_address").val()
-    }).done(function () {
-      location.reload();
-    });
-  }
-
-  function toggleStatusUser(userId, name, status) {
-    const action = status === 1 ? "disable" : "enable";
-    if (confirm("Really " + action + " " + name + "?")) {
-      $.post("/status_change_user", { user_id: userId }).done(function () {
-        location.reload();
-      });
-    }
-  }
-
-  function resetPassword(userId) {
-    currentEditId = userId;
-    $("#newPassword").val("");
-    $("#confirmPassword").val("");
-    document.getElementById("error-message").hidden = true;
-    bootstrap.Modal.getOrCreateInstance(document.getElementById("resetPasswordModal")).show();
-  }
-
-  function submitResetPassword() {
-    const password = $("#newPassword").val();
-    const confirmPassword = $("#confirmPassword").val();
-    if (password !== confirmPassword) {
-      document.getElementById("error-message").hidden = false;
-      return;
-    }
-    $.post("/reset_password", {
-      user_id: currentEditId,
-      newPassword: password,
-      confirmPassword: confirmPassword
-    }).done(function () {
-      location.reload();
-    }).fail(function (xhr) {
-      const message = (xhr.responseJSON && xhr.responseJSON.error) || "Could not reset password.";
-      const error = document.getElementById("error-message");
-      error.textContent = message;
-      error.hidden = false;
-    });
-  }
-
-  function applyUserFilters() {
-    const query = $("#searchInput").val().toLowerCase();
-    const status = $("#filterStatus").val();
-    const role = $("#filterRole").val();
-    $("#userTable tbody tr").each(function () {
-      const textMatch = $(this).text().toLowerCase().indexOf(query) > -1;
-      const statusMatch = !status || $(this).data("status") === status;
-      const roleMatch = !role || $(this).data("role") === role;
-      $(this).toggle(textMatch && statusMatch && roleMatch);
-    });
-  }
-
-  $("#searchInput").on("input", applyUserFilters);
-  $("#filterStatus").on("change", applyUserFilters);
-  $("#filterRole").on("change", applyUserFilters);
-</script>
+<script src="{{ url_for('static', filename='js/users.js') }}"></script>
 {% endblock %}

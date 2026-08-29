@@ -570,7 +570,22 @@ def users():
         return _create_user_from_form()
 
     users_list = User.query.order_by(User.role, User.name_last, User.name_first).all()
-    return render_template("users.html", user=current_user, users_list=users_list)
+    role_counts = {
+        ROLE_ADMIN: sum(1 for item in users_list if item.role == ROLE_ADMIN),
+        ROLE_INSTRUCTOR: sum(1 for item in users_list if item.role == ROLE_INSTRUCTOR),
+        ROLE_CLIENT: sum(1 for item in users_list if item.role == ROLE_CLIENT),
+    }
+    return render_template(
+        "users.html",
+        user=current_user,
+        users_list=users_list,
+        role_counts=role_counts,
+        role_groups=(
+            (ROLE_ADMIN, "Admins"),
+            (ROLE_INSTRUCTOR, "Instructors"),
+            (ROLE_CLIENT, "Clients"),
+        ),
+    )
 
 
 def _create_user_from_form():
