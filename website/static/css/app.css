@@ -268,8 +268,10 @@ main#main-content {
   padding: 0.85rem 1.25rem;
 }
 
-.publish-card__summary::-webkit-details-marker {
+.publish-card__summary::-webkit-details-marker,
+.publish-card__summary::marker {
   display: none;
+  content: none;
 }
 
 .publish-card__summary::after {
