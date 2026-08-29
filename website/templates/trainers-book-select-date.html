@@ -231,8 +231,16 @@
           <dd>{{ session.instructor.display_name }}</dd>
         </div>
         <div class="session-person {% if session.client %}session-person--client{% else %}session-person--open{% endif %}">
-          <dt>Client</dt>
-          <dd>{% if session.client %}{{ session.client.display_name }}{% else %}No client yet{% endif %}</dd>
+          <dt>Client:</dt>
+          <dd>
+            {% if session.client %}
+              {{ session.client.display_name }}
+            {% elif session.is_past %}
+              No client has made a reservation
+            {% else %}
+              No client yet
+            {% endif %}
+          </dd>
         </div>
       </dl>
       <div class="session-card__actions d-flex flex-wrap gap-2">

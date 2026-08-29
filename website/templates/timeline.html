@@ -26,7 +26,7 @@
   </span>
   <span class="visually-hidden">
     {{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
-    instructor {{ session.instructor.display_name }}{% if session.client %}, client {{ session.client.display_name }}{% else %}, no client yet{% endif %}
+    instructor {{ session.instructor.display_name }}{% if session.client %}, client {{ session.client.display_name }}{% elif session.is_past %}, no client has made a reservation{% else %}, no client yet{% endif %}
   </span>
 {% endmacro %}
 <div class="container py-4">
