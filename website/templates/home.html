@@ -55,7 +55,7 @@
         </ul>
       </div>
       {% if dashboard.include_open %}
-      <p class="stat-chart__hint">This month splits booked and unbooked into past and upcoming. Unbooked is available time that was not booked.</p>
+      <p class="stat-chart__hint">This month stacks past hours under upcoming hours in each column. Unbooked is available time that was not booked.</p>
       {% endif %}
       <svg
         class="stat-chart__svg"
@@ -94,7 +94,13 @@
         >
           <title>{{ bar.title }}</title>
         </rect>
-        <text class="stat-chart__bar-label" x="{{ bar.label_x }}" y="{{ bar.label_y }}" text-anchor="middle">{{ bar.label }}</text>
+        <text
+          class="stat-chart__bar-label"
+          x="{{ bar.label_x }}"
+          y="{{ bar.label_y }}"
+          text-anchor="middle"
+          fill="{{ bar.label_fill }}"
+        >{{ bar.label }}</text>
         {% endif %}
         {% endfor %}
         <text class="stat-chart__month" x="{{ group.label_x }}" y="{{ group.label_y }}" text-anchor="middle">{{ group.short_label }}</text>

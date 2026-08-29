@@ -153,58 +153,72 @@ COLOR_UNBOOKED_PAST = "#2e7d32"
 COLOR_UNBOOKED_FUTURE = "#a5d6a7"
 
 
-def _chart_series(row, include_open):
+def _chart_columns(row, include_open):
+    """Return columns of stacked segments, bottom segment first."""
     if row.get("is_current"):
-        series = [
-            {
-                "key": "past booked",
-                "hours": row.get("booked_past_hours", 0.0),
-                "fill": COLOR_BOOKED_PAST,
-            },
-            {
-                "key": "upcoming booked",
-                "hours": row.get("booked_future_hours", 0.0),
-                "fill": COLOR_BOOKED_FUTURE,
-            },
+        columns = [
+            [
+                {
+                    "key": "past booked",
+                    "hours": row.get("booked_past_hours", 0.0),
+                    "fill": COLOR_BOOKED_PAST,
+                    "label_fill": "#ffffff",
+                },
+                {
+                    "key": "upcoming booked",
+                    "hours": row.get("booked_future_hours", 0.0),
+                    "fill": COLOR_BOOKED_FUTURE,
+                    "label_fill": "#102a3a",
+                },
+            ]
         ]
         if include_open:
-            series.extend(
+            columns.append(
                 [
                     {
                         "key": "past unbooked",
                         "hours": row.get("open_past_hours", 0.0),
                         "fill": COLOR_UNBOOKED_PAST,
+                        "label_fill": "#ffffff",
                     },
                     {
                         "key": "upcoming unbooked",
                         "hours": row.get("open_future_hours", 0.0),
                         "fill": COLOR_UNBOOKED_FUTURE,
+                        "label_fill": "#102a3a",
                     },
                 ]
             )
-        return series
-    series = [
-        {
-            "key": "booked",
-            "hours": row["booked_hours"],
-            "fill": COLOR_BOOKED_PAST,
-        }
+        return columns
+    columns = [
+        [
+            {
+                "key": "booked",
+                "hours": row["booked_hours"],
+                "fill": COLOR_BOOKED_PAST,
+                "label_fill": "#ffffff",
+            }
+        ]
     ]
     if include_open:
-        series.append(
-            {
-                "key": "unbooked",
-                "hours": row.get("open_hours", 0.0),
-                "fill": COLOR_UNBOOKED_PAST,
-            }
+        columns.append(
+            [
+                {
+                    "key": "unbooked",
+                    "hours": row.get("open_hours", 0.0),
+                    "fill": COLOR_UNBOOKED_PAST,
+                    "label_fill": "#ffffff",
+                }
+            ]
         )
-    return series
+    return columns
 
 
 def _chart_max_hours(rows, include_open):
     values = []
     for row in rows:
-        values.extend(item["hours"] for item in _chart_series(row, include_open))
+        for column in _chart_columns(row, include_open):
+            values.append(sum(item["hours"] for item in column))
     peak = max(values) if values else 0.0
     if peak <= 0:
         return 4.0
@@ -228,32 +242,44 @@ def _build_chart(rows, include_open):
     group_w = plot_w / count
     groups = []
     for index, row in enumerate(rows):
-        series = _chart_series(row, include_open)
-        bar_count = max(1, len(series))
-        inner = group_w * (0.9 if row.get("is_current") else 0.72)
-        bar_gap = 3 if bar_count > 1 else 0
-        bar_w = max(6.0, (inner - bar_gap * (bar_count - 1)) / bar_count)
+        columns = _chart_columns(row, include_open)
+        bar_count = max(1, len(columns))
+        inner = group_w * 0.72
+        bar_gap = 4 if bar_count > 1 else 0
+        bar_w = max(8.0, (inner - bar_gap * (bar_count - 1)) / bar_count)
         group_x = pad_l + group_w * index + (group_w - inner) / 2
         drawn = []
-        for bar_index, bar in enumerate(series):
-            hours = bar["hours"]
-            bar_h = 0.0 if max_hours <= 0 else plot_h * (hours / max_hours)
-            x = group_x + bar_index * (bar_w + bar_gap)
-            y = pad_t + plot_h - bar_h
-            label_y = y - 4 if bar_h > 18 else y - 6
-            drawn.append(
-                {
-                    "x": round(x, 2),
-                    "y": round(y, 2),
-                    "width": round(bar_w, 2),
-                    "height": round(max(bar_h, 0.0), 2),
-                    "fill": bar["fill"],
-                    "label": _format_hours_short(hours),
-                    "label_x": round(x + bar_w / 2, 2),
-                    "label_y": round(max(pad_t + 10, label_y), 2),
-                    "title": f"{row['label']} {bar['key']} {_format_hours_short(hours)}",
-                }
-            )
+        stack_gap = 1.5
+        baseline = pad_t + plot_h
+        for col_index, column in enumerate(columns):
+            x = group_x + col_index * (bar_w + bar_gap)
+            cursor = baseline
+            for bar in column:
+                hours = bar["hours"]
+                bar_h = 0.0 if max_hours <= 0 else plot_h * (hours / max_hours)
+                if bar_h > 0 and cursor < baseline:
+                    cursor -= stack_gap
+                y = cursor - bar_h
+                if bar_h >= 14:
+                    label_y = y + bar_h / 2 + 3
+                else:
+                    label_y = y - 6
+                drawn.append(
+                    {
+                        "x": round(x, 2),
+                        "y": round(y, 2),
+                        "width": round(bar_w, 2),
+                        "height": round(max(bar_h, 0.0), 2),
+                        "fill": bar["fill"],
+                        "label": _format_hours_short(hours),
+                        "label_fill": bar.get("label_fill", "#102a3a"),
+                        "label_x": round(x + bar_w / 2, 2),
+                        "label_y": round(max(pad_t + 10, label_y), 2),
+                        "title": f"{row['label']} {bar['key']} {_format_hours_short(hours)}",
+                    }
+                )
+                if bar_h > 0:
+                    cursor = y
         summary_parts = [f"{row['label']}: booked {row['booked']}"]
         if row.get("is_current"):
             summary_parts.append(
