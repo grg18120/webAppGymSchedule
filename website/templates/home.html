@@ -41,25 +41,66 @@
       </article>
       {% endfor %}
     </div>
-    {% if dashboard.months %}
-    <div class="stat-table-wrap" role="region" aria-label="Time by month">
-      <table class="stat-table">
-        <caption class="visually-hidden">Time by month in hours and minutes</caption>
-        <thead>
-          <tr>
-            <th scope="col">Month</th>
-            <th scope="col">Booked</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in dashboard.months %}
-          <tr>
-            <th scope="row">{{ row.label }}</th>
-            <td>{{ row.booked }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    {% if dashboard.months and dashboard.chart %}
+    <div class="stat-chart" role="img" aria-labelledby="hours-chart-title" aria-describedby="hours-chart-summary">
+      <div class="stat-chart__header">
+        <h3 class="stat-chart__title" id="hours-chart-title">Hours by month</h3>
+        <ul class="stat-chart__legend" aria-hidden="true">
+          <li><span class="stat-chart__swatch stat-chart__swatch--booked"></span> Booked</li>
+          {% if dashboard.include_open %}
+          <li><span class="stat-chart__swatch stat-chart__swatch--unbooked"></span> Unbooked</li>
+          {% endif %}
+        </ul>
+      </div>
+      {% if dashboard.include_open %}
+      <p class="stat-chart__hint">Unbooked is available time that passed without a booking.</p>
+      {% endif %}
+      <svg
+        class="stat-chart__svg"
+        viewBox="0 0 {{ dashboard.chart.width }} {{ dashboard.chart.height }}"
+        role="presentation"
+        focusable="false"
+      >
+        {% for tick in dashboard.chart.y_ticks %}
+        <line
+          class="stat-chart__grid"
+          x1="{{ dashboard.chart.plot_left }}"
+          x2="{{ dashboard.chart.plot_right }}"
+          y1="{{ tick.y }}"
+          y2="{{ tick.y }}"
+        />
+        <text class="stat-chart__axis" x="{{ dashboard.chart.plot_left - 8 }}" y="{{ tick.y + 4 }}" text-anchor="end">{{ tick.value }}</text>
+        {% endfor %}
+        <line
+          class="stat-chart__axis-line"
+          x1="{{ dashboard.chart.plot_left }}"
+          x2="{{ dashboard.chart.plot_right }}"
+          y1="{{ dashboard.chart.plot_bottom }}"
+          y2="{{ dashboard.chart.plot_bottom }}"
+        />
+        {% for group in dashboard.chart.groups %}
+        {% for bar in group.bars %}
+        {% if bar.height > 0 %}
+        <rect
+          class="stat-chart__bar"
+          x="{{ bar.x }}"
+          y="{{ bar.y }}"
+          width="{{ bar.width }}"
+          height="{{ bar.height }}"
+          rx="3"
+          fill="{{ bar.fill }}"
+        >
+          <title>{{ bar.title }}</title>
+        </rect>
+        <text class="stat-chart__bar-label" x="{{ bar.label_x }}" y="{{ bar.label_y }}" text-anchor="middle">{{ bar.label }}</text>
+        {% endif %}
+        {% endfor %}
+        <text class="stat-chart__month" x="{{ group.label_x }}" y="{{ group.label_y }}" text-anchor="middle">{{ group.short_label }}</text>
+        {% endfor %}
+      </svg>
+      <p class="visually-hidden" id="hours-chart-summary">
+        {% for group in dashboard.chart.groups %}{{ group.summary }}. {% endfor %}
+      </p>
     </div>
     {% endif %}
   </section>

@@ -1,4 +1,5 @@
 from datetime import datetime
+from math import ceil
 
 from website.models import (
     ROLE_CLIENT,
@@ -79,7 +80,7 @@ def _query_sessions(now, months, instructor_id=None, client_id=None):
     return query.all()
 
 
-def _fill_months(sessions, months, client_only=False):
+def _fill_months(sessions, months, now, client_only=False):
     buckets = {key: _empty_bucket() for key in months}
     for session in sessions:
         key = (session.datetime_start.year, session.datetime_start.month)
@@ -92,7 +93,11 @@ def _fill_months(sessions, months, client_only=False):
             bucket["booked_count"] += 1
             if session.client_id:
                 bucket["clients"].add(session.client_id)
-        elif not client_only and session.status == SESSION_AVAILABLE:
+        elif (
+            not client_only
+            and session.status == SESSION_AVAILABLE
+            and session.datetime_start <= now
+        ):
             bucket["open_minutes"] += minutes
             bucket["open_count"] += 1
     return buckets
@@ -120,6 +125,108 @@ def _average(values):
     return sum(values) / len(values)
 
 
+def _format_hours_short(hours):
+    total = max(0.0, float(hours))
+    if abs(total - round(total)) < 0.05:
+        return f"{int(round(total))} h"
+    return f"{total:.1f} h"
+
+
+def _chart_max_hours(rows, include_open):
+    values = [row["booked_hours"] for row in rows]
+    if include_open:
+        values.extend(row.get("open_hours", 0.0) for row in rows)
+    peak = max(values) if values else 0.0
+    if peak <= 0:
+        return 4.0
+    return float(max(1, ceil(peak)))
+
+
+def _build_chart(rows, include_open):
+    width, height = 640, 280
+    pad_l, pad_r, pad_t, pad_b = 48, 16, 28, 44
+    plot_w = width - pad_l - pad_r
+    plot_h = height - pad_t - pad_b
+    max_hours = _chart_max_hours(rows, include_open)
+    tick_count = 4
+    y_ticks = []
+    for index in range(tick_count + 1):
+        value = max_hours * index / tick_count
+        y = pad_t + plot_h * (1 - index / tick_count)
+        y_ticks.append({"value": _format_hours_short(value), "y": round(y, 2)})
+
+    count = max(1, len(rows))
+    group_w = plot_w / count
+    inner = group_w * 0.72
+    bar_gap = 4 if include_open else 0
+    bar_count = 2 if include_open else 1
+    bar_w = max(8.0, (inner - bar_gap * (bar_count - 1)) / bar_count)
+
+    groups = []
+    for index, row in enumerate(rows):
+        group_x = pad_l + group_w * index + (group_w - inner) / 2
+        bars = [
+            {
+                "key": "booked",
+                "hours": row["booked_hours"],
+                "label": _format_hours_short(row["booked_hours"]),
+                "fill": "#1565c0",
+            }
+        ]
+        if include_open:
+            bars.append(
+                {
+                    "key": "unbooked",
+                    "hours": row.get("open_hours", 0.0),
+                    "label": _format_hours_short(row.get("open_hours", 0.0)),
+                    "fill": "#2e7d32",
+                }
+            )
+        drawn = []
+        for bar_index, bar in enumerate(bars):
+            bar_h = 0.0 if max_hours <= 0 else plot_h * (bar["hours"] / max_hours)
+            x = group_x + bar_index * (bar_w + bar_gap)
+            y = pad_t + plot_h - bar_h
+            label_y = y - 4 if bar_h > 18 else y - 6
+            drawn.append(
+                {
+                    "x": round(x, 2),
+                    "y": round(y, 2),
+                    "width": round(bar_w, 2),
+                    "height": round(max(bar_h, 0.0), 2),
+                    "fill": bar["fill"],
+                    "label": bar["label"],
+                    "label_x": round(x + bar_w / 2, 2),
+                    "label_y": round(max(pad_t + 10, label_y), 2),
+                    "title": f"{row['label']} {bar['key']} {bar['label']}",
+                }
+            )
+        groups.append(
+            {
+                "label": row["label"].replace(" ", "\u00a0"),
+                "short_label": row["label"].split(" ")[0],
+                "label_x": round(group_x + inner / 2, 2),
+                "label_y": height - 14,
+                "bars": drawn,
+                "summary": (
+                    f"{row['label']}: booked {row['booked']}"
+                    + (f", unbooked {row['open']}" if include_open else "")
+                ),
+            }
+        )
+    return {
+        "width": width,
+        "height": height,
+        "plot_top": pad_t,
+        "plot_bottom": pad_t + plot_h,
+        "plot_left": pad_l,
+        "plot_right": width - pad_r,
+        "y_ticks": y_ticks,
+        "groups": groups,
+        "include_open": include_open,
+    }
+
+
 def _upcoming(now, instructor_id=None, client_id=None, admin=False, limit=5):
     query = GymSession.query.filter(
         GymSession.datetime_start >= now,
@@ -144,12 +251,13 @@ def _next_label(upcoming):
 def instructor_dashboard(user, now):
     months = _last_months(now)
     sessions = _query_sessions(now, months, instructor_id=user.id)
-    buckets = _fill_months(sessions, months)
+    buckets = _fill_months(sessions, months, now)
     current = buckets[(now.year, now.month)]
     booked_values = [buckets[key]["booked_minutes"] for key in months]
     open_values = [buckets[key]["open_minutes"] for key in months]
     upcoming = _upcoming(now, instructor_id=user.id)
     upcoming_booked = sum(1 for session in upcoming if session.status == SESSION_BOOKED)
+    month_rows = _month_rows(months, buckets, include_open=True)
     return {
         "title": "Your teaching stats",
         "window_label": f"Last {MONTH_WINDOW} months",
@@ -170,7 +278,8 @@ def instructor_dashboard(user, now):
             {"label": "Upcoming booked sessions", "value": str(upcoming_booked)},
             {"label": "Next session", "value": _next_label(upcoming)},
         ],
-        "months": _month_rows(months, buckets, include_open=True),
+        "months": month_rows,
+        "chart": _build_chart(month_rows, True),
         "upcoming": upcoming,
     }
 
@@ -178,11 +287,12 @@ def instructor_dashboard(user, now):
 def client_dashboard(user, now):
     months = _last_months(now)
     sessions = _query_sessions(now, months, client_id=user.id)
-    buckets = _fill_months(sessions, months, client_only=True)
+    buckets = _fill_months(sessions, months, now, client_only=True)
     current = buckets[(now.year, now.month)]
     booked_values = [buckets[key]["booked_minutes"] for key in months]
     upcoming = _upcoming(now, client_id=user.id)
     total_booked = sum(booked_values)
+    month_rows = _month_rows(months, buckets, include_open=False)
     return {
         "title": "Your training stats",
         "window_label": f"Last {MONTH_WINDOW} months",
@@ -195,7 +305,8 @@ def client_dashboard(user, now):
             {"label": "Upcoming sessions", "value": str(len(upcoming))},
             {"label": "Next session", "value": _next_label(upcoming)},
         ],
-        "months": _month_rows(months, buckets, include_open=False),
+        "months": month_rows,
+        "chart": _build_chart(month_rows, False),
         "upcoming": upcoming,
     }
 
@@ -203,11 +314,12 @@ def client_dashboard(user, now):
 def admin_dashboard(now):
     months = _last_months(now)
     sessions = _query_sessions(now, months)
-    buckets = _fill_months(sessions, months)
+    buckets = _fill_months(sessions, months, now)
     current = buckets[(now.year, now.month)]
     booked_values = [buckets[key]["booked_minutes"] for key in months]
     open_values = [buckets[key]["open_minutes"] for key in months]
     upcoming = _upcoming(now, admin=True)
+    month_rows = _month_rows(months, buckets, include_open=True)
     return {
         "title": "Gym stats",
         "window_label": f"Last {MONTH_WINDOW} months",
@@ -233,7 +345,8 @@ def admin_dashboard(now):
             {"label": "Active clients this month", "value": str(len(current["clients"]))},
             {"label": "Upcoming sessions", "value": str(len(upcoming))},
         ],
-        "months": _month_rows(months, buckets, include_open=True),
+        "months": month_rows,
+        "chart": _build_chart(month_rows, True),
         "upcoming": upcoming,
     }
 
