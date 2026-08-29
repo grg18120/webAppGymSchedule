@@ -257,6 +257,20 @@ def cancel_booked_slots_on_day(actor, instructor, year, month, day):
     return count, None
 
 
+def delete_booked_session(session, actor):
+    """Hard-delete a booked session, including past ones. Admin only."""
+    if not session:
+        return False, "Session not found."
+    if session.status != SESSION_BOOKED:
+        return False, "Only booked sessions can be deleted this way."
+    if not actor.is_admin:
+        return False, "Only an admin can delete a booked session."
+
+    db.session.delete(session)
+    db.session.commit()
+    return True, "Booked session deleted."
+
+
 def book_session(session, client):
     if client.role != ROLE_CLIENT:
         return False, "Only clients can book a training session."

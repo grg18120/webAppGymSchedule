@@ -192,8 +192,9 @@
           {% for block in day.blocks %}
           {% set session = block.session %}
           {% set block_style = 'top: ' ~ block.top ~ '%; height: ' ~ block.height ~ '%; left: calc(' ~ block.col ~ ' / ' ~ block.cols ~ ' * 100% + 3px); width: calc(100% / ' ~ block.cols ~ ' - 6px);' %}
-          {% set show_delete = user.is_instructor and session.status == SESSION_AVAILABLE and not session.is_past %}
-          {% set show_instructor_cancel = user.is_instructor and session.status == SESSION_BOOKED and not session.is_past %}
+          {% set show_delete = (user.is_instructor or user.is_admin) and session.status == SESSION_AVAILABLE and (not session.is_past or user.is_admin) %}
+          {% set show_staff_cancel = (user.is_instructor or user.is_admin) and session.status == SESSION_BOOKED and not session.is_past %}
+          {% set show_admin_delete_booked = user.is_admin and session.status == SESSION_BOOKED and session.is_past %}
           {% set show_client_cancel = user.is_client and session.status == SESSION_BOOKED and session.client_id == user.id and not session.is_past %}
           {% set show_client_book = user.is_client and session.status == SESSION_AVAILABLE and not session.is_past %}
           <div
@@ -211,7 +212,7 @@
               <input type="hidden" name="next" value="{{ timeline_next }}">
               <button type="submit">Delete</button>
             </form>
-            {% elif show_instructor_cancel %}
+            {% elif show_staff_cancel %}
             <form
               class="timeline__block-action"
               method="POST"
@@ -220,6 +221,16 @@
             >
               <input type="hidden" name="next" value="{{ timeline_next }}">
               <button type="submit">Cancel</button>
+            </form>
+            {% elif show_admin_delete_booked %}
+            <form
+              class="timeline__block-action"
+              method="POST"
+              action="{{ url_for('app.delete_booked_session', session_id=session.id) }}"
+              onsubmit="return confirm('Delete this past booked session? This cannot be undone.');"
+            >
+              <input type="hidden" name="next" value="{{ timeline_next }}">
+              <button type="submit">Delete</button>
             </form>
             {% elif show_client_cancel %}
             <form
