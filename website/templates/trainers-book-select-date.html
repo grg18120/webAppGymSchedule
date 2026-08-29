@@ -26,15 +26,17 @@
 
     {% if not is_past %}
     <div class="publish-panels">
-      <section class="publish-card publish-card--custom" aria-labelledby="custom-slot-heading">
-        <form method="POST" action="{{ url_for('app.add_availability', year=year, month=month, day=day) }}">
-          {% if user.is_admin %}
-          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
-          {% endif %}
+      <details class="publish-card publish-card--custom">
+        <summary class="publish-card__summary">
           <h2 class="publish-card__title" id="custom-slot-heading">
             <i class="fa-solid fa-clock" aria-hidden="true"></i>
             Publish a custom slot
           </h2>
+        </summary>
+        <form method="POST" action="{{ url_for('app.add_availability', year=year, month=month, day=day) }}" class="publish-card__body">
+          {% if user.is_admin %}
+          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+          {% endif %}
           <p class="mb-3">One 1-on-1 slot with your own start and end. 24-hour clock. Hour 24 is midnight at the end of the day.</p>
           <div class="row g-3 align-items-end">
             <div class="col-12">
@@ -82,17 +84,20 @@
             </div>
           </div>
         </form>
-      </section>
+      </details>
 
-      <section class="publish-card publish-card--range" aria-labelledby="range-slot-heading">
-        <form method="POST" action="{{ url_for('app.publish_range', year=year, month=month, day=day) }}">
-          {% if user.is_admin %}
-          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
-          {% endif %}
+      <details class="publish-card publish-card--range">
+        <summary class="publish-card__summary">
           <h2 class="publish-card__title" id="range-slot-heading">
             <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
             Publish a range of slots
           </h2>
+        </summary>
+        <div class="publish-card__body">
+        <form method="POST" action="{{ url_for('app.publish_range', year=year, month=month, day=day) }}">
+          {% if user.is_admin %}
+          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+          {% endif %}
           <p class="mb-3">Example: 09:00 to 12:00, slot length 60 min, break 0 min creates 09:00–10:00, 10:00–11:00, 11:00–12:00. A 15 min break would create 09:00–10:00, then 10:15–11:15. Overlapping times are skipped.</p>
           <div class="row g-3 align-items-end">
             <div class="col-12">
@@ -163,7 +168,8 @@
           <button type="submit" class="btn btn-outline-success tap-target">Publish all day</button>
           <span class="form-text d-block mt-2">Shortcut: hourly slots from 09:00 to 22:00.</span>
         </form>
-      </section>
+        </div>
+      </details>
     </div>
     {% endif %}
 

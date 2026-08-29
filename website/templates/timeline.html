@@ -45,13 +45,15 @@
   </nav>
 
   {% if can_publish_week %}
-  <section class="publish-card publish-card--range timeline-publish" aria-labelledby="week-publish-heading">
-    <form method="POST" action="{{ url_for('app.publish_timeline_week') }}">
-      <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}">
+  <details class="publish-card publish-card--range timeline-publish">
+    <summary class="publish-card__summary">
       <h2 class="publish-card__title" id="week-publish-heading">
         <i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>
         Publish this week
       </h2>
+    </summary>
+    <form method="POST" action="{{ url_for('app.publish_timeline_week') }}" class="publish-card__body">
+      <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}">
       <p class="mb-3">Create available 1-on-1 slots for the week on the timeline. Pick days, then a time range. Overlaps and past times are skipped.</p>
       {% if user.is_admin %}
       <div class="mb-3">
@@ -152,7 +154,7 @@
         </div>
       </div>
     </form>
-  </section>
+  </details>
   {% endif %}
 
   <ul class="timeline-legend" aria-label="Timeline legend">
