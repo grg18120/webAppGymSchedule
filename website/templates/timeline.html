@@ -5,7 +5,26 @@
 {% endblock %}
 {% block content %}
 {% macro timeline_block_caption(session) %}
-  <span class="timeline__block-label">{% if session.status == SESSION_BOOKED %}Booked Slot{% else %}Available Slot{% endif %}</span>
+  {% set booked = session.status == SESSION_BOOKED %}
+  <span class="timeline__block-caption">
+    <span class="timeline__block-label">{% if booked %}Booked Slot{% else %}Available Slot{% endif %}</span>
+    {% if user.is_admin %}
+    <span class="timeline__block-people">
+      <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
+      {% if booked and session.client %}
+      <span class="timeline__block-person">{{ session.client.display_name }}</span>
+      {% endif %}
+    </span>
+    {% elif user.is_instructor and booked and session.client %}
+    <span class="timeline__block-people">
+      <span class="timeline__block-person">{{ session.client.display_name }}</span>
+    </span>
+    {% elif user.is_client %}
+    <span class="timeline__block-people">
+      <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
+    </span>
+    {% endif %}
+  </span>
   <span class="visually-hidden">
     {{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
     instructor {{ session.instructor.display_name }}{% if session.client %}, client {{ session.client.display_name }}{% else %}, no client yet{% endif %}
