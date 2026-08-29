@@ -203,8 +203,8 @@ def _build_chart(rows, include_open):
             )
         groups.append(
             {
-                "label": row["label"].replace(" ", "\u00a0"),
-                "short_label": row["label"].split(" ")[0],
+                "label": row["label"],
+                "short_label": datetime.strptime(row["label"], "%b %Y").strftime("%b %y"),
                 "label_x": round(group_x + inner / 2, 2),
                 "label_y": height - 14,
                 "bars": drawn,
