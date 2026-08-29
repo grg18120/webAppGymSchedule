@@ -342,6 +342,26 @@ def cancel_booked_slots(year, month, day):
     return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
 
 
+@app.route("/book/<int:year>/<int:month>/<int:day>/bookings/delete-booked", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN)
+def delete_booked_slots(year, month, day):
+    instructor = _day_instructor()
+    if not instructor:
+        flash("Choose an instructor first.", "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day))
+    count, error = booking.delete_slots_on_day(
+        current_user, instructor, year, month, day, SESSION_BOOKED
+    )
+    if error:
+        flash(error, "error")
+    elif count == 0:
+        flash("There are no booked slots to delete on this day.", "error")
+    else:
+        flash(f"Deleted {count} booked slot(s).", "success")
+    return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+
+
 @app.route("/sessions/<int:session_id>/confirm")
 @login_required
 @role_required(ROLE_CLIENT)
@@ -386,6 +406,25 @@ def remove_availability(session_id):
     start = session.datetime_start
     instructor_id = session.instructor_id
     ok, message = booking.remove_availability(session, current_user)
+    flash(message, "success" if ok else "error")
+    fallback = url_for(
+        "app.book_day",
+        year=start.year,
+        month=start.month,
+        day=start.day,
+        instructor_id=instructor_id,
+    )
+    return redirect(_safe_timeline_next(fallback))
+
+
+@app.route("/sessions/<int:session_id>/delete", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN)
+def delete_booked_session(session_id):
+    session = _session_or_404(session_id)
+    start = session.datetime_start
+    instructor_id = session.instructor_id
+    ok, message = booking.delete_booked_session(session, current_user)
     flash(message, "success" if ok else "error")
     fallback = url_for(
         "app.book_day",

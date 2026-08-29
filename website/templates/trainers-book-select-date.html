@@ -195,6 +195,18 @@
             Cancel all booked slots{% if upcoming_booked_count %} ({{ upcoming_booked_count }}){% endif %}
           </button>
         </form>
+        {% if user.is_admin %}
+        <form
+          method="POST"
+          action="{{ url_for('app.delete_booked_slots', year=year, month=month, day=day) }}"
+          onsubmit="return confirm('Delete ALL booked slots on this day, including past ones? This cannot be undone.');"
+        >
+          <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
+          <button type="submit" class="btn btn-delete-slot tap-target" {% if booked_count == 0 %}disabled{% endif %}>
+            Delete all booked slots{% if booked_count %} ({{ booked_count }}){% endif %}
+          </button>
+        </form>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -241,6 +253,12 @@
         {% if (user.is_instructor or user.is_admin) and session.status == 'booked' and not session.is_past %}
           <form method="POST" action="{{ url_for('app.cancel_session', session_id=session.id) }}" onsubmit="return confirm('Cancel this booked session? The client will lose the booking.');">
             <button type="submit" class="btn btn-danger tap-target">Cancel session</button>
+          </form>
+        {% endif %}
+
+        {% if user.is_admin and session.status == 'booked' and session.is_past %}
+          <form method="POST" action="{{ url_for('app.delete_booked_session', session_id=session.id) }}" onsubmit="return confirm('Delete this past booked session? This cannot be undone.');">
+            <button type="submit" class="btn btn-delete-slot tap-target">Delete session</button>
           </form>
         {% endif %}
       </div>

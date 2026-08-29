@@ -874,6 +874,189 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Availability removed", deleted.data)
         self.assertIsNone(db.session.get(GymSession, session_id))
 
+    def test_admin_can_cancel_and_delete_sessions_including_past(self):
+        from datetime import datetime, timedelta
+
+        from website.utils.timeline import monday_of
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        future_open = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=21)
+        future_open = future_open.replace(hour=10)
+        future_booked = future_open + timedelta(hours=2)
+        past_open = datetime(2020, 3, 10, 16, 25)
+        past_booked = datetime(2020, 3, 10, 18, 25)
+        for start in (future_open, future_booked, past_open, past_booked):
+            self.cancel_active_start(instructor.id, start)
+
+        future_open_slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=future_open,
+            datetime_end=future_open + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+        )
+        future_booked_slot = GymSession(
+            instructor_id=instructor.id,
+            client_id=client.id,
+            datetime_start=future_booked,
+            datetime_end=future_booked + timedelta(hours=1),
+            status=SESSION_BOOKED,
+        )
+        past_open_slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=past_open,
+            datetime_end=past_open + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+        )
+        past_booked_slot = GymSession(
+            instructor_id=instructor.id,
+            client_id=client.id,
+            datetime_start=past_booked,
+            datetime_end=past_booked + timedelta(hours=1),
+            status=SESSION_BOOKED,
+        )
+        db.session.add_all(
+            [future_open_slot, future_booked_slot, past_open_slot, past_booked_slot]
+        )
+        db.session.commit()
+        future_open_id = future_open_slot.id
+        future_booked_id = future_booked_slot.id
+        past_open_id = past_open_slot.id
+        past_booked_id = past_booked_slot.id
+        past_week = monday_of(past_open.date()).isoformat()
+        future_week = monday_of(future_open.date()).isoformat()
+        remove_future = f"/sessions/{future_open_id}/remove".encode()
+        cancel_future = f"/sessions/{future_booked_id}/cancel".encode()
+        remove_past = f"/sessions/{past_open_id}/remove".encode()
+        delete_past = f"/sessions/{past_booked_id}/delete".encode()
+
+        self.login("instructor@gym.com", "instructor123")
+        instructor_past = self.client.get(f"/timeline?start={past_week}")
+        self.assertEqual(instructor_past.status_code, 200)
+        self.assertNotIn(remove_past, instructor_past.data)
+        self.assertNotIn(delete_past, instructor_past.data)
+        self.assertNotIn(b"Delete this past booked session?", instructor_past.data)
+        instructor_future = self.client.get(f"/timeline?start={future_week}")
+        self.assertIn(remove_future, instructor_future.data)
+        self.assertIn(cancel_future, instructor_future.data)
+        self.assertEqual(
+            self.client.post(f"/sessions/{past_booked_id}/delete").status_code,
+            403,
+        )
+        blocked_past_cancel = self.client.post(
+            f"/sessions/{past_booked_id}/cancel",
+            follow_redirects=True,
+        )
+        self.assertIn(b"Past sessions cannot be cancelled", blocked_past_cancel.data)
+        self.assertEqual(
+            db.session.get(GymSession, past_booked_id).status,
+            SESSION_BOOKED,
+        )
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        admin_future = self.client.get(f"/timeline?start={future_week}")
+        self.assertEqual(admin_future.status_code, 200)
+        self.assertIn(remove_future, admin_future.data)
+        self.assertIn(cancel_future, admin_future.data)
+        self.assertIn(b"Delete this available slot?", admin_future.data)
+        self.assertIn(b"Cancel this booked session? The client will lose the booking.", admin_future.data)
+
+        admin_past = self.client.get(f"/timeline?start={past_week}")
+        self.assertEqual(admin_past.status_code, 200)
+        self.assertIn(remove_past, admin_past.data)
+        self.assertIn(delete_past, admin_past.data)
+        self.assertIn(b"Delete this available slot?", admin_past.data)
+        self.assertIn(b"Delete this past booked session? This cannot be undone.", admin_past.data)
+        self.assertNotIn(b"/sessions/%d/cancel" % past_booked_id, admin_past.data)
+
+        day_path = f"/book/{past_open.year}/{past_open.month}/{past_open.day}"
+        day_page = self.client.get(f"{day_path}?instructor_id={instructor.id}")
+        self.assertEqual(day_page.status_code, 200)
+        self.assertIn(b"Delete slot", day_page.data)
+        self.assertIn(b"Delete session", day_page.data)
+        self.assertIn(delete_past, day_page.data)
+        self.assertIn(b"Delete all booked slots", day_page.data)
+        self.assertIn(b"/bookings/delete-booked", day_page.data)
+
+        cancelled = self.client.post(
+            f"/sessions/{future_booked_id}/cancel",
+            data={"next": f"/timeline?start={future_week}"},
+            follow_redirects=True,
+        )
+        self.assertIn(b"Session cancelled", cancelled.data)
+        self.assertEqual(
+            db.session.get(GymSession, future_booked_id).status,
+            SESSION_CANCELLED,
+        )
+
+        removed_future = self.client.post(
+            f"/sessions/{future_open_id}/remove",
+            follow_redirects=True,
+        )
+        self.assertIn(b"Availability removed", removed_future.data)
+        self.assertIsNone(db.session.get(GymSession, future_open_id))
+
+        removed_past = self.client.post(
+            f"/sessions/{past_open_id}/remove",
+            data={"next": f"/timeline?start={past_week}"},
+            follow_redirects=True,
+        )
+        self.assertIn(b"Availability removed", removed_past.data)
+        self.assertIn(b"Session timeline", removed_past.data)
+        self.assertIsNone(db.session.get(GymSession, past_open_id))
+
+        deleted_past = self.client.post(
+            f"/sessions/{past_booked_id}/delete",
+            data={"next": f"/timeline?start={past_week}"},
+            follow_redirects=True,
+        )
+        self.assertIn(b"Booked session deleted", deleted_past.data)
+        self.assertIn(b"Session timeline", deleted_past.data)
+        self.assertIsNone(db.session.get(GymSession, past_booked_id))
+
+    def test_admin_can_bulk_delete_past_booked_slots(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        past_start = datetime(2020, 3, 11, 11, 10)
+        self.cancel_active_start(instructor.id, past_start)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            client_id=client.id,
+            datetime_start=past_start,
+            datetime_end=past_start + timedelta(hours=1),
+            status=SESSION_BOOKED,
+        )
+        db.session.add(slot)
+        db.session.commit()
+        slot_id = slot.id
+        day_path = (
+            f"/book/{past_start.year}/{past_start.month}/{past_start.day}"
+            "/bookings/delete-booked"
+        )
+
+        self.login("instructor@gym.com", "instructor123")
+        self.assertEqual(
+            self.client.post(
+                day_path,
+                data={"instructor_id": instructor.id},
+            ).status_code,
+            403,
+        )
+        self.assertIsNotNone(db.session.get(GymSession, slot_id))
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        deleted = self.client.post(
+            day_path,
+            data={"instructor_id": instructor.id},
+            follow_redirects=True,
+        )
+        self.assertIn(b"Deleted 1 booked slot", deleted.data)
+        self.assertIsNone(db.session.get(GymSession, slot_id))
+
     def test_day_session_cards_separate_instructor_and_client(self):
         from datetime import datetime, timedelta
 
@@ -1102,6 +1285,14 @@ class BookingRolesTest(unittest.TestCase):
             403,
         )
         self.assertEqual(
+            self.client.post("/book/2099/6/15/bookings/delete-booked").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/sessions/1/delete").status_code,
+            403,
+        )
+        self.assertEqual(
             self.client.post("/book/2099/6/15/availability/range").status_code,
             403,
         )
@@ -1220,10 +1411,12 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b'timeline__block-person">Alex Instructor', admin_page.data)
         self.assertIn(b'timeline__block-person">Casey Client', admin_page.data)
         self.assertIn(b"14:00", admin_page.data)
-        self.assertNotIn(b"timeline__block-action", admin_page.data)
-        self.assertNotIn(remove_path, admin_page.data)
-        self.assertNotIn(cancel_path, admin_page.data)
+        self.assertIn(b"timeline__block-action", admin_page.data)
+        self.assertIn(remove_path, admin_page.data)
+        self.assertIn(cancel_path, admin_page.data)
         self.assertNotIn(book_path, admin_page.data)
+        self.assertIn(b"Delete this available slot?", admin_page.data)
+        self.assertIn(b"Cancel this booked session? The client will lose the booking.", admin_page.data)
         self.assertIn(b"Publish this week", admin_page.data)
         self.assertIn(b"week-instructor", admin_page.data)
 
