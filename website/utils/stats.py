@@ -147,10 +147,10 @@ def _format_hours_short(hours):
     return f"{total:.1f} h"
 
 
-COLOR_BOOKED_PAST = "#90caf9"
-COLOR_BOOKED_FUTURE = "#1565c0"
-COLOR_UNBOOKED_PAST = "#a5d6a7"
-COLOR_UNBOOKED_FUTURE = "#2e7d32"
+COLOR_BOOKED_PAST = "#1565c0"
+COLOR_BOOKED_FUTURE = "#90caf9"
+COLOR_UNBOOKED_PAST = "#2e7d32"
+COLOR_UNBOOKED_FUTURE = "#a5d6a7"
 
 
 def _chart_series(row, include_open):

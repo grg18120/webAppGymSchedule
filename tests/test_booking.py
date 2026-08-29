@@ -1762,13 +1762,20 @@ class BookingRolesTest(unittest.TestCase):
             group for group in instructor_dash["chart"]["groups"] if current_month in group["summary"]
         )
         self.assertEqual(len(current_group["bars"]), 4)
-        bar_keys = [bar["title"] for bar in current_group["bars"]]
-        self.assertTrue(any("past booked" in title for title in bar_keys))
-        self.assertTrue(any("upcoming booked" in title for title in bar_keys))
-        self.assertTrue(any("past unbooked" in title for title in bar_keys))
-        self.assertTrue(any("upcoming unbooked" in title for title in bar_keys))
+        self.assertIn("past booked", current_group["bars"][0]["title"])
+        self.assertEqual(current_group["bars"][0]["fill"], "#1565c0")
+        self.assertIn("upcoming booked", current_group["bars"][1]["title"])
+        self.assertEqual(current_group["bars"][1]["fill"], "#90caf9")
+        self.assertIn("past unbooked", current_group["bars"][2]["title"])
+        self.assertEqual(current_group["bars"][2]["fill"], "#2e7d32")
+        self.assertIn("upcoming unbooked", current_group["bars"][3]["title"])
+        self.assertEqual(current_group["bars"][3]["fill"], "#a5d6a7")
         older_group = instructor_dash["chart"]["groups"][0]
         self.assertEqual(len(older_group["bars"]), 2)
+        self.assertIn("booked", older_group["bars"][0]["title"])
+        self.assertEqual(older_group["bars"][0]["fill"], "#1565c0")
+        self.assertIn("unbooked", older_group["bars"][1]["title"])
+        self.assertEqual(older_group["bars"][1]["fill"], "#2e7d32")
         labels = [card["label"] for card in instructor_dash["cards"]]
         self.assertIn("Booked this month", labels)
         self.assertIn("Average booked / month", labels)
@@ -1814,6 +1821,15 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"stat-chart__swatch--unbooked", client_home.data)
         self.assertNotIn(b"Past unbooked", client_home.data)
         self.assertIn(b"Booked (upcoming)", client_home.data)
+        client_dash = home_stats.client_dashboard(casey, now)
+        client_group = next(
+            group for group in client_dash["chart"]["groups"] if current_month in group["summary"]
+        )
+        self.assertEqual(len(client_group["bars"]), 2)
+        self.assertIn("past booked", client_group["bars"][0]["title"])
+        self.assertEqual(client_group["bars"][0]["fill"], "#1565c0")
+        self.assertIn("upcoming booked", client_group["bars"][1]["title"])
+        self.assertEqual(client_group["bars"][1]["fill"], "#90caf9")
 
         self.client.get("/logout")
         self.login("admin@gym.com", "admin123")
@@ -1834,9 +1850,10 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".stat-grid", css)
         self.assertIn(b".stat-card", css)
         self.assertIn(b".stat-chart", css)
-        self.assertIn(b".stat-chart__swatch--booked-past", css)
-        self.assertIn(b".stat-chart__swatch--booked", css)
-        self.assertIn(b".stat-chart__swatch--unbooked-past", css)
+        self.assertIn(b".stat-chart__swatch--booked-past {\n  background: #1565c0;", css)
+        self.assertIn(b".stat-chart__swatch--booked {\n  background: #90caf9;", css)
+        self.assertIn(b".stat-chart__swatch--unbooked-past {\n  background: #2e7d32;", css)
+        self.assertIn(b".stat-chart__swatch--unbooked {\n  background: #a5d6a7;", css)
         self.assertNotIn(b".stat-table {", css)
 
     def test_seed_demo_false_skips_demo_accounts(self):

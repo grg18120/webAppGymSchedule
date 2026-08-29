@@ -201,19 +201,19 @@ main#main-content {
 }
 
 .stat-chart__swatch--booked-past {
-  background: #90caf9;
-}
-
-.stat-chart__swatch--booked {
   background: #1565c0;
 }
 
+.stat-chart__swatch--booked {
+  background: #90caf9;
+}
+
 .stat-chart__swatch--unbooked-past {
-  background: #a5d6a7;
+  background: #2e7d32;
 }
 
 .stat-chart__swatch--unbooked {
-  background: #2e7d32;
+  background: #a5d6a7;
 }
 
 .stat-chart__hint {
