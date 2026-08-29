@@ -7,7 +7,6 @@
 {% macro timeline_block_caption(session) %}
   {% set booked = session.status == SESSION_BOOKED %}
   <span class="timeline__block-caption">
-    <span class="timeline__block-label">{% if booked %}Booked Slot{% else %}Available Slot{% endif %}</span>
     {% if user.is_admin %}
     <span class="timeline__block-people">
       <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
@@ -32,7 +31,7 @@
 {% endmacro %}
 <div class="container py-4">
   <h1 class="h3 text-white">Session timeline</h1>
-  <p class="text-white-50">Dates across, times down. Open slots are outlined; booked sessions are filled.</p>
+  <p class="text-white-50">Dates across, times down. Open slots are green; booked sessions are blue. Past slots keep those colors, faded.</p>
 
   <nav class="timeline-nav" aria-label="Change week">
     <a class="timeline-nav__btn tap-target" href="{{ prev_url }}" aria-label="Previous week">
@@ -160,7 +159,8 @@
   <ul class="timeline-legend" aria-label="Timeline legend">
     <li><span class="timeline-swatch timeline-swatch--available" aria-hidden="true"></span> Open slot</li>
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Booked</li>
-    <li><span class="timeline-swatch timeline-swatch--past" aria-hidden="true"></span> Past</li>
+    <li><span class="timeline-swatch timeline-swatch--past-available" aria-hidden="true"></span> Past open</li>
+    <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booked</li>
   </ul>
 
   <div class="timeline" role="region" aria-label="Week timeline">
@@ -171,6 +171,9 @@
         <div class="timeline__day-head{% if day.date == today %} timeline__day-head--today{% endif %}">
           <span class="timeline__day-name">{{ day.label }}</span>
           <span class="timeline__day-date">{{ day.day_number }}</span>
+          {% if day.date == today %}
+          <span class="timeline__today-badge">Today</span>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
