@@ -46,14 +46,16 @@
       <div class="stat-chart__header">
         <h3 class="stat-chart__title" id="hours-chart-title">Hours by month</h3>
         <ul class="stat-chart__legend" aria-hidden="true">
-          <li><span class="stat-chart__swatch stat-chart__swatch--booked"></span> Booked</li>
+          <li><span class="stat-chart__swatch stat-chart__swatch--booked-past"></span> Past booked</li>
+          <li><span class="stat-chart__swatch stat-chart__swatch--booked"></span> Booked (upcoming)</li>
           {% if dashboard.include_open %}
-          <li><span class="stat-chart__swatch stat-chart__swatch--unbooked"></span> Unbooked</li>
+          <li><span class="stat-chart__swatch stat-chart__swatch--unbooked-past"></span> Past unbooked</li>
+          <li><span class="stat-chart__swatch stat-chart__swatch--unbooked"></span> Unbooked (upcoming)</li>
           {% endif %}
         </ul>
       </div>
       {% if dashboard.include_open %}
-      <p class="stat-chart__hint">Unbooked is available time that passed without a booking.</p>
+      <p class="stat-chart__hint">This month stacks past hours under upcoming hours in each column. Unbooked is available time that was not booked.</p>
       {% endif %}
       <svg
         class="stat-chart__svg"
@@ -92,7 +94,13 @@
         >
           <title>{{ bar.title }}</title>
         </rect>
-        <text class="stat-chart__bar-label" x="{{ bar.label_x }}" y="{{ bar.label_y }}" text-anchor="middle">{{ bar.label }}</text>
+        <text
+          class="stat-chart__bar-label"
+          x="{{ bar.label_x }}"
+          y="{{ bar.label_y }}"
+          text-anchor="middle"
+          fill="{{ bar.label_fill }}"
+        >{{ bar.label }}</text>
         {% endif %}
         {% endfor %}
         <text class="stat-chart__month" x="{{ group.label_x }}" y="{{ group.label_y }}" text-anchor="middle">{{ group.short_label }}</text>

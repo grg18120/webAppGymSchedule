@@ -1681,15 +1681,21 @@ class BookingRolesTest(unittest.TestCase):
         casey = User.query.filter_by(email="client@gym.com").first()
         before = home_stats.instructor_dashboard(instructor, now)
         before_booked = before["months"][-1]["booked_hours"]
+        before_future_open = before["months"][-1].get("open_future_hours", 0.0)
+        before_future_booked = before["months"][-1].get("booked_future_hours", 0.0)
 
         start = datetime(now.year, now.month, 1, 5, 5)
         past_open_start = (now - timedelta(days=2)).replace(minute=7, second=0, microsecond=0)
         future_open_start = (now + timedelta(hours=6)).replace(minute=7, second=0, microsecond=0)
+        future_booked_start = (now + timedelta(hours=8)).replace(minute=17, second=0, microsecond=0)
         if future_open_start.month != now.month:
             future_open_start = datetime(now.year, now.month, now.day, 23, 7)
+        if future_booked_start.month != now.month:
+            future_booked_start = datetime(now.year, now.month, now.day, 22, 17)
         self.cancel_active_start(instructor.id, start)
         self.cancel_active_start(instructor.id, past_open_start)
         self.cancel_active_start(instructor.id, future_open_start)
+        self.cancel_active_start(instructor.id, future_booked_start)
         db.session.add(
             GymSession(
                 instructor_id=instructor.id,
@@ -1715,6 +1721,15 @@ class BookingRolesTest(unittest.TestCase):
                 status=SESSION_AVAILABLE,
             )
         )
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                client_id=casey.id,
+                datetime_start=future_booked_start,
+                datetime_end=future_booked_start + timedelta(hours=1),
+                status=SESSION_BOOKED,
+            )
+        )
         db.session.commit()
 
         instructor_dash = home_stats.instructor_dashboard(instructor, now)
@@ -1725,6 +1740,19 @@ class BookingRolesTest(unittest.TestCase):
             row["open_hours"] for row in instructor_dash["months"] if row["label"] == past_label
         )
         self.assertAlmostEqual(after_past_open, before_past_open + 1.5, places=5)
+        current_row = instructor_dash["months"][-1]
+        self.assertTrue(current_row["is_current"])
+        self.assertAlmostEqual(
+            current_row["open_future_hours"],
+            before_future_open + 3.0,
+            places=5,
+        )
+        self.assertAlmostEqual(
+            current_row["booked_future_hours"],
+            before_future_booked + 1.0,
+            places=5,
+        )
+        self.assertGreaterEqual(current_row["booked_past_hours"], 2.0)
         self.assertTrue(instructor_dash["include_open"])
         self.assertIn("chart", instructor_dash)
         self.assertTrue(instructor_dash["chart"]["include_open"])
@@ -1733,9 +1761,27 @@ class BookingRolesTest(unittest.TestCase):
         current_group = next(
             group for group in instructor_dash["chart"]["groups"] if current_month in group["summary"]
         )
-        bar_keys = [bar["title"] for bar in current_group["bars"]]
-        self.assertTrue(any("booked" in title for title in bar_keys))
-        self.assertTrue(any("unbooked" in title for title in bar_keys))
+        self.assertEqual(len(current_group["bars"]), 4)
+        past_booked, upcoming_booked, past_unbooked, upcoming_unbooked = current_group["bars"]
+        self.assertIn("past booked", past_booked["title"])
+        self.assertEqual(past_booked["fill"], "#1565c0")
+        self.assertIn("upcoming booked", upcoming_booked["title"])
+        self.assertEqual(upcoming_booked["fill"], "#90caf9")
+        self.assertEqual(past_booked["x"], upcoming_booked["x"])
+        self.assertLess(upcoming_booked["y"], past_booked["y"])
+        self.assertIn("past unbooked", past_unbooked["title"])
+        self.assertEqual(past_unbooked["fill"], "#2e7d32")
+        self.assertIn("upcoming unbooked", upcoming_unbooked["title"])
+        self.assertEqual(upcoming_unbooked["fill"], "#a5d6a7")
+        self.assertEqual(past_unbooked["x"], upcoming_unbooked["x"])
+        self.assertLess(upcoming_unbooked["y"], past_unbooked["y"])
+        self.assertGreater(past_unbooked["x"], past_booked["x"])
+        older_group = instructor_dash["chart"]["groups"][0]
+        self.assertEqual(len(older_group["bars"]), 2)
+        self.assertIn("booked", older_group["bars"][0]["title"])
+        self.assertEqual(older_group["bars"][0]["fill"], "#1565c0")
+        self.assertIn("unbooked", older_group["bars"][1]["title"])
+        self.assertEqual(older_group["bars"][1]["fill"], "#2e7d32")
         labels = [card["label"] for card in instructor_dash["cards"]]
         self.assertIn("Booked this month", labels)
         self.assertIn("Average booked / month", labels)
@@ -1753,9 +1799,15 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"stat-chart", instructor_home.data)
         self.assertIn(b"Hours by month", instructor_home.data)
         self.assertIn(b"<svg", instructor_home.data)
+        self.assertIn(b"stat-chart__swatch--booked-past", instructor_home.data)
         self.assertIn(b"stat-chart__swatch--booked", instructor_home.data)
+        self.assertIn(b"stat-chart__swatch--unbooked-past", instructor_home.data)
         self.assertIn(b"stat-chart__swatch--unbooked", instructor_home.data)
-        self.assertIn(b"available time that passed", instructor_home.data)
+        self.assertIn(b"Past booked", instructor_home.data)
+        self.assertIn(b"Booked (upcoming)", instructor_home.data)
+        self.assertIn(b"Past unbooked", instructor_home.data)
+        self.assertIn(b"Unbooked (upcoming)", instructor_home.data)
+        self.assertIn(b"stacks past hours under upcoming hours", instructor_home.data)
         self.assertNotIn(b"stat-table", instructor_home.data)
         self.assertIn(b" h ", instructor_home.data)
         self.assertIn(b" min", instructor_home.data)
@@ -1770,9 +1822,22 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"Average unbooked / month", client_home.data)
         self.assertIn(b"Hours in the last 6 months", client_home.data)
         self.assertIn(b"stat-chart", client_home.data)
+        self.assertIn(b"stat-chart__swatch--booked-past", client_home.data)
         self.assertIn(b"stat-chart__swatch--booked", client_home.data)
         self.assertNotIn(b"stat-chart__swatch--unbooked", client_home.data)
-        self.assertNotIn(b"available time that passed", client_home.data)
+        self.assertNotIn(b"Past unbooked", client_home.data)
+        self.assertIn(b"Booked (upcoming)", client_home.data)
+        client_dash = home_stats.client_dashboard(casey, now)
+        client_group = next(
+            group for group in client_dash["chart"]["groups"] if current_month in group["summary"]
+        )
+        self.assertEqual(len(client_group["bars"]), 2)
+        self.assertIn("past booked", client_group["bars"][0]["title"])
+        self.assertEqual(client_group["bars"][0]["fill"], "#1565c0")
+        self.assertIn("upcoming booked", client_group["bars"][1]["title"])
+        self.assertEqual(client_group["bars"][1]["fill"], "#90caf9")
+        self.assertEqual(client_group["bars"][0]["x"], client_group["bars"][1]["x"])
+        self.assertLess(client_group["bars"][1]["y"], client_group["bars"][0]["y"])
 
         self.client.get("/logout")
         self.login("admin@gym.com", "admin123")
@@ -1783,15 +1848,20 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Fill rate this month", admin_home.data)
         self.assertIn(b"Users", admin_home.data)
         self.assertIn(b"stat-chart", admin_home.data)
-        self.assertIn(b"stat-chart__swatch--unbooked", admin_home.data)
+        self.assertIn(b"stat-chart__swatch--unbooked-past", admin_home.data)
+        self.assertIn(b"#90caf9", admin_home.data)
         self.assertIn(b"#1565c0", admin_home.data)
+        self.assertIn(b"#a5d6a7", admin_home.data)
         self.assertIn(b"#2e7d32", admin_home.data)
 
         _status, css = self.static_bytes("/static/css/app.css")
         self.assertIn(b".stat-grid", css)
         self.assertIn(b".stat-card", css)
         self.assertIn(b".stat-chart", css)
-        self.assertIn(b".stat-chart__swatch--booked", css)
+        self.assertIn(b".stat-chart__swatch--booked-past {\n  background: #1565c0;", css)
+        self.assertIn(b".stat-chart__swatch--booked {\n  background: #90caf9;", css)
+        self.assertIn(b".stat-chart__swatch--unbooked-past {\n  background: #2e7d32;", css)
+        self.assertIn(b".stat-chart__swatch--unbooked {\n  background: #a5d6a7;", css)
         self.assertNotIn(b".stat-table {", css)
 
     def test_seed_demo_false_skips_demo_accounts(self):

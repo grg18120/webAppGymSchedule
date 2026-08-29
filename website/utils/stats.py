@@ -59,6 +59,10 @@ def _empty_bucket():
     return {
         "booked_minutes": 0,
         "open_minutes": 0,
+        "booked_past_minutes": 0,
+        "booked_future_minutes": 0,
+        "open_past_minutes": 0,
+        "open_future_minutes": 0,
         "booked_count": 0,
         "open_count": 0,
         "clients": set(),
@@ -88,33 +92,44 @@ def _fill_months(sessions, months, now, client_only=False):
         if not bucket:
             continue
         minutes = _minutes(session)
+        is_past = session.datetime_start <= now
         if session.status == SESSION_BOOKED:
             bucket["booked_minutes"] += minutes
             bucket["booked_count"] += 1
+            if is_past:
+                bucket["booked_past_minutes"] += minutes
+            else:
+                bucket["booked_future_minutes"] += minutes
             if session.client_id:
                 bucket["clients"].add(session.client_id)
-        elif (
-            not client_only
-            and session.status == SESSION_AVAILABLE
-            and session.datetime_start <= now
-        ):
-            bucket["open_minutes"] += minutes
-            bucket["open_count"] += 1
+        elif not client_only and session.status == SESSION_AVAILABLE:
+            if is_past:
+                bucket["open_minutes"] += minutes
+                bucket["open_past_minutes"] += minutes
+                bucket["open_count"] += 1
+            else:
+                bucket["open_future_minutes"] += minutes
     return buckets
 
 
-def _month_rows(months, buckets, include_open):
+def _month_rows(months, buckets, include_open, now):
+    current = (now.year, now.month)
     rows = []
     for year, month in months:
         bucket = buckets[(year, month)]
         row = {
             "label": datetime(year, month, 1).strftime("%b %Y"),
+            "is_current": (year, month) == current,
             "booked": _format_duration(bucket["booked_minutes"]),
             "booked_hours": bucket["booked_minutes"] / 60.0,
+            "booked_past_hours": bucket["booked_past_minutes"] / 60.0,
+            "booked_future_hours": bucket["booked_future_minutes"] / 60.0,
         }
         if include_open:
             row["open"] = _format_duration(bucket["open_minutes"])
             row["open_hours"] = bucket["open_minutes"] / 60.0
+            row["open_past_hours"] = bucket["open_past_minutes"] / 60.0
+            row["open_future_hours"] = bucket["open_future_minutes"] / 60.0
         rows.append(row)
     return rows
 
@@ -132,10 +147,78 @@ def _format_hours_short(hours):
     return f"{total:.1f} h"
 
 
-def _chart_max_hours(rows, include_open):
-    values = [row["booked_hours"] for row in rows]
+COLOR_BOOKED_PAST = "#1565c0"
+COLOR_BOOKED_FUTURE = "#90caf9"
+COLOR_UNBOOKED_PAST = "#2e7d32"
+COLOR_UNBOOKED_FUTURE = "#a5d6a7"
+
+
+def _chart_columns(row, include_open):
+    """Return columns of stacked segments, bottom segment first."""
+    if row.get("is_current"):
+        columns = [
+            [
+                {
+                    "key": "past booked",
+                    "hours": row.get("booked_past_hours", 0.0),
+                    "fill": COLOR_BOOKED_PAST,
+                    "label_fill": "#ffffff",
+                },
+                {
+                    "key": "upcoming booked",
+                    "hours": row.get("booked_future_hours", 0.0),
+                    "fill": COLOR_BOOKED_FUTURE,
+                    "label_fill": "#102a3a",
+                },
+            ]
+        ]
+        if include_open:
+            columns.append(
+                [
+                    {
+                        "key": "past unbooked",
+                        "hours": row.get("open_past_hours", 0.0),
+                        "fill": COLOR_UNBOOKED_PAST,
+                        "label_fill": "#ffffff",
+                    },
+                    {
+                        "key": "upcoming unbooked",
+                        "hours": row.get("open_future_hours", 0.0),
+                        "fill": COLOR_UNBOOKED_FUTURE,
+                        "label_fill": "#102a3a",
+                    },
+                ]
+            )
+        return columns
+    columns = [
+        [
+            {
+                "key": "booked",
+                "hours": row["booked_hours"],
+                "fill": COLOR_BOOKED_PAST,
+                "label_fill": "#ffffff",
+            }
+        ]
+    ]
     if include_open:
-        values.extend(row.get("open_hours", 0.0) for row in rows)
+        columns.append(
+            [
+                {
+                    "key": "unbooked",
+                    "hours": row.get("open_hours", 0.0),
+                    "fill": COLOR_UNBOOKED_PAST,
+                    "label_fill": "#ffffff",
+                }
+            ]
+        )
+    return columns
+
+
+def _chart_max_hours(rows, include_open):
+    values = []
+    for row in rows:
+        for column in _chart_columns(row, include_open):
+            values.append(sum(item["hours"] for item in column))
     peak = max(values) if values else 0.0
     if peak <= 0:
         return 4.0
@@ -143,7 +226,7 @@ def _chart_max_hours(rows, include_open):
 
 
 def _build_chart(rows, include_open):
-    width, height = 640, 280
+    width, height = 680, 280
     pad_l, pad_r, pad_t, pad_b = 48, 16, 28, 44
     plot_w = width - pad_l - pad_r
     plot_h = height - pad_t - pad_b
@@ -157,50 +240,59 @@ def _build_chart(rows, include_open):
 
     count = max(1, len(rows))
     group_w = plot_w / count
-    inner = group_w * 0.72
-    bar_gap = 4 if include_open else 0
-    bar_count = 2 if include_open else 1
-    bar_w = max(8.0, (inner - bar_gap * (bar_count - 1)) / bar_count)
-
     groups = []
     for index, row in enumerate(rows):
+        columns = _chart_columns(row, include_open)
+        bar_count = max(1, len(columns))
+        inner = group_w * 0.72
+        bar_gap = 4 if bar_count > 1 else 0
+        bar_w = max(8.0, (inner - bar_gap * (bar_count - 1)) / bar_count)
         group_x = pad_l + group_w * index + (group_w - inner) / 2
-        bars = [
-            {
-                "key": "booked",
-                "hours": row["booked_hours"],
-                "label": _format_hours_short(row["booked_hours"]),
-                "fill": "#1565c0",
-            }
-        ]
-        if include_open:
-            bars.append(
-                {
-                    "key": "unbooked",
-                    "hours": row.get("open_hours", 0.0),
-                    "label": _format_hours_short(row.get("open_hours", 0.0)),
-                    "fill": "#2e7d32",
-                }
-            )
         drawn = []
-        for bar_index, bar in enumerate(bars):
-            bar_h = 0.0 if max_hours <= 0 else plot_h * (bar["hours"] / max_hours)
-            x = group_x + bar_index * (bar_w + bar_gap)
-            y = pad_t + plot_h - bar_h
-            label_y = y - 4 if bar_h > 18 else y - 6
-            drawn.append(
-                {
-                    "x": round(x, 2),
-                    "y": round(y, 2),
-                    "width": round(bar_w, 2),
-                    "height": round(max(bar_h, 0.0), 2),
-                    "fill": bar["fill"],
-                    "label": bar["label"],
-                    "label_x": round(x + bar_w / 2, 2),
-                    "label_y": round(max(pad_t + 10, label_y), 2),
-                    "title": f"{row['label']} {bar['key']} {bar['label']}",
-                }
+        stack_gap = 1.5
+        baseline = pad_t + plot_h
+        for col_index, column in enumerate(columns):
+            x = group_x + col_index * (bar_w + bar_gap)
+            cursor = baseline
+            for bar in column:
+                hours = bar["hours"]
+                bar_h = 0.0 if max_hours <= 0 else plot_h * (hours / max_hours)
+                if bar_h > 0 and cursor < baseline:
+                    cursor -= stack_gap
+                y = cursor - bar_h
+                if bar_h >= 14:
+                    label_y = y + bar_h / 2 + 3
+                else:
+                    label_y = y - 6
+                drawn.append(
+                    {
+                        "x": round(x, 2),
+                        "y": round(y, 2),
+                        "width": round(bar_w, 2),
+                        "height": round(max(bar_h, 0.0), 2),
+                        "fill": bar["fill"],
+                        "label": _format_hours_short(hours),
+                        "label_fill": bar.get("label_fill", "#102a3a"),
+                        "label_x": round(x + bar_w / 2, 2),
+                        "label_y": round(max(pad_t + 10, label_y), 2),
+                        "title": f"{row['label']} {bar['key']} {_format_hours_short(hours)}",
+                    }
+                )
+                if bar_h > 0:
+                    cursor = y
+        summary_parts = [f"{row['label']}: booked {row['booked']}"]
+        if row.get("is_current"):
+            summary_parts.append(
+                f"past booked {_format_hours_short(row.get('booked_past_hours', 0))}, "
+                f"upcoming booked {_format_hours_short(row.get('booked_future_hours', 0))}"
             )
+            if include_open:
+                summary_parts.append(
+                    f"past unbooked {_format_hours_short(row.get('open_past_hours', 0))}, "
+                    f"upcoming unbooked {_format_hours_short(row.get('open_future_hours', 0))}"
+                )
+        elif include_open:
+            summary_parts.append(f"unbooked {row['open']}")
         groups.append(
             {
                 "label": row["label"],
@@ -208,10 +300,7 @@ def _build_chart(rows, include_open):
                 "label_x": round(group_x + inner / 2, 2),
                 "label_y": height - 14,
                 "bars": drawn,
-                "summary": (
-                    f"{row['label']}: booked {row['booked']}"
-                    + (f", unbooked {row['open']}" if include_open else "")
-                ),
+                "summary": "; ".join(summary_parts),
             }
         )
     return {
@@ -257,7 +346,7 @@ def instructor_dashboard(user, now):
     open_values = [buckets[key]["open_minutes"] for key in months]
     upcoming = _upcoming(now, instructor_id=user.id)
     upcoming_booked = sum(1 for session in upcoming if session.status == SESSION_BOOKED)
-    month_rows = _month_rows(months, buckets, include_open=True)
+    month_rows = _month_rows(months, buckets, include_open=True, now=now)
     return {
         "title": "Your teaching stats",
         "window_label": f"Last {MONTH_WINDOW} months",
@@ -292,7 +381,7 @@ def client_dashboard(user, now):
     booked_values = [buckets[key]["booked_minutes"] for key in months]
     upcoming = _upcoming(now, client_id=user.id)
     total_booked = sum(booked_values)
-    month_rows = _month_rows(months, buckets, include_open=False)
+    month_rows = _month_rows(months, buckets, include_open=False, now=now)
     return {
         "title": "Your training stats",
         "window_label": f"Last {MONTH_WINDOW} months",
@@ -319,7 +408,7 @@ def admin_dashboard(now):
     booked_values = [buckets[key]["booked_minutes"] for key in months]
     open_values = [buckets[key]["open_minutes"] for key in months]
     upcoming = _upcoming(now, admin=True)
-    month_rows = _month_rows(months, buckets, include_open=True)
+    month_rows = _month_rows(months, buckets, include_open=True, now=now)
     return {
         "title": "Gym stats",
         "window_label": f"Last {MONTH_WINDOW} months",

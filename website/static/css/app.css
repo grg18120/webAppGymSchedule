@@ -200,12 +200,20 @@ main#main-content {
   vertical-align: -0.1rem;
 }
 
-.stat-chart__swatch--booked {
+.stat-chart__swatch--booked-past {
   background: #1565c0;
 }
 
-.stat-chart__swatch--unbooked {
+.stat-chart__swatch--booked {
+  background: #90caf9;
+}
+
+.stat-chart__swatch--unbooked-past {
   background: #2e7d32;
+}
+
+.stat-chart__swatch--unbooked {
+  background: #a5d6a7;
 }
 
 .stat-chart__hint {
