@@ -194,12 +194,21 @@
 .timeline__lane--today {
   position: relative;
   z-index: 1;
-  border-color: #ffffff;
+  box-sizing: border-box;
+  border: 3px solid #ffffff;
   animation: today-pulse 1.6s ease-in-out infinite;
 }
 
 .timeline__day-head--today {
   color: #ffffff;
+  border-radius: 8px 8px 0 0;
+  border-bottom-width: 0;
+}
+
+.timeline__lane--today {
+  background-color: transparent;
+  border-radius: 0 0 8px 8px;
+  border-top-width: 0;
 }
 
 .timeline__today-badge {
@@ -266,10 +275,6 @@
     transparent var(--hour-height)
   );
   min-height: calc(var(--hour-count) * var(--hour-height));
-}
-
-.timeline__lane--today {
-  background-color: transparent;
 }
 
 @keyframes today-pulse {

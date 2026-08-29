@@ -1444,7 +1444,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline__block--booked.timeline__block--past", css)
         self.assertIn(b"rgba(21, 101, 192, 0.22)", css)
         self.assertIn(b".timeline__today-badge", css)
-        self.assertIn(b"@keyframes today-pulse", css)
+        self.assertIn(b"3px solid #ffffff", css)
         self.assertIn(b"0 0 0 2px #fff, 0 0 0 5px #102a3a", css)
         self.assertIn(b"0 0 0 3px #fff, 0 0 0 8px #a5d6a7", css)
         self.assertIn(b"rgba(16, 42, 58, 0.75)", css)
