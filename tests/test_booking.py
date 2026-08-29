@@ -181,6 +181,121 @@ class BookingRolesTest(unittest.TestCase):
         after = GymSession.query.filter_by(instructor_id=instructor.id).count()
         self.assertGreaterEqual(after, before)
 
+    def test_seed_skips_overlapping_instructor_range(self):
+        from datetime import datetime, timedelta
+
+        from website.models_utils.init_models import _add_session_if_missing
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        existing_start = datetime(2099, 9, 25, 10, 15)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=existing_start,
+                datetime_end=existing_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.commit()
+        added = _add_session_if_missing(
+            db,
+            instructor,
+            datetime(2099, 9, 25, 10, 0),
+            datetime(2099, 9, 25, 11, 0),
+            None,
+        )
+        self.assertFalse(added)
+        day_slots = (
+            GymSession.query.filter_by(instructor_id=instructor.id)
+            .filter(GymSession.status != SESSION_CANCELLED)
+            .filter(GymSession.datetime_start >= datetime(2099, 9, 25))
+            .filter(GymSession.datetime_start < datetime(2099, 9, 26))
+            .all()
+        )
+        self.assertEqual(len(day_slots), 1)
+        self.assertEqual(day_slots[0].datetime_start, existing_start)
+
+    def test_reconcile_cancels_overlapping_available_keeps_booked(self):
+        from datetime import datetime, timedelta
+
+        from website.utils.booking import reconcile_overlapping_sessions
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        client = User.query.filter_by(email="client@gym.com").first()
+        first_start = datetime(2099, 9, 22, 15, 15)
+        overlap_start = datetime(2099, 9, 22, 16, 0)
+        adjacent_start = datetime(2099, 9, 22, 16, 15)
+        booked_start = datetime(2099, 9, 22, 18, 0)
+        later_open = datetime(2099, 9, 22, 18, 15)
+        db.session.add_all(
+            [
+                GymSession(
+                    instructor_id=instructor.id,
+                    datetime_start=first_start,
+                    datetime_end=first_start + timedelta(hours=1),
+                    status=SESSION_AVAILABLE,
+                ),
+                GymSession(
+                    instructor_id=instructor.id,
+                    datetime_start=overlap_start,
+                    datetime_end=overlap_start + timedelta(hours=1),
+                    status=SESSION_AVAILABLE,
+                ),
+                GymSession(
+                    instructor_id=instructor.id,
+                    datetime_start=adjacent_start,
+                    datetime_end=adjacent_start + timedelta(hours=1),
+                    status=SESSION_AVAILABLE,
+                ),
+                GymSession(
+                    instructor_id=instructor.id,
+                    datetime_start=booked_start,
+                    datetime_end=booked_start + timedelta(hours=1),
+                    status=SESSION_BOOKED,
+                    client_id=client.id,
+                ),
+                GymSession(
+                    instructor_id=instructor.id,
+                    datetime_start=later_open,
+                    datetime_end=later_open + timedelta(hours=1),
+                    status=SESSION_AVAILABLE,
+                ),
+            ]
+        )
+        db.session.commit()
+        cancelled = reconcile_overlapping_sessions()
+        self.assertGreaterEqual(cancelled, 2)
+
+        def active_at(start):
+            return GymSession.query.filter_by(
+                instructor_id=instructor.id,
+                datetime_start=start,
+            ).filter(GymSession.status != SESSION_CANCELLED).first()
+
+        self.assertIsNotNone(active_at(first_start))
+        self.assertIsNone(active_at(overlap_start))
+        self.assertIsNotNone(active_at(adjacent_start))
+        booked = active_at(booked_start)
+        self.assertIsNotNone(booked)
+        self.assertEqual(booked.status, SESSION_BOOKED)
+        self.assertIsNone(active_at(later_open))
+
+        remaining = (
+            GymSession.query.filter_by(instructor_id=instructor.id)
+            .filter(GymSession.status != SESSION_CANCELLED)
+            .filter(GymSession.datetime_start >= datetime(2099, 9, 22))
+            .filter(GymSession.datetime_start < datetime(2099, 9, 23))
+            .order_by(GymSession.datetime_start)
+            .all()
+        )
+        for index, slot in enumerate(remaining):
+            for other in remaining[index + 1 :]:
+                overlaps = (
+                    slot.datetime_start < other.datetime_end
+                    and slot.datetime_end > other.datetime_start
+                )
+                self.assertFalse(overlaps)
+
     def test_nav_label_depends_on_role(self):
         self.login("client@gym.com", "client123")
         client_cal = self.client.get("/book")

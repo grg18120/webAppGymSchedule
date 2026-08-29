@@ -120,6 +120,9 @@ def create_database(app):
         _ensure_active_slot_index()
         if _should_seed(app):
             init_database(db)
+        from website.utils.booking import reconcile_overlapping_sessions
+
+        reconcile_overlapping_sessions()
 
 
 def _collapse_duplicate_active_slots():
