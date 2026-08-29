@@ -102,13 +102,14 @@ def _ensure_single_instructor(db):
             return
     keep_id = keep.id
     extra_ids = [extra.id for extra in extras]
+    from website.utils.booking import overlapping_sessions
+
     for extra_id in extra_ids:
         extra_sessions = GymSession.query.filter_by(instructor_id=extra_id).all()
         for session in extra_sessions:
-            clash = GymSession.query.filter_by(
-                instructor_id=keep_id,
-                datetime_start=session.datetime_start,
-            ).first()
+            clash = overlapping_sessions(
+                keep_id, session.datetime_start, session.datetime_end
+            )
             if clash:
                 db.session.delete(session)
         db.session.flush()
@@ -183,12 +184,9 @@ def _ensure_extra_client_bookings(db):
 
 
 def _add_session_if_missing(db, instructor, start, end, client=None):
-    existing = GymSession.query.filter(
-        GymSession.instructor_id == instructor.id,
-        GymSession.datetime_start == start,
-        GymSession.status != SESSION_CANCELLED,
-    ).first()
-    if existing:
+    from website.utils.booking import overlapping_sessions
+
+    if overlapping_sessions(instructor.id, start, end):
         return False
     session = GymSession(
         instructor_id=instructor.id,

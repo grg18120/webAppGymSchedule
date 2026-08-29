@@ -34,6 +34,55 @@ def overlapping_sessions(instructor_id, start, end, exclude_id=None):
     return query.all()
 
 
+def reconcile_overlapping_sessions():
+    """Cancel later overlapping active slots for the same instructor.
+
+    Booked sessions win over available ones. Adjacent slots that only
+    touch at an endpoint (10:00-11:00 and 11:00-12:00) are kept.
+    """
+    instructor_ids = [
+        row[0]
+        for row in db.session.query(GymSession.instructor_id).distinct().all()
+        if row[0] is not None
+    ]
+    cancelled = 0
+    for instructor_id in instructor_ids:
+        sessions = (
+            GymSession.query.filter(
+                GymSession.instructor_id == instructor_id,
+                GymSession.status != SESSION_CANCELLED,
+            )
+            .order_by(GymSession.id)
+            .all()
+        )
+        kept = []
+        for session in sessions:
+            clashes = [
+                other
+                for other in kept
+                if other.datetime_start < session.datetime_end
+                and other.datetime_end > session.datetime_start
+            ]
+            if not clashes:
+                kept.append(session)
+                continue
+            booked_clashes = [other for other in clashes if other.status == SESSION_BOOKED]
+            if session.status == SESSION_BOOKED and not booked_clashes:
+                for other in clashes:
+                    other.status = SESSION_CANCELLED
+                    other.client_id = None
+                    kept.remove(other)
+                    cancelled += 1
+                kept.append(session)
+            else:
+                session.status = SESSION_CANCELLED
+                session.client_id = None
+                cancelled += 1
+    if cancelled:
+        db.session.commit()
+    return cancelled
+
+
 def create_availability(instructor, start, end, commit=True):
     if instructor.role not in (ROLE_INSTRUCTOR, ROLE_ADMIN):
         return None, "Only instructors can publish availability."
