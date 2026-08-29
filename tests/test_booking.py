@@ -1125,6 +1125,7 @@ class BookingRolesTest(unittest.TestCase):
         self.login("instructor@gym.com", "instructor123")
         page = self.client.get("/book/2020/4/8")
         self.assertEqual(page.status_code, 200)
+        self.assertIn(b"<dt>Client:</dt>", page.data)
         self.assertIn(b"No client has made a reservation", page.data)
         self.assertNotIn(b"No client yet", page.data)
 

@@ -231,7 +231,7 @@
           <dd>{{ session.instructor.display_name }}</dd>
         </div>
         <div class="session-person {% if session.client %}session-person--client{% else %}session-person--open{% endif %}">
-          <dt>Client</dt>
+          <dt>Client:</dt>
           <dd>
             {% if session.client %}
               {{ session.client.display_name }}
