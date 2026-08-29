@@ -1094,6 +1094,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Alex Instructor", html)
         self.assertIn(b"Casey Client", html)
         self.assertIn(b"No client yet", html)
+        self.assertNotIn(b"No client has made a reservation", html)
         self.assertIn(b"session-status--badge", html)
         self.assertNotIn(b"Instructor: Alex Instructor", html)
         self.assertNotIn(" · Client:".encode(), html)
@@ -1104,6 +1105,33 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"#d6f3f7", css)
         self.assertNotIn(b"#f1f8e9", css)
         self.assertIn(b"#607d8b", css)
+
+    def test_past_open_slot_says_no_client_made_a_reservation(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        past_start = datetime(2020, 4, 8, 10, 15)
+        self.cancel_active_start(instructor.id, past_start)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=past_start,
+                datetime_end=past_start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+            )
+        )
+        db.session.commit()
+
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/book/2020/4/8")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"No client has made a reservation", page.data)
+        self.assertNotIn(b"No client yet", page.data)
+
+        timeline = self.client.get("/timeline?start=2020-04-06")
+        self.assertEqual(timeline.status_code, 200)
+        self.assertIn(b"no client has made a reservation", timeline.data)
+        self.assertNotIn(b"no client yet", timeline.data)
 
     def test_publish_range_with_thirty_minute_slots(self):
         from datetime import datetime
