@@ -449,11 +449,12 @@ class BookingRolesTest(unittest.TestCase):
         page = self.client.get("/book")
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"Open slots", page.data)
-        self.assertIn(b"Open + booked", page.data)
+        self.assertIn(b"Open &amp; Booked", page.data)
         self.assertIn(b'data-short="Op&amp;B"', page.data)
         self.assertIn(b'data-short="Op"', page.data)
         self.assertIn(b'data-short="B"', page.data)
-        self.assertIn(b'data-full="Open + booked"', page.data)
+        self.assertIn(b'data-full="Open &amp; Booked"', page.data)
+        self.assertNotIn(b"Open + booked", page.data)
         self.assertNotIn(b"day-status--short", page.data)
         self.assertNotIn(b"day-status--full", page.data)
         self.assertEqual(
@@ -561,7 +562,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn("has-booked", casey_day)
         self.assertNotIn("has-open", casey_day)
         self.assertIn("has-open has-booked", mixed_day)
-        self.assertIn("Open + booked", mixed_day)
+        self.assertIn("Open & Booked", mixed_day)
         self.assertIn("has-open", open_day)
         self.assertNotIn("has-booked", open_day)
 
@@ -668,7 +669,7 @@ class BookingRolesTest(unittest.TestCase):
         future_page = self.client.get("/book?month=10&year=2099")
         self.assertEqual(future_page.status_code, 200)
         future_html = future_page.get_data(as_text=True)
-        self.assertIn("Open + booked", future_html)
+        self.assertIn("Open & Booked", future_html)
         self.assertIn("legend-swatch mixed", future_html)
         self.assertIn("/book/2099/10/15", future_html)
         self.assertIn("has-open has-booked", future_html)
@@ -686,6 +687,8 @@ class BookingRolesTest(unittest.TestCase):
         past_block_start = current_html.find(past_cell)
         past_block = current_html[past_block_start : past_block_start + 800]
         self.assertIn("Booked", past_block)
+        self.assertNotIn("Open & Booked", past_block)
+        self.assertNotIn("Open &amp; Booked", past_block)
         self.assertNotIn("Open + booked", past_block)
 
     def test_instructor_publish_uses_24h_dropdowns_not_ampm(self):
