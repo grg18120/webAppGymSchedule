@@ -156,38 +156,106 @@ main#main-content {
   color: #455a64;
 }
 
-.stat-table-wrap {
+.stat-chart {
   margin-top: 1rem;
-  overflow-x: auto;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-}
-
-.stat-table {
-  width: 100%;
-  border-collapse: collapse;
+  padding: 0.9rem 0.85rem 0.7rem;
   color: #102a3a;
 }
 
-.stat-table th,
-.stat-table td {
-  padding: 0.7rem 0.9rem;
-  text-align: left;
-  font-size: 0.92rem;
+.stat-chart__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.35rem;
 }
 
-.stat-table thead th {
-  background: #e3f2fd;
+.stat-chart__title {
+  margin: 0;
+  font-size: 1rem;
   font-weight: 800;
 }
 
-.stat-table tbody th {
+.stat-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
-.stat-table tbody tr:nth-child(even) {
-  background: #f5f7f8;
+.stat-chart__swatch {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 3px;
+  margin-right: 0.3rem;
+  vertical-align: -0.1rem;
+}
+
+.stat-chart__swatch--booked {
+  background: #1565c0;
+}
+
+.stat-chart__swatch--unbooked {
+  background: #2e7d32;
+}
+
+.stat-chart__hint {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  color: #546e7a;
+}
+
+.stat-chart__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.stat-chart__grid {
+  stroke: #eceff1;
+  stroke-width: 1;
+}
+
+.stat-chart__axis-line {
+  stroke: #90a4ae;
+  stroke-width: 1.25;
+}
+
+.stat-chart__axis {
+  fill: #607d8b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.stat-chart__bar-label {
+  fill: #102a3a;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.stat-chart__month {
+  fill: #37474f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 576px) {
+  .stat-chart {
+    padding: 0.75rem 0.45rem 0.5rem;
+  }
+
+  .stat-chart__bar-label {
+    font-size: 9px;
+  }
 }
 
 .clock-fieldset {
