@@ -6,7 +6,7 @@
 {% block content %}
 <div class="container py-4 users-page">
   <h1 class="h3">Users</h1>
-  <p class="users-lead">Gym accounts by role. Create an instructor or admin here; clients can also register themselves.</p>
+  <p class="users-lead">Gym accounts by role. Create a client, instructor, or admin here.</p>
 
   <div class="stat-grid" aria-label="User counts">
     <article class="stat-card">
@@ -50,9 +50,9 @@
         <div class="col-md-4">
           <label for="role" class="form-label">Role</label>
           <select class="form-select tap-target" id="role" name="role">
+            <option value="client" selected>Client</option>
             <option value="instructor">Instructor</option>
             <option value="admin">Admin</option>
-            <option value="client">Client</option>
           </select>
         </div>
         <div class="col-md-4">

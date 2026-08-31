@@ -5,14 +5,6 @@
   <h1 class="display-5 text-white">Book a gym session</h1>
   <p class="lead text-white">1-on-1 training with an instructor. Choose a time that is already open, then confirm.</p>
 
-  {% if not user.is_authenticated %}
-  <div class="d-flex flex-wrap gap-2 mt-3">
-    <a class="btn btn-primary tap-target" href="{{ url_for('auth.sign_up') }}">Create a client account</a>
-    <a class="btn btn-outline-light tap-target" href="{{ url_for('auth.login') }}">Log in</a>
-  </div>
-  {% include '_demo_accounts.html' %}
-  {% endif %}
-
   {% if user.is_authenticated %}
   <div class="welcome-card mt-4">
     <h2 class="h4 mb-2">Hello, {{ user.display_name }}</h2>
