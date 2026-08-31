@@ -61,7 +61,7 @@
           </ul>
           <ul class="navbar-nav ms-lg-auto">
             {% if user and user.is_authenticated %}
-            <li class="nav-item">
+            <li class="nav-item d-flex align-items-center">
               <span class="navbar-text me-lg-3">{{ user.display_name }} ({{ user.role_label }})</span>
             </li>
             <li class="nav-item">

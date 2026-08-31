@@ -75,8 +75,17 @@
   flex-grow: 1;
 }
 
+.app-navbar .navbar-nav {
+  align-items: center;
+}
+
 .app-navbar .navbar-text {
   white-space: nowrap;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  line-height: 1.25;
 }
 
 main#main-content {
