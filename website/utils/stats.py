@@ -345,7 +345,6 @@ def instructor_dashboard(user, now):
     booked_values = [buckets[key]["booked_minutes"] for key in months]
     open_values = [buckets[key]["open_minutes"] for key in months]
     upcoming = _upcoming(now, instructor_id=user.id)
-    upcoming_booked = sum(1 for session in upcoming if session.status == SESSION_BOOKED)
     month_rows = _month_rows(months, buckets, include_open=True, now=now)
     return {
         "title": "Your teaching stats",
@@ -353,18 +352,8 @@ def instructor_dashboard(user, now):
         "include_open": True,
         "cards": [
             {"label": "Booked this month", "value": _format_duration(current["booked_minutes"])},
-            {"label": "Unbooked this month", "value": _format_duration(current["open_minutes"])},
             {"label": "Average booked / month", "value": _format_duration(_average(booked_values))},
             {"label": "Average unbooked / month", "value": _format_duration(_average(open_values))},
-            {
-                "label": "Fill rate this month",
-                "value": _format_percent(
-                    current["booked_minutes"],
-                    current["booked_minutes"] + current["open_minutes"],
-                ),
-            },
-            {"label": "Clients this month", "value": str(len(current["clients"]))},
-            {"label": "Upcoming booked sessions", "value": str(upcoming_booked)},
             {"label": "Next session", "value": _next_label(upcoming)},
         ],
         "months": month_rows,
@@ -380,7 +369,6 @@ def client_dashboard(user, now):
     current = buckets[(now.year, now.month)]
     booked_values = [buckets[key]["booked_minutes"] for key in months]
     upcoming = _upcoming(now, client_id=user.id)
-    total_booked = sum(booked_values)
     month_rows = _month_rows(months, buckets, include_open=False, now=now)
     return {
         "title": "Your training stats",
@@ -390,8 +378,6 @@ def client_dashboard(user, now):
             {"label": "Booked this month", "value": _format_duration(current["booked_minutes"])},
             {"label": "Average booked / month", "value": _format_duration(_average(booked_values))},
             {"label": "Sessions this month", "value": str(current["booked_count"])},
-            {"label": "Hours in the last 6 months", "value": _format_duration(total_booked)},
-            {"label": "Upcoming sessions", "value": str(len(upcoming))},
             {"label": "Next session", "value": _next_label(upcoming)},
         ],
         "months": month_rows,
