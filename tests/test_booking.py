@@ -359,16 +359,37 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn('id="filterRole"', users_html)
         self.assertIn("user-card", users_html)
         self.assertIn("Create account", users_html)
+        self.assertIn('value="client" selected', users_html)
         self.assertNotIn("users-table", users_html)
         self.assertIn("Admins", users_html)
         self.assertIn("Instructors", users_html)
         self.assertIn("Clients", users_html)
+        created = self.client.post(
+            "/users",
+            data={
+                "email": "pat@gym.com",
+                "name_first": "Pat",
+                "name_last": "Lee",
+                "password": "client123",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(created.status_code, 200)
+        pat = User.query.filter_by(email="pat@gym.com").first()
+        self.assertIsNotNone(pat)
+        self.assertEqual(pat.role, ROLE_CLIENT)
         status, users_css = self.static_bytes("/static/css/users.css")
         self.assertEqual(status, 200)
         self.assertIn(b".user-card", users_css)
         login_page = self.client.get("/logout", follow_redirects=True)
         self.assertIn(b"instructor@gym.com", login_page.data)
         self.assertNotIn(b"sam@gym.com", login_page.data)
+        guest_home = self.client.get("/")
+        self.assertEqual(guest_home.status_code, 302)
+        self.assertIn("/login", guest_home.headers.get("Location", ""))
+        self.assertEqual(self.client.get("/sign-up").status_code, 404)
+        self.assertNotIn(b"Sign up", login_page.data)
+        self.assertNotIn(b"Create an account", login_page.data)
 
     def test_extra_instructor_is_collapsed_onto_alex(self):
         from datetime import datetime, timedelta

@@ -78,10 +78,9 @@ def _safe_timeline_next(fallback):
 
 
 @app.route("/")
+@login_required
 def home():
-    dashboard = None
-    if current_user.is_authenticated:
-        dashboard = home_stats.home_dashboard(current_user, now_gym())
+    dashboard = home_stats.home_dashboard(current_user, now_gym())
     return render_template("home.html", user=current_user, dashboard=dashboard)
 
 
@@ -632,7 +631,7 @@ def _create_user_from_form():
     name_first = (request.form.get("name_first") or "").strip()
     name_last = (request.form.get("name_last") or "").strip()
     password = request.form.get("password") or ""
-    role = request.form.get("role") or ROLE_INSTRUCTOR
+    role = request.form.get("role") or ROLE_CLIENT
 
     if role not in (ROLE_ADMIN, ROLE_INSTRUCTOR, ROLE_CLIENT):
         flash("Choose a valid role.", "error")
