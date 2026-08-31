@@ -346,6 +346,8 @@ class BookingRolesTest(unittest.TestCase):
         home = self.client.get("/")
         self.assertEqual(home.status_code, 200)
         self.assertIn(b"Client", home.data)
+        self.assertIn(b'nav-item d-flex align-items-center', home.data)
+        self.assertIn(b'navbar-text me-lg-3', home.data)
         self.assertEqual(self.client.get("/users").status_code, 403)
 
         self.client.get("/logout")
@@ -1892,6 +1894,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".stat-chart__swatch--booked {\n  background: #90caf9;", css)
         self.assertIn(b".stat-chart__swatch--unbooked-past {\n  background: #2e7d32;", css)
         self.assertIn(b".stat-chart__swatch--unbooked {\n  background: #a5d6a7;", css)
+        self.assertIn(b".app-navbar .navbar-text {\n  white-space: nowrap;\n  min-height: 44px;\n  display: inline-flex;\n  align-items: center;", css)
         self.assertNotIn(b".stat-table {", css)
 
     def test_seed_demo_false_skips_demo_accounts(self):
