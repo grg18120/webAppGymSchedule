@@ -53,9 +53,7 @@ def create_app(test_config=None):
 
     from .auth import auth
     from .app import app
-    from .views import views
 
-    app_flask.register_blueprint(views, url_prefix="/")
     app_flask.register_blueprint(auth, url_prefix="/")
     app_flask.register_blueprint(app, url_prefix="/")
 
