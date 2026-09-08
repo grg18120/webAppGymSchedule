@@ -694,7 +694,8 @@
   white-space: nowrap;
 }
 
-.timeline__block-positions {
+.timeline__block-positions,
+.timeline__block-state {
   display: block;
   max-width: 100%;
   font-size: 0.52rem;

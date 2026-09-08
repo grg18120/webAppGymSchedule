@@ -298,19 +298,25 @@
     var nextInput = timelineNext();
     if (meta) meta.textContent = slot.date_label + " · " + slot.time_label;
     if (statusEl) {
-      statusEl.textContent =
-        slot.status_label + " · Positions: " + slot.booked_count + "/" + slot.position_count;
+      if (slot.viewer_is_client) {
+        statusEl.textContent = slot.display_status_label || slot.status_label || "";
+      } else {
+        statusEl.textContent =
+          slot.status_label + " · Positions: " + slot.booked_count + "/" + slot.position_count;
+      }
     }
     if (instructorEl) instructorEl.textContent = "Instructor: " + slot.instructor;
     setHidden(staffEl, !slot.can_manage);
     setHidden(clientEl, slot.can_manage);
     setHidden(saveBtn, !slot.can_manage);
     if (clientCopy) {
-      clientCopy.textContent = slot.can_book
-        ? "This session has a free position."
-        : slot.can_cancel_own
-          ? "You have a place on this session."
-          : "This session is full or already on your list.";
+      if (slot.booked_by_me) {
+        clientCopy.textContent = "You booked this session.";
+      } else if (slot.can_book) {
+        clientCopy.textContent = "You have not booked this session.";
+      } else {
+        clientCopy.textContent = "This session is not available to book.";
+      }
     }
     setFormAction(editForm, slot.edit_url);
     setFormAction(bookForm, slot.book_url);
@@ -391,12 +397,13 @@
       "timeline__block--cancelled",
       "timeline__block--partial"
     );
-    if (slot.status) {
-      currentTrigger.classList.add("timeline__block--" + slot.status);
+    var kind = slot.display_status || slot.status;
+    if (kind) {
+      currentTrigger.classList.add("timeline__block--" + kind);
     }
     var booked = slot.booked_count || 0;
     var total = slot.position_count || 1;
-    if (booked > 0 && booked < total) {
+    if (!slot.viewer_is_client && booked > 0 && booked < total) {
       currentTrigger.classList.add("timeline__block--partial");
       var pct =
         typeof slot.booked_percent === "number"
@@ -421,10 +428,14 @@
       positions.textContent = slot.positions_label ||
         "Positions: " + slot.booked_count + "/" + slot.position_count;
     }
+    var state = currentTrigger.querySelector("[data-slot-state]");
+    if (state) {
+      state.textContent = slot.booked_by_me ? "Your booking" : "Open";
+    }
     var time = String(slot.time_label || "").replace(" – ", " to ");
     currentTrigger.setAttribute(
       "aria-label",
-      slot.status_label + " " + time + ". Click to edit."
+      (slot.display_status_label || slot.status_label) + " " + time + ". Click to open."
     );
   }
 

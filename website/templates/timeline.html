@@ -20,7 +20,7 @@
     <span class="timeline__block-people">
       <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
     </span>
-    <span class="timeline__block-positions">{{ session.positions_label }}</span>
+    <span class="timeline__block-state" data-slot-state>{% if session.is_booked_by(user) %}Your booking{% else %}Open{% endif %}</span>
     {% endif %}
   </span>
   {% if user.is_admin or user.is_instructor %}
@@ -31,14 +31,24 @@
   </span>
   {% endif %}
   <span class="visually-hidden">
+    {% if user.is_client %}
+    {% if session.is_booked_by(user) %}Your booking{% else %}Open slot{% endif %}
+    {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
+    instructor {{ session.instructor.display_name }}
+    {% else %}
     {{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
     {{ booked }}/{{ total }},
     instructor {{ session.instructor.display_name }}{% if occupants %}, client {{ occupants | map(attribute='display_name') | join(', ') }}{% elif session.is_past %}, no client has made a reservation{% else %}, no client yet{% endif %}
+    {% endif %}
   </span>
 {% endmacro %}
 <div class="container py-4">
   <h1 class="h3 text-white">Session timeline</h1>
+  {% if user.is_client %}
+  <p class="text-white-50">Dates across, times down. Click a slot to book or cancel. Green slots are open. Blue slots are sessions you already booked.</p>
+  {% else %}
   <p class="text-white-50">Dates across, times down. Click a slot to edit it. Open slots are green; booked sessions are blue; part-booked slots mix those colors by how many seats are taken. Past slots keep those colors, faded.</p>
+  {% endif %}
 
   <nav class="timeline-nav" aria-label="Change week">
     <a class="timeline-nav__btn tap-target" href="{{ prev_url }}" aria-label="Previous week">
@@ -219,10 +229,15 @@
 
   <ul class="timeline-legend" aria-label="Timeline legend">
     <li><span class="timeline-swatch timeline-swatch--available" aria-hidden="true"></span> Open slot</li>
+    {% if not user.is_client %}
     <li><span class="timeline-swatch timeline-swatch--partial" aria-hidden="true"></span> Open & Booked</li>
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Booked</li>
     <li><span class="timeline-swatch timeline-swatch--past-available" aria-hidden="true"></span> Past open</li>
     <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booked</li>
+    {% else %}
+    <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Your booking</li>
+    <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booking</li>
+    {% endif %}
   </ul>
 
   <div class="timeline" role="region" aria-label="Week timeline">
@@ -265,20 +280,21 @@
           {% endif %}
           {% for block in day.blocks %}
           {% set session = block.session %}
+          {% set block_kind = block.editor.display_status %}
           {% set block_style = 'top: ' ~ block.top ~ '%; height: ' ~ block.height ~ '%; left: calc(' ~ block.col ~ ' / ' ~ block.cols ~ ' * 100% + 3px); width: calc(100% / ' ~ block.cols ~ ' - 6px);' %}
-          {% if session.is_partial %}
+          {% if not user.is_client and session.is_partial %}
             {% set block_style = block_style ~ ' --booked-pct: ' ~ block.editor.booked_percent ~ '%;' %}
           {% endif %}
           <button
             type="button"
-            class="timeline__block timeline__block--{{ session.status }}{% if session.is_partial %} timeline__block--partial{% endif %}{% if session.is_past %} timeline__block--past{% endif %}"
+            class="timeline__block timeline__block--{{ block_kind }}{% if not user.is_client and session.is_partial %} timeline__block--partial{% endif %}{% if session.is_past %} timeline__block--past{% endif %}"
             style="{{ block_style }}"
             data-bs-toggle="modal"
             data-bs-target="#slotEditModal"
             data-slot='{{ block.editor|tojson }}'
             aria-haspopup="dialog"
             {% if user.is_admin or user.is_instructor %}aria-describedby="slot-tip-{{ session.id }}"{% endif %}
-            aria-label="{{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }} to {{ session.datetime_end.strftime('%H:%M') }}. Click to edit."
+            aria-label="{{ block.editor.display_status_label }} {{ session.datetime_start.strftime('%H:%M') }} to {{ session.datetime_end.strftime('%H:%M') }}. Click to {% if user.is_client %}open{% else %}edit{% endif %}."
           >
             {{ timeline_block_caption(session) }}
           </button>

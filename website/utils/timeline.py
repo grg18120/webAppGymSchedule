@@ -53,10 +53,22 @@ def editor_payload(session, actor):
     if end.date() > start.date() and end.hour == 0 and end.minute == 0:
         end_hour, end_minute = 24, 0
     can_manage = actor.is_admin or (actor.is_instructor and session.instructor_id == actor.id)
+    booked_by_me = bool(actor.is_client and session.is_booked_by(actor))
+    if actor.is_client:
+        display_status = "booked" if booked_by_me else "available"
+        if booked_by_me:
+            display_status_label = "Past booking" if session.is_past else "Your booking"
+        else:
+            display_status_label = "Past open" if session.is_past else "Open slot"
+        show_partial = False
+    else:
+        display_status = session.status
+        display_status_label = session.status_label
+        show_partial = session.is_partial
     data = {
         "id": session.id,
         "status": session.status,
-        "status_label": session.status_label,
+        "status_label": display_status_label if actor.is_client else session.status_label,
         "is_past": session.is_past,
         "position_count": int(session.position_count or 1),
         "booked_count": session.booked_count,
@@ -67,9 +79,14 @@ def editor_payload(session, actor):
         "date": start.strftime("%Y-%m-%d"),
         "date_label": start.strftime("%A %d %B %Y"),
         "time_label": f"{start.strftime('%H:%M')} – {end.strftime('%H:%M')}",
-        "positions_label": session.positions_label,
-        "positions_short": f"{session.booked_count}/{int(session.position_count or 1)}",
-        "is_partial": session.is_partial,
+        "positions_label": "" if actor.is_client else session.positions_label,
+        "positions_short": "" if actor.is_client else f"{session.booked_count}/{int(session.position_count or 1)}",
+        "is_partial": show_partial,
+        "show_partial": show_partial,
+        "viewer_is_client": bool(actor.is_client),
+        "booked_by_me": booked_by_me,
+        "display_status": display_status,
+        "display_status_label": display_status_label,
         "booked_percent": round(
             100.0 * session.booked_count / max(1, int(session.position_count or 1)),
             4,
