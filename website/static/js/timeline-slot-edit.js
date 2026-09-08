@@ -106,6 +106,7 @@
         button.type = "submit";
         button.className = "btn btn-outline-danger tap-target";
         button.textContent = "Remove";
+        button.setAttribute("aria-label", "Remove " + client.name);
         form.appendChild(next);
         form.appendChild(clientId);
         form.appendChild(button);

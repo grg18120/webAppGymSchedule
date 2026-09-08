@@ -475,8 +475,25 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  min-height: 52px;
   padding: 0.4rem 0;
   border-bottom: 1px solid #e0e4e8;
+}
+
+.slot-edit-clients__remove {
+  display: none;
+  margin: 0;
+}
+
+.slot-edit-clients__item:hover .slot-edit-clients__remove,
+.slot-edit-clients__item:focus-within .slot-edit-clients__remove {
+  display: block;
+}
+
+@media (hover: none) {
+  .slot-edit-clients__remove {
+    display: block;
+  }
 }
 
 .slot-edit-clients__empty {
