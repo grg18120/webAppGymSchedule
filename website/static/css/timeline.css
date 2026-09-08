@@ -306,6 +306,11 @@
   text-decoration: none;
   overflow: hidden;
   box-sizing: border-box;
+  appearance: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }
 
 .timeline__block:hover,
@@ -443,3 +448,39 @@
     min-width: 9rem;
   }
 }
+
+.slot-edit-modal .modal-content {
+  background: #ffffff;
+  color: #102a3a;
+}
+
+.slot-edit-modal__meta,
+.slot-edit-modal__status {
+  color: #455a64;
+  font-size: 0.95rem;
+}
+
+.slot-edit-clients {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.slot-edit-clients__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #e0e4e8;
+}
+
+.slot-edit-clients__empty {
+  color: #78909c;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.slot-edit-add .form-select {
+  min-width: 12rem;
+}
+

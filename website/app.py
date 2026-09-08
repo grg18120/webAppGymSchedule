@@ -457,6 +457,52 @@ def delete_booked_session(session_id):
     return redirect(_safe_timeline_next(fallback))
 
 
+@app.route("/sessions/<int:session_id>/edit", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def edit_session(session_id):
+    session = _session_or_404(session_id)
+    fallback = url_for("app.timeline")
+    day_date = session.datetime_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    try:
+        start = _parse_clock(day_date, "start_hour", "start_minute")
+        end = _parse_clock(day_date, "end_hour", "end_minute")
+    except (TypeError, ValueError):
+        flash("Choose a start and end time using 24-hour hours and minutes.", "error")
+        return redirect(_safe_timeline_next(fallback))
+    ok, message = booking.update_session_slot(
+        session,
+        current_user,
+        start,
+        end,
+        request.form.get("position_count"),
+    )
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(fallback))
+
+
+@app.route("/sessions/<int:session_id>/assign", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def assign_session_client(session_id):
+    session = _session_or_404(session_id)
+    client = db.session.get(User, request.form.get("client_id", type=int))
+    ok, message = booking.assign_client(session, current_user, client)
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(url_for("app.timeline")))
+
+
+@app.route("/sessions/<int:session_id>/unassign", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def unassign_session_client(session_id):
+    session = _session_or_404(session_id)
+    client = db.session.get(User, request.form.get("client_id", type=int))
+    ok, message = booking.unassign_client(session, current_user, client)
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(url_for("app.timeline")))
+
+
 MY_SESSIONS_PER_PAGE = 10
 
 
@@ -521,6 +567,7 @@ def timeline():
         slot_length_minutes=booking.SLOT_LENGTH_MINUTES,
         break_minutes=booking.BREAK_MINUTES,
         instructors=booking.instructors() if current_user.is_admin else [],
+        clients=booking.clients() if (current_user.is_admin or current_user.is_instructor) else [],
         can_publish_week=current_user.is_instructor or current_user.is_admin,
         has_publishable_days=any(day["date"] >= today for day in days),
     )

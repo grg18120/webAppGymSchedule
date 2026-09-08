@@ -313,41 +313,6 @@ def delete_booked_session(session, actor):
     return True, "Booked session deleted."
 
 
-def book_session(session, client):
-    if client.role != ROLE_CLIENT:
-        return False, "Only clients can book a training session."
-    if not session:
-        return False, "Session not found."
-    if session.datetime_start <= now_gym():
-        return False, "Past sessions cannot be booked."
-    if session.status == SESSION_CANCELLED:
-        return False, "That session is no longer available."
-    if session.is_booked_by(client):
-        return False, "You already have a place on this session."
-    if session.free_count <= 0:
-        return False, "That session is no longer available."
-
-    try:
-        with db.session.begin_nested():
-            db.session.add(GymSessionBooking(session_id=session.id, client_id=client.id))
-            db.session.flush()
-            taken = (
-                db.session.query(GymSessionBooking)
-                .filter_by(session_id=session.id)
-                .count()
-            )
-            if taken > int(session.position_count or 1):
-                raise IntegrityError("session is full", None, None)
-    except IntegrityError:
-        return False, "That session is no longer available."
-
-    db.session.expire(session, ["bookings"])
-    session.sync_status()
-    db.session.commit()
-    db.session.expire(session)
-    return True, "Session booked. See it under My sessions."
-
-
 def cancel_session(session, actor):
     if not session:
         return False, "Session not found."
@@ -426,3 +391,129 @@ def instructors():
         .order_by(User.name_last, User.name_first)
         .all()
     )
+
+
+def clients():
+    return (
+        User.query.filter_by(role=ROLE_CLIENT, status=1)
+        .order_by(User.name_last, User.name_first)
+        .all()
+    )
+
+
+def actor_can_manage_session(actor, session):
+    if not actor or not session:
+        return False
+    if actor.is_admin:
+        return True
+    return actor.is_instructor and session.instructor_id == actor.id
+
+
+def _place_booking(session, client):
+    if not client or client.role != ROLE_CLIENT or client.status != 1:
+        return False, "Choose a client."
+    if not session:
+        return False, "Session not found."
+    if session.datetime_start <= now_gym():
+        return False, "Past sessions cannot be booked."
+    if session.status == SESSION_CANCELLED:
+        return False, "That session is no longer available."
+    if session.is_booked_by(client):
+        return False, "That client already has a place on this session."
+    if session.free_count <= 0:
+        return False, "That session has no free positions."
+
+    try:
+        with db.session.begin_nested():
+            db.session.add(GymSessionBooking(session_id=session.id, client_id=client.id))
+            db.session.flush()
+            taken = (
+                db.session.query(GymSessionBooking)
+                .filter_by(session_id=session.id)
+                .count()
+            )
+            if taken > int(session.position_count or 1):
+                raise IntegrityError("session is full", None, None)
+    except IntegrityError:
+        return False, "That session is no longer available."
+
+    db.session.expire(session, ["bookings"])
+    session.sync_status()
+    db.session.commit()
+    db.session.expire(session)
+    return True, "Client booked on this session."
+
+
+def book_session(session, client):
+    if client.role != ROLE_CLIENT:
+        return False, "Only clients can book a training session."
+    ok, message = _place_booking(session, client)
+    if ok:
+        return True, "Session booked. See it under My sessions."
+    if message == "That client already has a place on this session.":
+        return False, "You already have a place on this session."
+    if message == "That session has no free positions.":
+        return False, "That session is no longer available."
+    return False, message
+
+
+def assign_client(session, actor, client):
+    if not actor_can_manage_session(actor, session):
+        return False, "You can only edit your own slots."
+    return _place_booking(session, client)
+
+
+def unassign_client(session, actor, client):
+    if not session:
+        return False, "Session not found."
+    if not actor_can_manage_session(actor, session):
+        return False, "You can only edit your own slots."
+    if session.is_past:
+        return False, "Past sessions cannot be changed."
+    if not client or not session.is_booked_by(client):
+        return False, "That client is not booked on this session."
+
+    for row in list(session.bookings):
+        if row.client_id == client.id:
+            db.session.delete(row)
+    if session.client_id == client.id:
+        session.client_id = None
+    db.session.flush()
+    db.session.expire(session, ["bookings"])
+    session.sync_status()
+    db.session.commit()
+    return True, "Client removed from this session."
+
+
+def update_session_slot(session, actor, start, end, position_count):
+    if not session:
+        return False, "Session not found."
+    if not actor_can_manage_session(actor, session):
+        return False, "You can only edit your own slots."
+    if session.status == SESSION_CANCELLED:
+        return False, "That session is cancelled."
+    if end <= start:
+        return False, "End time must be after start time."
+    time_changed = start != session.datetime_start or end != session.datetime_end
+    if time_changed:
+        if start <= now_gym():
+            return False, "Cannot move a session into the past."
+        if overlapping_sessions(session.instructor_id, start, end, exclude_id=session.id):
+            return False, "This time overlaps an existing session for that instructor."
+    count, error = parse_position_count(position_count)
+    if error:
+        return False, error
+    if count < session.booked_count:
+        return False, "Positions cannot be fewer than clients already booked."
+    session.datetime_start = start
+    session.datetime_end = end
+    session.position_count = count
+    try:
+        with db.session.begin_nested():
+            db.session.flush()
+    except IntegrityError:
+        return False, "This time overlaps an existing session for that instructor."
+    session.sync_status()
+    db.session.commit()
+    return True, "Session updated."
+

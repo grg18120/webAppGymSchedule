@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from website.models import SESSION_CANCELLED, GymSession
+from website.models import SESSION_AVAILABLE, SESSION_BOOKED, SESSION_CANCELLED, GymSession
 
 START_HOUR = 6
 END_HOUR = 23
@@ -30,6 +30,67 @@ def visible_sessions(actor, range_start, range_end, instructor_id=None):
     if actor.is_client:
         return [session for session in sessions if session.is_available or session.is_booked_by(actor)]
     return sessions
+
+
+def editor_payload(session, actor):
+    start = session.datetime_start
+    end = session.datetime_end
+    end_hour, end_minute = end.hour, end.minute
+    if end.date() > start.date() and end.hour == 0 and end.minute == 0:
+        end_hour, end_minute = 24, 0
+    can_manage = actor.is_admin or (actor.is_instructor and session.instructor_id == actor.id)
+    data = {
+        "id": session.id,
+        "status": session.status,
+        "status_label": session.status_label,
+        "is_past": session.is_past,
+        "position_count": int(session.position_count or 1),
+        "booked_count": session.booked_count,
+        "start_hour": start.hour,
+        "start_minute": start.minute,
+        "end_hour": end_hour,
+        "end_minute": end_minute,
+        "date_label": start.strftime("%A %d %B %Y"),
+        "time_label": f"{start.strftime('%H:%M')} – {end.strftime('%H:%M')}",
+        "instructor": session.instructor.display_name if session.instructor else "",
+        "clients": [
+            {"id": client.id, "name": client.display_name}
+            for client in session.booked_clients
+        ],
+        "can_manage": can_manage,
+        "can_book": bool(
+            actor.is_client and session.is_available and not session.is_booked_by(actor)
+        ),
+        "can_cancel_own": bool(
+            actor.is_client and session.is_booked_by(actor) and not session.is_past
+        ),
+        "can_delete": bool(
+            can_manage
+            and session.status == SESSION_AVAILABLE
+            and session.booked_count == 0
+            and (not session.is_past or actor.is_admin)
+        ),
+        "can_cancel_all": bool(can_manage and session.booked_count > 0 and not session.is_past),
+        "can_delete_booked": bool(
+            actor.is_admin and session.status == SESSION_BOOKED and session.is_past
+        ),
+    }
+    if can_manage:
+        data["edit_url"] = f"/sessions/{session.id}/edit"
+        data["assign_url"] = f"/sessions/{session.id}/assign"
+        data["unassign_url"] = f"/sessions/{session.id}/unassign"
+        if data["can_cancel_all"]:
+            data["cancel_url"] = f"/sessions/{session.id}/cancel"
+        if data["can_delete"]:
+            data["remove_url"] = f"/sessions/{session.id}/remove"
+        if data["can_delete_booked"]:
+            data["delete_url"] = f"/sessions/{session.id}/delete"
+    if actor.is_client:
+        if data["can_book"]:
+            data["book_url"] = f"/sessions/{session.id}/book"
+        if data["can_cancel_own"]:
+            data["cancel_url"] = f"/sessions/{session.id}/cancel"
+    return data
 
 
 def _block_for_day(session, day_date):
@@ -82,6 +143,7 @@ def days_with_blocks(actor, monday, instructor_id=None):
         for session in day_sessions:
             block = _block_for_day(session, day_date)
             if block:
+                block["editor"] = editor_payload(session, actor)
                 blocks.append(block)
         days.append(
             {
