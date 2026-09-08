@@ -311,17 +311,7 @@
             <input type="hidden" name="next" value="{{ timeline_next }}">
             <input type="hidden" name="sync_clients" value="1">
             <div data-slot-client-ids></div>
-            <div class="mb-3">
-              <label class="form-label" for="slot_session_date">Date</label>
-              <input
-                class="form-control tap-target"
-                type="date"
-                id="slot_session_date"
-                name="session_date"
-                required
-                data-slot-date
-              >
-            </div>
+            <div class="slot-edit-schedule">
             <fieldset class="clock-fieldset mb-3" data-slot-time-fields>
               <legend class="form-label">Time</legend>
               <div class="row g-3">
@@ -364,7 +354,7 @@
               </div>
               <p class="form-text mb-0">Time is saved only if it does not overlap another slot for this instructor.</p>
             </fieldset>
-            <div class="mb-3">
+            <div class="mb-0">
               <label class="form-label" for="slot_position_count">Positions</label>
               <input
                 class="form-control tap-target"
@@ -377,8 +367,10 @@
               >
               <span class="form-text">Cannot go below the number of clients on this session.</span>
             </div>
+            </div>
 
-            <h3 class="h6">Clients</h3>
+            <div class="slot-edit-people">
+            <h3 class="slot-edit-people__title">Clients</h3>
             <ul class="slot-edit-clients" data-slot-clients></ul>
             <div class="slot-edit-add" data-slot-add-form>
               <label class="form-label" for="slot_add_client">Add a client</label>
@@ -392,7 +384,8 @@
                 <button type="button" class="btn btn-success tap-target" data-slot-add-client>Add</button>
               </div>
             </div>
-            <p class="form-text" data-slot-add-hint hidden>Increase positions before adding another client.</p>
+            <p class="form-text mb-0" data-slot-add-hint hidden>Increase positions before adding another client.</p>
+            </div>
           </form>
           {% endif %}
         </div>

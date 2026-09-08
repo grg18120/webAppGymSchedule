@@ -15,7 +15,6 @@
   var addButton = modalEl.querySelector("[data-slot-add-client]");
   var clientsList = modalEl.querySelector("[data-slot-clients]");
   var clientIdsBox = modalEl.querySelector("[data-slot-client-ids]");
-  var dateInput = modalEl.querySelector("[data-slot-date]");
   var startHour = modalEl.querySelector("#slot_start_hour");
   var startMinute = modalEl.querySelector("#slot_start_minute");
   var endHour = modalEl.querySelector("#slot_end_hour");
@@ -32,7 +31,6 @@
   var currentTrigger = null;
   var currentSlot = null;
   var draftClients = [];
-  var originalDate = "";
 
   function setHidden(node, hidden) {
     if (!node) return;
@@ -60,7 +58,6 @@
 
   function fieldMap() {
     return {
-      session_date: dateInput,
       start_hour: startHour,
       start_minute: startMinute,
       end_hour: endHour,
@@ -263,12 +260,6 @@
 
   function validateSave() {
     var fields = [];
-    var today = modalEl.getAttribute("data-today") || "";
-    var dateVal = dateInput ? dateInput.value : "";
-    if (dateInput && !dateVal) fields.push("session_date");
-    if (dateVal && today && dateVal < today && dateVal !== originalDate) {
-      fields.push("session_date");
-    }
     if (
       startHour &&
       endHour &&
@@ -289,10 +280,6 @@
     if (fields.indexOf("end_hour") !== -1 || fields.indexOf("end_minute") !== -1) {
       return "End time must be after start time.";
     }
-    if (fields.indexOf("session_date") !== -1) {
-      if (dateInput && !dateInput.value) return "Choose a date.";
-      return "Cannot move a session into the past.";
-    }
     if (fields.indexOf("position_count") !== -1) {
       if (Number.isInteger(positionCount()) && positionCount() < draftClients.length) {
         return "Positions cannot be fewer than clients already booked.";
@@ -305,7 +292,6 @@
 
   function fillModal(slot) {
     currentSlot = slot;
-    originalDate = slot.date || "";
     draftClients = (slot.clients || []).map(function (client) {
       return { id: client.id, name: client.name };
     });
@@ -332,7 +318,6 @@
     setFormAction(deleteForm, slot.remove_url);
     setFormAction(cancelAllForm, slot.cancel_url);
     setFormAction(deleteBookedForm, slot.delete_url);
-    if (dateInput && slot.date) dateInput.value = slot.date;
     ensureOption(startHour, slot.start_hour);
     ensureOption(startMinute, slot.start_minute);
     ensureOption(endHour, slot.end_hour);
@@ -488,7 +473,7 @@
     });
   }
 
-  [dateInput, startHour, startMinute, endHour, endMinute].forEach(function (el) {
+  [startHour, startMinute, endHour, endMinute].forEach(function (el) {
     if (!el) return;
     el.addEventListener("change", function () {
       clearInvalid();
@@ -519,20 +504,20 @@
           });
         })
         .then(function (data) {
-          showFlash(data.message || "Could not save this session.", data.ok ? "success" : "error");
           if (!data.ok) {
+            showFlash(data.message || "Could not save this session.", "error");
             shake(data.fields || []);
             return;
           }
           clearInvalid();
+          if (data.slot) {
+            updateTrigger(data.slot, data.block);
+          }
           if (data.redirect) {
             window.location.assign(data.redirect);
             return;
           }
-          if (data.slot) {
-            fillModal(data.slot);
-            updateTrigger(data.slot, data.block);
-          }
+          closeModal();
         })
         .catch(function () {
           showFlash("Could not save this session. Try again.", "error");
@@ -542,5 +527,17 @@
           if (submitBtn) submitBtn.disabled = false;
         });
     });
+  }
+
+  function closeModal() {
+    if (window.bootstrap && bootstrap.Modal) {
+      var instance =
+        bootstrap.Modal.getInstance(modalEl) ||
+        bootstrap.Modal.getOrCreateInstance(modalEl);
+      instance.hide();
+      return;
+    }
+    var closer = modalEl.querySelector("[data-bs-dismiss='modal']");
+    if (closer) closer.click();
   }
 })();

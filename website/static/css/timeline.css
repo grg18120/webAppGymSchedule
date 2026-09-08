@@ -729,6 +729,39 @@
   display: none !important;
 }
 
+.slot-edit-schedule {
+  padding-bottom: 0.15rem;
+}
+
+.slot-edit-people {
+  margin-top: 1.15rem;
+  padding: 0.95rem 1rem 0.85rem;
+  border: 1px solid #d7dee3;
+  border-radius: 12px;
+  background: #f4f7f9;
+}
+
+.slot-edit-people__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #455a64;
+}
+
+.slot-edit-people .slot-edit-clients {
+  margin-bottom: 0.75rem;
+}
+
+.slot-edit-people .slot-edit-clients__item {
+  border-bottom-color: #d7dee3;
+}
+
+.slot-edit-people .slot-edit-clients__empty {
+  padding-bottom: 0.35rem;
+}
+
 .slot-edit-clients {
   list-style: none;
   margin: 0 0 1rem;

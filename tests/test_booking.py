@@ -1457,9 +1457,12 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"data-slot=", html)
         self.assertIn(b"Save changes", html)
         self.assertNotIn(b"Save time and positions", html)
-        self.assertIn(b'name="session_date"', html)
-        self.assertIn(b'name="sync_clients"', html)
+        self.assertNotIn(b'name="session_date"', html)
+        self.assertNotIn(b"slot_session_date", html)
+        self.assertIn(b"slot-edit-schedule", html)
+        self.assertIn(b"slot-edit-people", html)
         self.assertIn(b"data-slot-add-client", html)
+        self.assertIn(b'name="sync_clients"', html)
         self.assertIn(b"data-slot-edit-form", html)
         self.assertIn(b"data-slot-flash", html)
         self.assertIn(b"/sessions/", html)
@@ -1600,6 +1603,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline-publish", css)
         self.assertIn(b".timeline-day-chip", css)
         self.assertIn(b".slot-edit-modal", css)
+        self.assertIn(b".slot-edit-people", css)
+        self.assertIn(b".slot-edit-schedule", css)
         self.assertIn(b".slot-edit-clients__item:hover .slot-edit-clients__remove", css)
         self.assertIn(b".slot-edit-clients__item.is-hover .slot-edit-clients__remove", css)
         self.assertIn(b".slot-edit-clients__remove .btn", css)
@@ -1819,6 +1824,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"is-invalid", js)
         self.assertIn(b"writeClientIds", js)
         self.assertIn(b"!(full &&", js)
+        self.assertIn(b"closeModal", js)
+        self.assertIn(b"instance.hide()", js)
 
     def test_edit_session_json_saves_date_and_clients_together(self):
         from datetime import datetime, timedelta
