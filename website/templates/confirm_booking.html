@@ -12,6 +12,8 @@
       <dd>{{ session.datetime_start.strftime('%A %d %B %Y') }}</dd>
       <dt>Time</dt>
       <dd>{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }} ({{ session.duration_minutes }} min)</dd>
+      <dt>Positions</dt>
+      <dd>{{ session.positions_label }}</dd>
     </dl>
     <form method="POST" action="{{ url_for('app.book_session', session_id=session.id) }}" class="d-flex flex-wrap gap-2">
       <button type="submit" class="btn btn-primary tap-target">Confirm booking</button>

@@ -28,7 +28,7 @@ def visible_sessions(actor, range_start, range_end, instructor_id=None):
         query = query.filter(GymSession.instructor_id == actor.id)
     sessions = query.order_by(GymSession.datetime_start, GymSession.id).all()
     if actor.is_client:
-        return [session for session in sessions if session.is_available or session.client_id == actor.id]
+        return [session for session in sessions if session.is_available or session.is_booked_by(actor)]
     return sessions
 
 

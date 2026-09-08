@@ -62,6 +62,8 @@ def create_app(test_config=None):
     create_database(app_flask)
 
     from .models import (
+        POSITION_COUNT_MAX,
+        POSITION_COUNT_MIN,
         ROLE_ADMIN,
         ROLE_CLIENT,
         ROLE_INSTRUCTOR,
@@ -84,6 +86,8 @@ def create_app(test_config=None):
             "SESSION_AVAILABLE": SESSION_AVAILABLE,
             "SESSION_BOOKED": SESSION_BOOKED,
             "SESSION_CANCELLED": SESSION_CANCELLED,
+            "POSITION_COUNT_MIN": POSITION_COUNT_MIN,
+            "POSITION_COUNT_MAX": POSITION_COUNT_MAX,
         }
 
     @app_flask.errorhandler(403)
@@ -116,8 +120,11 @@ def create_database(app):
             db.drop_all()
         if "gym_session" in inspect(db.engine).get_table_names():
             _collapse_duplicate_active_slots()
+            _ensure_position_count_column()
         db.create_all()
         _ensure_active_slot_index()
+        _ensure_booking_unique_index()
+        _migrate_client_id_bookings()
         if _should_seed(app):
             init_database(db)
         from website.utils.booking import reconcile_overlapping_sessions
@@ -152,6 +159,43 @@ def _collapse_duplicate_active_slots():
         db.session.commit()
 
 
+def _ensure_position_count_column():
+    inspector = inspect(db.engine)
+    if "gym_session" not in inspector.get_table_names():
+        return
+    columns = [column["name"] for column in inspector.get_columns("gym_session")]
+    if "position_count" in columns:
+        return
+    db.session.execute(text("ALTER TABLE gym_session ADD COLUMN position_count INTEGER NOT NULL DEFAULT 1"))
+    db.session.commit()
+
+
+def _migrate_client_id_bookings():
+    inspector = inspect(db.engine)
+    if "gym_session" not in inspector.get_table_names():
+        return
+    if "gym_session_booking" not in inspector.get_table_names():
+        return
+    rows = db.session.execute(
+        text(
+            """
+            SELECT id, client_id FROM gym_session
+            WHERE client_id IS NOT NULL
+              AND id NOT IN (SELECT session_id FROM gym_session_booking)
+            """
+        )
+    ).fetchall()
+    for session_id, client_id in rows:
+        db.session.execute(
+            text(
+                "INSERT INTO gym_session_booking (session_id, client_id) VALUES (:session_id, :client_id)"
+            ),
+            {"session_id": session_id, "client_id": client_id},
+        )
+    if rows:
+        db.session.commit()
+
+
 def _ensure_active_slot_index():
     db.session.execute(
         text(
@@ -159,6 +203,18 @@ def _ensure_active_slot_index():
             CREATE UNIQUE INDEX IF NOT EXISTS ux_gym_session_instructor_start_active
             ON gym_session (instructor_id, datetime_start)
             WHERE status != 'cancelled'
+            """
+        )
+    )
+    db.session.commit()
+
+
+def _ensure_booking_unique_index():
+    db.session.execute(
+        text(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_gym_session_booking_client
+            ON gym_session_booking (session_id, client_id)
             """
         )
     )

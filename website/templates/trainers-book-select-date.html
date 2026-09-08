@@ -37,7 +37,7 @@
           {% if user.is_admin %}
           <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
           {% endif %}
-          <p class="mb-3">One 1-on-1 slot with your own start and end. 24-hour clock. Hour 24 is midnight at the end of the day.</p>
+          <p class="mb-3">One slot with your own start and end. 24-hour clock. Hour 24 is midnight at the end of the day.</p>
           <div class="row g-3 align-items-end">
             <div class="col-12">
               <fieldset class="clock-fieldset">
@@ -78,6 +78,19 @@
                   </select>
                 </div>
               </fieldset>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="custom_position_count">Positions</label>
+              <input
+                class="form-control tap-target"
+                type="number"
+                id="custom_position_count"
+                name="position_count"
+                min="{{ POSITION_COUNT_MIN }}"
+                max="{{ POSITION_COUNT_MAX }}"
+                value="1"
+                required
+              >
             </div>
             <div class="col-12">
               <button type="submit" class="btn btn-primary tap-target">Publish</button>
@@ -156,6 +169,19 @@
                 {% endfor %}
               </select>
             </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="range_position_count">Positions</label>
+              <input
+                class="form-control tap-target"
+                type="number"
+                id="range_position_count"
+                name="position_count"
+                min="{{ POSITION_COUNT_MIN }}"
+                max="{{ POSITION_COUNT_MAX }}"
+                value="1"
+                required
+              >
+            </div>
             <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
               <button type="submit" class="btn btn-success tap-target">Publish range</button>
             </div>
@@ -165,8 +191,25 @@
           {% if user.is_admin %}
           <input type="hidden" name="instructor_id" class="js-instructor-id" value="{{ instructor_id or '' }}">
           {% endif %}
-          <button type="submit" class="btn btn-outline-success tap-target">Publish all day</button>
-          <span class="form-text d-block mt-2">Shortcut: hourly slots from 09:00 to 22:00.</span>
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="all_day_position_count">Positions</label>
+              <input
+                class="form-control tap-target"
+                type="number"
+                id="all_day_position_count"
+                name="position_count"
+                min="{{ POSITION_COUNT_MIN }}"
+                max="{{ POSITION_COUNT_MAX }}"
+                value="1"
+                required
+              >
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-outline-success tap-target">Publish all day</button>
+              <span class="form-text d-block mt-2">Shortcut: hourly slots from 09:00 to 22:00.</span>
+            </div>
+          </div>
         </form>
         </div>
       </details>
@@ -225,16 +268,17 @@
         <p class="session-card__duration">{{ session.duration_minutes }} min</p>
       </div>
       <h3 class="session-card__time">{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h3>
+      <p class="session-card__positions">{{ session.positions_label }}</p>
       <dl class="session-people">
         <div class="session-person session-person--instructor">
           <dt>Instructor</dt>
           <dd>{{ session.instructor.display_name }}</dd>
         </div>
-        <div class="session-person {% if session.client %}session-person--client{% else %}session-person--open{% endif %}">
+        <div class="session-person {% if session.booked_clients %}session-person--client{% else %}session-person--open{% endif %}">
           <dt>Client:</dt>
           <dd>
-            {% if session.client %}
-              {{ session.client.display_name }}
+            {% if session.booked_clients %}
+              {{ session.booked_clients | map(attribute='display_name') | join(', ') }}
             {% elif session.is_past %}
               No client has made a reservation
             {% else %}
@@ -244,21 +288,21 @@
         </div>
       </dl>
       <div class="session-card__actions d-flex flex-wrap gap-2">
-        {% if user.is_client and session.is_available %}
-          <a class="btn btn-primary tap-target" href="{{ url_for('app.confirm_booking', session_id=session.id) }}">Book this session</a>
-        {% elif user.is_client and session.client_id == user.id and not session.is_past %}
+        {% if user.is_client and session.is_booked_by(user) and not session.is_past %}
           <form method="POST" action="{{ url_for('app.cancel_session', session_id=session.id) }}" onsubmit="return confirm('Cancel this booking? The slot will become available again.');">
             <button type="submit" class="btn btn-danger tap-target">Cancel booking</button>
           </form>
+        {% elif user.is_client and session.is_available %}
+          <a class="btn btn-primary tap-target" href="{{ url_for('app.confirm_booking', session_id=session.id) }}">Book this session</a>
         {% endif %}
 
-        {% if (user.is_instructor or user.is_admin) and session.status == 'available' %}
+        {% if (user.is_instructor or user.is_admin) and session.status == 'available' and session.booked_count == 0 %}
           <form method="POST" action="{{ url_for('app.remove_availability', session_id=session.id) }}" onsubmit="return confirm('Delete this available slot?');">
             <button type="submit" class="btn btn-delete-slot tap-target">Delete slot</button>
           </form>
         {% endif %}
 
-        {% if (user.is_instructor or user.is_admin) and session.status == 'booked' and not session.is_past %}
+        {% if (user.is_instructor or user.is_admin) and session.booked_count > 0 and not session.is_past %}
           <form method="POST" action="{{ url_for('app.cancel_session', session_id=session.id) }}" onsubmit="return confirm('Cancel this booked session? The client will lose the booking.');">
             <button type="submit" class="btn btn-danger tap-target">Cancel session</button>
           </form>

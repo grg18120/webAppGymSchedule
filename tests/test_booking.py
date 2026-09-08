@@ -740,6 +740,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b">0 min</option>", html)
         self.assertIn(b"Break between slots", html)
         self.assertIn(b"Slot length", html)
+        self.assertIn(b'name="position_count"', html)
+        self.assertIn(b"Positions", html)
         self.assertIn(b"Delete all Available slots", html)
         self.assertIn(b"btn-delete-available", html)
         self.assertIn(b"publish-card--custom", html)
@@ -1512,6 +1514,223 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b".timeline__block-link", css)
         self.assertIn(b".timeline-publish", css)
         self.assertIn(b".timeline-day-chip", css)
+
+    def test_two_clients_can_share_a_two_position_session(self):
+        from datetime import timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        riley = User.query.filter_by(email="riley@gym.com").first()
+        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=25)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=2,
+        )
+        db.session.add(slot)
+        db.session.commit()
+        ok_first, _ = booking.book_session(slot, casey)
+        ok_second, _ = booking.book_session(slot, jordan)
+        ok_third, message = booking.book_session(slot, riley)
+        self.assertTrue(ok_first)
+        self.assertTrue(ok_second)
+        self.assertFalse(ok_third)
+        self.assertIn("no longer available", message)
+        refreshed = db.session.get(GymSession, slot.id)
+        self.assertEqual(refreshed.status, SESSION_BOOKED)
+        self.assertEqual(refreshed.booked_count, 2)
+        self.assertEqual(refreshed.position_count, 2)
+        self.assertTrue(refreshed.is_booked_by(casey))
+        self.assertTrue(refreshed.is_booked_by(jordan))
+        self.assertFalse(refreshed.is_booked_by(riley))
+
+    def test_same_client_cannot_book_two_positions(self):
+        from datetime import timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=26)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=3,
+        )
+        db.session.add(slot)
+        db.session.commit()
+        ok_first, _ = booking.book_session(slot, casey)
+        ok_second, message = booking.book_session(slot, casey)
+        self.assertTrue(ok_first)
+        self.assertFalse(ok_second)
+        self.assertIn("already have a place", message)
+        refreshed = db.session.get(GymSession, slot.id)
+        self.assertEqual(refreshed.booked_count, 1)
+        self.assertEqual(refreshed.status, SESSION_AVAILABLE)
+
+    def test_client_cancel_reopens_a_full_multi_position_session(self):
+        from datetime import timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=27)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=2,
+        )
+        db.session.add(slot)
+        db.session.commit()
+        self.assertTrue(booking.book_session(slot, casey)[0])
+        self.assertTrue(booking.book_session(slot, jordan)[0])
+        refreshed = db.session.get(GymSession, slot.id)
+        self.assertEqual(refreshed.status, SESSION_BOOKED)
+        ok, message = booking.cancel_session(refreshed, casey)
+        self.assertTrue(ok)
+        self.assertIn("available again", message)
+        again = db.session.get(GymSession, slot.id)
+        self.assertEqual(again.status, SESSION_AVAILABLE)
+        self.assertEqual(again.booked_count, 1)
+        self.assertFalse(again.is_booked_by(casey))
+        self.assertTrue(again.is_booked_by(jordan))
+
+    def test_partial_session_is_open_and_booked_on_calendar(self):
+        from datetime import datetime
+
+        from website.models import GymSessionBooking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        start = datetime(2099, 10, 12, 10, 0)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start.replace(hour=11),
+            status=SESSION_AVAILABLE,
+            position_count=3,
+        )
+        db.session.add(slot)
+        db.session.flush()
+        db.session.add(GymSessionBooking(session_id=slot.id, client_id=casey.id))
+        db.session.add(GymSessionBooking(session_id=slot.id, client_id=jordan.id))
+        slot.sync_status()
+        db.session.commit()
+
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/book?month=10&year=2099").get_data(as_text=True)
+        marker = "/book/2099/10/12"
+        idx = page.find(marker)
+        self.assertNotEqual(idx, -1)
+        cell = page[page.rfind("<a", 0, idx) : page.find("</a>", idx)]
+        self.assertIn("has-open has-booked", cell)
+        self.assertIn("Open & Booked", cell)
+
+        day = self.client.get("/book/2099/10/12")
+        self.assertEqual(day.status_code, 200)
+        self.assertIn(b"Positions: 2/3", day.data)
+        self.assertIn(b"Open &amp; Booked", day.data)
+        self.assertIn(b"Casey Client", day.data)
+        self.assertIn(b"Jordan Lee", day.data)
+        self.assertIn(b"Cancel session", day.data)
+        self.assertNotIn(b"Delete slot", day.data)
+
+        self.client.get("/logout")
+        self.login("client@gym.com", "client123")
+        client_day = self.client.get("/book/2099/10/12")
+        self.assertIn(b"Positions: 2/3", client_day.data)
+        self.assertIn(b"Cancel booking", client_day.data)
+        self.assertNotIn(b"Book this session", client_day.data)
+
+        self.client.get("/logout")
+        self.login("riley@gym.com", "client123")
+        riley_day = self.client.get("/book/2099/10/12")
+        self.assertIn(b"Positions: 2/3", riley_day.data)
+        self.assertIn(b"Book this session", riley_day.data)
+        self.assertNotIn(b"Cancel booking", riley_day.data)
+
+    def test_one_seat_day_card_still_shows_positions(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        start = datetime(2099, 10, 13, 9, 0)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=start,
+                datetime_end=start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+                position_count=1,
+            )
+        )
+        db.session.commit()
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/book/2099/10/13")
+        self.assertIn(b"Positions: 0/1", page.data)
+
+    def test_publish_custom_slot_stores_position_count(self):
+        from datetime import datetime
+
+        self.login("instructor@gym.com", "instructor123")
+        published = self.client.post(
+            "/book/2099/10/14/availability",
+            data={
+                "start_hour": "9",
+                "start_minute": "0",
+                "end_hour": "10",
+                "end_minute": "0",
+                "position_count": "4",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(published.status_code, 200)
+        self.assertIn(b"Availability published", published.data)
+        slot = (
+            GymSession.query.filter(GymSession.datetime_start == datetime(2099, 10, 14, 9, 0))
+            .one()
+        )
+        self.assertEqual(slot.position_count, 4)
+        self.assertIn(b"Positions: 0/4", published.data)
+
+    def test_seeded_multi_position_classes_exist(self):
+        from website.models import GymSessionBooking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        riley = User.query.filter_by(email="riley@gym.com").first()
+        morgan = User.query.filter_by(email="morgan@gym.com").first()
+        partial = (
+            GymSession.query.filter_by(instructor_id=instructor.id, position_count=3)
+            .filter(GymSession.status != SESSION_CANCELLED)
+            .first()
+        )
+        full = (
+            GymSession.query.filter_by(instructor_id=instructor.id, position_count=2)
+            .filter(GymSession.status == SESSION_BOOKED)
+            .first()
+        )
+        self.assertIsNotNone(partial)
+        self.assertEqual(partial.status, SESSION_AVAILABLE)
+        self.assertEqual(partial.booked_count, 2)
+        occupant_ids = {row.client_id for row in GymSessionBooking.query.filter_by(session_id=partial.id)}
+        self.assertEqual(occupant_ids, {casey.id, jordan.id})
+        self.assertIsNotNone(full)
+        self.assertEqual(full.booked_count, 2)
+        full_ids = {row.client_id for row in GymSessionBooking.query.filter_by(session_id=full.id)}
+        self.assertEqual(full_ids, {riley.id, morgan.id})
 
     def test_instructor_can_publish_week_from_timeline(self):
         from datetime import datetime

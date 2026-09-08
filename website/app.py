@@ -13,7 +13,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import extract
+from sqlalchemy import extract, or_
 from werkzeug.security import generate_password_hash
 
 from website import db
@@ -25,6 +25,7 @@ from website.models import (
     SESSION_BOOKED,
     SESSION_CANCELLED,
     GymSession,
+    GymSessionBooking,
     User,
 )
 from website.utils import booking
@@ -113,12 +114,18 @@ def book_calendar():
     booked_dates = set()
     for session in month_sessions:
         day_key = session.datetime_start.date()
-        if session.status == "booked":
-            if current_user.is_client and session.client_id != current_user.id:
-                continue
-            booked_dates.add(day_key)
-        elif session.status == "available":
+        has_open = session.free_count > 0
+        has_booked = (
+            session.is_booked_by(current_user)
+            if current_user.is_client
+            else session.booked_count > 0
+        )
+        if current_user.is_client and not has_open and not has_booked:
+            continue
+        if has_open:
             available_dates.add(day_key)
+        if has_booked:
+            booked_dates.add(day_key)
 
     prev_year, prev_month = _shift_month(selected_year, selected_month, -1)
     next_year, next_month = _shift_month(selected_year, selected_month, 1)
@@ -163,7 +170,7 @@ def book_day(year, month, day):
         flash("That past day has no bookings.", "error")
         return redirect(url_for("app.book_calendar", month=month, year=year))
     if current_user.is_client:
-        can_view = any(session.is_available or session.client_id == current_user.id for session in sessions)
+        can_view = any(session.is_available or session.is_booked_by(current_user) for session in sessions)
         if not can_view:
             flash("There are no open slots on that day.", "error")
             return redirect(url_for("app.book_calendar", month=month, year=year))
@@ -182,10 +189,10 @@ def book_day(year, month, day):
         clock_minutes=booking.CLOCK_MINUTES,
         slot_length_minutes=booking.SLOT_LENGTH_MINUTES,
         break_minutes=booking.BREAK_MINUTES,
-        available_count=sum(1 for session in sessions if session.status == SESSION_AVAILABLE),
+        available_count=sum(1 for session in sessions if session.status == SESSION_AVAILABLE and session.booked_count == 0),
         booked_count=sum(1 for session in sessions if session.status == SESSION_BOOKED),
         upcoming_booked_count=sum(
-            1 for session in sessions if session.status == SESSION_BOOKED and not session.is_past
+            1 for session in sessions if session.booked_count > 0 and not session.is_past
         ),
     )
 
@@ -232,7 +239,14 @@ def add_availability(year, month, day):
         flash("Choose an instructor for this slot.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day))
 
-    _session, error = booking.create_availability(instructor, start, end)
+    position_count, count_error = booking.parse_position_count(request.form.get("position_count"))
+    if count_error:
+        flash(count_error, "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+
+    _session, error = booking.create_availability(
+        instructor, start, end, position_count=position_count
+    )
     flash(error or "Availability published. Clients can now book this slot.", "error" if error else "success")
     return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
 
@@ -258,11 +272,15 @@ def publish_range(year, month, day):
             raise ValueError("Invalid slot length")
         if break_minutes not in booking.BREAK_MINUTES:
             raise ValueError("Invalid break time")
+        position_count, count_error = booking.parse_position_count(request.form.get("position_count"))
+        if count_error:
+            flash(count_error, "error")
+            return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
     except (TypeError, ValueError):
         flash("Choose a range, slot length, and break using minutes.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
     created, skipped, error = booking.publish_range_slots(
-        instructor, range_start, range_end, slot_minutes, break_minutes
+        instructor, range_start, range_end, slot_minutes, break_minutes, position_count=position_count
     )
     if error:
         flash(error, "error")
@@ -290,7 +308,11 @@ def publish_all_day(year, month, day):
     if not instructor:
         flash("Choose an instructor first.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day))
-    created, skipped = booking.publish_hourly_slots(instructor, day_date)
+    position_count, count_error = booking.parse_position_count(request.form.get("position_count"))
+    if count_error:
+        flash(count_error, "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+    created, skipped = booking.publish_hourly_slots(instructor, day_date, position_count=position_count)
     if created and skipped:
         flash(f"Published {created} hourly slots from 09:00 to 22:00. Skipped {skipped} overlapping or past hours.", "success")
     elif created:
@@ -366,7 +388,7 @@ def delete_booked_slots(year, month, day):
 @role_required(ROLE_CLIENT)
 def confirm_booking(session_id):
     session = _session_or_404(session_id)
-    if not session.is_available:
+    if not session.is_available or session.is_booked_by(current_user):
         flash("That session is no longer available.", "error")
         return redirect(url_for("app.book_calendar"))
     return render_template("confirm_booking.html", user=current_user, session=session)
@@ -543,6 +565,10 @@ def publish_timeline_week():
         end_minute = int(request.form.get("range_end_minute"))
         slot_minutes = int(request.form.get("slot_minutes"))
         break_minutes = int(request.form.get("break_minutes", 0))
+        position_count, count_error = booking.parse_position_count(request.form.get("position_count"))
+        if count_error:
+            flash(count_error, "error")
+            return redirect(redirect_url)
     except (TypeError, ValueError):
         flash("Choose a range, slot length, and break using minutes.", "error")
         return redirect(redirect_url)
@@ -555,6 +581,7 @@ def publish_timeline_week():
         end_minute,
         slot_minutes,
         break_minutes,
+        position_count=position_count,
     )
     if error:
         flash(error, "error")
@@ -575,7 +602,12 @@ def publish_timeline_week():
 def my_sessions():
     now = now_gym()
     if current_user.is_client:
-        query = GymSession.query.filter(GymSession.client_id == current_user.id)
+        booked_ids = db.session.query(GymSessionBooking.session_id).filter(
+            GymSessionBooking.client_id == current_user.id
+        )
+        query = GymSession.query.filter(
+            or_(GymSession.client_id == current_user.id, GymSession.id.in_(booked_ids))
+        )
     elif current_user.is_instructor:
         query = GymSession.query.filter(GymSession.instructor_id == current_user.id)
     else:

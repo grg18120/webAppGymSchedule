@@ -1,6 +1,9 @@
 from datetime import datetime
 from math import ceil
 
+from sqlalchemy import or_
+
+from website import db
 from website.models import (
     ROLE_CLIENT,
     ROLE_INSTRUCTOR,
@@ -8,6 +11,7 @@ from website.models import (
     SESSION_BOOKED,
     SESSION_CANCELLED,
     GymSession,
+    GymSessionBooking,
     User,
 )
 
@@ -80,7 +84,12 @@ def _query_sessions(now, months, instructor_id=None, client_id=None):
     if instructor_id is not None:
         query = query.filter(GymSession.instructor_id == instructor_id)
     if client_id is not None:
-        query = query.filter(GymSession.client_id == client_id, GymSession.status == SESSION_BOOKED)
+        booked_ids = db.session.query(GymSessionBooking.session_id).filter(
+            GymSessionBooking.client_id == client_id
+        )
+        query = query.filter(
+            or_(GymSession.client_id == client_id, GymSession.id.in_(booked_ids))
+        )
     return query.all()
 
 
@@ -93,15 +102,15 @@ def _fill_months(sessions, months, now, client_only=False):
             continue
         minutes = _minutes(session)
         is_past = session.datetime_start <= now
-        if session.status == SESSION_BOOKED:
+        occupants = [client.id for client in session.booked_clients]
+        if client_only or session.status == SESSION_BOOKED:
             bucket["booked_minutes"] += minutes
             bucket["booked_count"] += 1
             if is_past:
                 bucket["booked_past_minutes"] += minutes
             else:
                 bucket["booked_future_minutes"] += minutes
-            if session.client_id:
-                bucket["clients"].add(session.client_id)
+            bucket["clients"].update(occupants)
         elif not client_only and session.status == SESSION_AVAILABLE:
             if is_past:
                 bucket["open_minutes"] += minutes
@@ -109,6 +118,7 @@ def _fill_months(sessions, months, now, client_only=False):
                 bucket["open_count"] += 1
             else:
                 bucket["open_future_minutes"] += minutes
+            bucket["clients"].update(occupants)
     return buckets
 
 
@@ -326,7 +336,12 @@ def _upcoming(now, instructor_id=None, client_id=None, admin=False, limit=5):
     elif instructor_id is not None:
         query = query.filter(GymSession.instructor_id == instructor_id)
     elif client_id is not None:
-        query = query.filter(GymSession.client_id == client_id, GymSession.status == SESSION_BOOKED)
+        booked_ids = db.session.query(GymSessionBooking.session_id).filter(
+            GymSessionBooking.client_id == client_id
+        )
+        query = query.filter(
+            or_(GymSession.client_id == client_id, GymSession.id.in_(booked_ids))
+        )
     return query.order_by(GymSession.datetime_start).limit(limit).all()
 
 

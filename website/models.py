@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from flask_login import UserMixin
-from sqlalchemy import Index, text
+from sqlalchemy import Index, UniqueConstraint, text
 from sqlalchemy.sql import func
 
 from . import db
@@ -15,6 +15,9 @@ ROLES = (ROLE_ADMIN, ROLE_INSTRUCTOR, ROLE_CLIENT)
 SESSION_AVAILABLE = "available"
 SESSION_BOOKED = "booked"
 SESSION_CANCELLED = "cancelled"
+
+POSITION_COUNT_MIN = 1
+POSITION_COUNT_MAX = 20
 
 
 class SerializerMixin:
@@ -66,6 +69,18 @@ class User(db.Model, UserMixin, SerializerMixin):
         }.get(self.role, self.role)
 
 
+class GymSessionBooking(db.Model, SerializerMixin):
+    __tablename__ = "gym_session_booking"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey("gym_session.id"), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+
+    client = db.relationship("User")
+
+    __table_args__ = (UniqueConstraint("session_id", "client_id", name="ux_gym_session_booking_client"),)
+
+
 class GymSession(db.Model, SerializerMixin):
     __tablename__ = "gym_session"
 
@@ -74,12 +89,19 @@ class GymSession(db.Model, SerializerMixin):
     datetime_start = db.Column(db.DateTime, nullable=False)
     datetime_end = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String(20), nullable=False, default=SESSION_AVAILABLE)
+    position_count = db.Column(db.Integer, nullable=False, default=1)
 
     instructor_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     client_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
 
     instructor = db.relationship("User", foreign_keys=[instructor_id], backref="instructed_sessions")
     client = db.relationship("User", foreign_keys=[client_id], backref="booked_sessions")
+    bookings = db.relationship(
+        "GymSessionBooking",
+        backref="session",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     __table_args__ = (
         Index(
@@ -100,8 +122,59 @@ class GymSession(db.Model, SerializerMixin):
         return self.datetime_start <= now_gym()
 
     @property
+    def booked_count(self):
+        if self.bookings:
+            return len(self.bookings)
+        return 1 if self.client_id else 0
+
+    @property
+    def free_count(self):
+        return max(0, int(self.position_count or 1) - self.booked_count)
+
+    @property
+    def is_full(self):
+        return self.booked_count >= int(self.position_count or 1)
+
+    @property
+    def is_partial(self):
+        return self.booked_count > 0 and not self.is_full
+
+    @property
+    def booked_clients(self):
+        clients = [booking.client for booking in self.bookings if booking.client]
+        if clients:
+            return clients
+        if self.client:
+            return [self.client]
+        return []
+
+    @property
+    def positions_label(self):
+        return f"Positions: {self.booked_count}/{self.position_count}"
+
+    def is_booked_by(self, user):
+        if not user:
+            return False
+        if any(booking.client_id == user.id for booking in self.bookings):
+            return True
+        if self.bookings:
+            return False
+        return self.client_id == user.id
+
+    def sync_status(self):
+        if self.status == SESSION_CANCELLED:
+            return
+        self.status = SESSION_BOOKED if self.is_full else SESSION_AVAILABLE
+        first = self.bookings[0] if self.bookings else None
+        self.client_id = first.client_id if first else None
+
+    @property
     def is_available(self):
-        return self.status == SESSION_AVAILABLE and not self.is_past and self.client_id is None
+        return (
+            self.status != SESSION_CANCELLED
+            and not self.is_past
+            and self.free_count > 0
+        )
 
     @property
     def status_label(self):
@@ -113,4 +186,6 @@ class GymSession(db.Model, SerializerMixin):
             return "Past"
         if self.status == SESSION_BOOKED:
             return "Booked"
+        if self.is_partial:
+            return "Open & Booked"
         return "Available"

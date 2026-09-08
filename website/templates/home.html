@@ -3,7 +3,7 @@
 {% block content %}
 <section class="hero container py-4">
   <h1 class="display-5 text-white">Book a gym session</h1>
-  <p class="lead text-white">1-on-1 training with an instructor. Choose a time that is already open, then confirm.</p>
+  <p class="lead text-white">Training with an instructor. Choose a time that is already open, then confirm.</p>
 
   {% if user.is_authenticated %}
   <div class="welcome-card mt-4">
@@ -115,9 +115,10 @@
         {{ session.status_label }}
       </p>
       <p class="mb-1"><strong>{{ session.datetime_start.strftime('%a %d %b, %H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</strong></p>
+      <p class="mb-1">{{ session.positions_label }}</p>
       <p class="mb-0">
         Instructor: {{ session.instructor.display_name }}
-        {% if session.client %} · Client: {{ session.client.display_name }}{% endif %}
+        {% if session.booked_clients %} · Client: {{ session.booked_clients | map(attribute='display_name') | join(', ') }}{% endif %}
       </p>
     </li>
     {% endfor %}
