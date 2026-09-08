@@ -23,6 +23,8 @@
   var deleteForm = modalEl.querySelector("[data-slot-delete-form]");
   var cancelAllForm = modalEl.querySelector("[data-slot-cancel-all-form]");
   var deleteBookedForm = modalEl.querySelector("[data-slot-delete-booked-form]");
+  var flashEl = modalEl.querySelector("[data-slot-flash]");
+  var currentTrigger = null;
 
   function setHidden(node, hidden) {
     if (!node) return;
@@ -31,6 +33,21 @@
 
   function timelineNext() {
     return modalEl.getAttribute("data-timeline-next") || "";
+  }
+
+  function showFlash(message, kind) {
+    if (!flashEl) return;
+    if (!message) {
+      flashEl.hidden = true;
+      flashEl.textContent = "";
+      flashEl.className = "slot-edit-modal__flash alert mb-3";
+      return;
+    }
+    flashEl.hidden = false;
+    flashEl.textContent = message;
+    flashEl.className =
+      "slot-edit-modal__flash alert mb-3 " +
+      (kind === "success" ? "alert-success" : "alert-danger");
   }
 
   function ensureOption(select, value) {
@@ -121,17 +138,7 @@
     }
   }
 
-  modalEl.addEventListener("show.bs.modal", function (event) {
-    var trigger = event.relatedTarget;
-    if (!trigger) return;
-    var raw = trigger.getAttribute("data-slot");
-    if (!raw) return;
-    var slot;
-    try {
-      slot = JSON.parse(raw);
-    } catch (err) {
-      return;
-    }
+  function fillModal(slot) {
     var nextInput = timelineNext();
     if (meta) meta.textContent = slot.date_label + " · " + slot.time_label;
     if (statusEl) {
@@ -173,5 +180,87 @@
     modalEl.querySelectorAll('input[name="next"]').forEach(function (input) {
       input.value = nextInput;
     });
+  }
+
+  function updateTrigger(slot, block) {
+    if (!currentTrigger) return;
+    currentTrigger.setAttribute("data-slot", JSON.stringify(slot));
+    currentTrigger.classList.remove(
+      "timeline__block--available",
+      "timeline__block--booked",
+      "timeline__block--cancelled"
+    );
+    if (slot.status) {
+      currentTrigger.classList.add("timeline__block--" + slot.status);
+    }
+    if (block && typeof block.top === "number") {
+      currentTrigger.style.top = block.top + "%";
+    }
+    if (block && typeof block.height === "number") {
+      currentTrigger.style.height = block.height + "%";
+    }
+    var positions = currentTrigger.querySelector(".timeline__block-positions");
+    if (positions) {
+      positions.textContent = slot.positions_label ||
+        "Positions: " + slot.booked_count + "/" + slot.position_count;
+    }
+    var time = String(slot.time_label || "").replace(" – ", " to ");
+    currentTrigger.setAttribute(
+      "aria-label",
+      slot.status_label + " " + time + ". Click to edit."
+    );
+  }
+
+  modalEl.addEventListener("show.bs.modal", function (event) {
+    var trigger = event.relatedTarget;
+    if (!trigger) return;
+    currentTrigger = trigger;
+    var raw = trigger.getAttribute("data-slot");
+    if (!raw) return;
+    var slot;
+    try {
+      slot = JSON.parse(raw);
+    } catch (err) {
+      return;
+    }
+    showFlash("");
+    fillModal(slot);
   });
+
+  modalEl.addEventListener("hidden.bs.modal", function () {
+    currentTrigger = null;
+    showFlash("");
+  });
+
+  if (editForm) {
+    editForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var submitBtn = editForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+      fetch(editForm.action, {
+        method: "POST",
+        body: new FormData(editForm),
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return data;
+          });
+        })
+        .then(function (data) {
+          showFlash(data.message || "Could not save this session.", data.ok ? "success" : "error");
+          if (data.ok && data.slot) {
+            fillModal(data.slot);
+            updateTrigger(data.slot, data.block);
+          }
+        })
+        .catch(function () {
+          showFlash("Could not save this session. Try again.", "error");
+        })
+        .finally(function () {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+    });
+  }
 })();

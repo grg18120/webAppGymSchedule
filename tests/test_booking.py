@@ -1425,6 +1425,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b'data-bs-toggle="modal"', html)
         self.assertIn(b"data-slot=", html)
         self.assertIn(b"Save time and positions", html)
+        self.assertIn(b"data-slot-edit-form", html)
+        self.assertIn(b"data-slot-flash", html)
         self.assertIn(b"/sessions/", html)
         self.assertIn(remove_path, html)
         self.assertIn(cancel_path, html)
@@ -1641,6 +1643,85 @@ class BookingRolesTest(unittest.TestCase):
         self.assertFalse(after_remove.is_booked_by(casey))
         self.assertTrue(after_remove.is_booked_by(jordan))
         self.assertIsNotNone(db.session.get(GymSession, first_id))
+
+    def test_edit_session_json_saves_without_redirect(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        start = datetime(2099, 11, 3, 10, 0)
+        neighbor = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=datetime(2099, 11, 3, 8, 0),
+            datetime_end=datetime(2099, 11, 3, 9, 0),
+            status=SESSION_AVAILABLE,
+            position_count=1,
+        )
+        session = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=1,
+        )
+        db.session.add_all([neighbor, session])
+        db.session.commit()
+        session_id = session.id
+
+        self.login("instructor@gym.com", "instructor123")
+        overlap = self.client.post(
+            f"/sessions/{session_id}/edit",
+            data={
+                "start_hour": "8",
+                "start_minute": "0",
+                "end_hour": "9",
+                "end_minute": "0",
+                "position_count": "1",
+                "next": "/timeline?start=2099-11-02",
+            },
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(overlap.status_code, 200)
+        self.assertFalse(overlap.is_redirect)
+        overlap_body = overlap.get_json()
+        self.assertFalse(overlap_body["ok"])
+        self.assertIn("overlaps an existing session", overlap_body["message"])
+        self.assertNotIn("slot", overlap_body)
+        unchanged = db.session.get(GymSession, session_id)
+        self.assertEqual(unchanged.datetime_start, start)
+
+        saved = self.client.post(
+            f"/sessions/{session_id}/edit",
+            data={
+                "start_hour": "15",
+                "start_minute": "0",
+                "end_hour": "16",
+                "end_minute": "30",
+                "position_count": "4",
+                "next": "/timeline?start=2099-11-02",
+            },
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertFalse(saved.is_redirect)
+        body = saved.get_json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["message"], "Session updated.")
+        self.assertEqual(body["slot"]["start_hour"], 15)
+        self.assertEqual(body["slot"]["end_hour"], 16)
+        self.assertEqual(body["slot"]["end_minute"], 30)
+        self.assertEqual(body["slot"]["position_count"], 4)
+        self.assertEqual(body["slot"]["positions_label"], "Positions: 0/4")
+        self.assertIn("block", body)
+        self.assertGreater(body["block"]["height"], 0)
+        refreshed = db.session.get(GymSession, session_id)
+        self.assertEqual(refreshed.datetime_start, datetime(2099, 11, 3, 15, 0))
+        self.assertEqual(refreshed.datetime_end, datetime(2099, 11, 3, 16, 30))
+        self.assertEqual(refreshed.position_count, 4)
+
+        status, js = self.static_bytes("/static/js/timeline-slot-edit.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b'event.preventDefault()', js)
+        self.assertIn(b"application/json", js)
 
     def test_two_clients_can_share_a_two_position_session(self):
         from datetime import timedelta

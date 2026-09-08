@@ -52,6 +52,7 @@ def editor_payload(session, actor):
         "end_minute": end_minute,
         "date_label": start.strftime("%A %d %B %Y"),
         "time_label": f"{start.strftime('%H:%M')} – {end.strftime('%H:%M')}",
+        "positions_label": session.positions_label,
         "instructor": session.instructor.display_name if session.instructor else "",
         "clients": [
             {"id": client.id, "name": client.display_name}
@@ -112,6 +113,17 @@ def _block_for_day(session, day_date):
         "col": 0,
         "cols": 1,
     }
+
+
+def block_geometry(session, day_date=None):
+    if session is None:
+        return None
+    if day_date is None:
+        day_date = session.datetime_start.date()
+    block = _block_for_day(session, day_date)
+    if not block:
+        return None
+    return {"top": block["top"], "height": block["height"]}
 
 
 def _layout_overlaps(blocks):

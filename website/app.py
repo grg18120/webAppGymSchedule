@@ -78,6 +78,24 @@ def _safe_timeline_next(fallback):
     return nxt
 
 
+def _wants_json():
+    accept = request.headers.get("Accept", "")
+    return "application/json" in accept
+
+
+def _edit_session_reply(ok, message, fallback, session=None):
+    if _wants_json():
+        payload = {"ok": bool(ok), "message": message}
+        if ok and session is not None:
+            payload["slot"] = timeline_view.editor_payload(session, current_user)
+            geometry = timeline_view.block_geometry(session)
+            if geometry:
+                payload["block"] = geometry
+        return jsonify(payload)
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(fallback))
+
+
 @app.route("/")
 @login_required
 def home():
@@ -468,8 +486,11 @@ def edit_session(session_id):
         start = _parse_clock(day_date, "start_hour", "start_minute")
         end = _parse_clock(day_date, "end_hour", "end_minute")
     except (TypeError, ValueError):
-        flash("Choose a start and end time using 24-hour hours and minutes.", "error")
-        return redirect(_safe_timeline_next(fallback))
+        return _edit_session_reply(
+            False,
+            "Choose a start and end time using 24-hour hours and minutes.",
+            fallback,
+        )
     ok, message = booking.update_session_slot(
         session,
         current_user,
@@ -477,8 +498,7 @@ def edit_session(session_id):
         end,
         request.form.get("position_count"),
     )
-    flash(message, "success" if ok else "error")
-    return redirect(_safe_timeline_next(fallback))
+    return _edit_session_reply(ok, message, fallback, session)
 
 
 @app.route("/sessions/<int:session_id>/assign", methods=["POST"])
