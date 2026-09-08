@@ -492,9 +492,17 @@
 }
 
 .slot-edit-clients__item:hover .slot-edit-clients__remove,
+.slot-edit-clients__item.is-hover .slot-edit-clients__remove,
 .slot-edit-clients__item:focus-within .slot-edit-clients__remove {
   opacity: 1;
   pointer-events: auto;
+}
+
+.slot-edit-clients__item > span {
+  flex: 1;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 .slot-edit-clients__empty {

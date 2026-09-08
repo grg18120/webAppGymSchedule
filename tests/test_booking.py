@@ -1534,6 +1534,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline-day-chip", css)
         self.assertIn(b".slot-edit-modal", css)
         self.assertIn(b".slot-edit-clients__item:hover .slot-edit-clients__remove", css)
+        self.assertIn(b".slot-edit-clients__item.is-hover .slot-edit-clients__remove", css)
         self.assertNotIn(b"@media (hover: none)", css)
         self.assertIn(b"cursor: pointer", css)
 
@@ -1724,6 +1725,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(b'event.preventDefault()', js)
         self.assertIn(b"application/json", js)
+        self.assertIn(b"is-hover", js)
+        self.assertIn(b"mouseenter", js)
 
     def test_two_clients_can_share_a_two_position_session(self):
         from datetime import timedelta

@@ -111,6 +111,12 @@
         form.appendChild(clientId);
         form.appendChild(button);
         item.appendChild(form);
+        item.addEventListener("mouseenter", function () {
+          item.classList.add("is-hover");
+        });
+        item.addEventListener("mouseleave", function () {
+          item.classList.remove("is-hover");
+        });
       }
       clientsList.appendChild(item);
     });
