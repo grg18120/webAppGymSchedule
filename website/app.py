@@ -31,7 +31,7 @@ from website.models import (
 from website.utils import booking
 from website.utils.datetime_utils import get_days_in_month, string_to_datetime
 from website.utils.security import role_required
-from website.utils.timeutils import now_gym
+from website.utils.timeutils import gym_timezone_name, now_gym
 from website.utils import timeline as timeline_view
 from website.utils import stats as home_stats
 
@@ -610,7 +610,8 @@ def _paginate_sessions(query, raw_page, per_page=MY_SESSIONS_PER_PAGE):
 @app.route("/timeline")
 @login_required
 def timeline():
-    today = now_gym().date()
+    now = now_gym()
+    today = now.date()
     raw_start = request.args.get("start")
     try:
         selected = datetime.strptime(raw_start, "%Y-%m-%d").date() if raw_start else today
@@ -629,6 +630,8 @@ def timeline():
         end_hour=timeline_view.END_HOUR,
         hour_height=timeline_view.HOUR_HEIGHT_PX,
         today=today,
+        now_line_percent=timeline_view.now_line_percent(now) if today >= monday and today <= sunday else None,
+        gym_timezone=gym_timezone_name(),
         week_start=monday,
         week_label=f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}",
         prev_url=url_for("app.timeline", start=prev_monday.isoformat()),

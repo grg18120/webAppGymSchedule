@@ -251,6 +251,18 @@
           {% for hour in hours %}
           <div class="timeline__slot" aria-hidden="true"></div>
           {% endfor %}
+          {% if day.date == today %}
+          <div
+            class="timeline__now"
+            data-timeline-now
+            data-timezone="{{ gym_timezone }}"
+            data-date="{{ today.isoformat() }}"
+            data-start-hour="{{ hours[0] }}"
+            data-end-hour="{{ end_hour }}"
+            {% if now_line_percent is not none %}style="top: {{ now_line_percent }}%;"{% else %}hidden{% endif %}
+            aria-hidden="true"
+          ></div>
+          {% endif %}
           {% for block in day.blocks %}
           {% set session = block.session %}
           {% set block_style = 'top: ' ~ block.top ~ '%; height: ' ~ block.height ~ '%; left: calc(' ~ block.col ~ ' / ' ~ block.cols ~ ' * 100% + 3px); width: calc(100% / ' ~ block.cols ~ ' - 6px);' %}
@@ -428,4 +440,5 @@
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/timeline-slot-edit.js') }}"></script>
 <script src="{{ url_for('static', filename='js/timeline-week-picker.js') }}"></script>
+<script src="{{ url_for('static', filename='js/timeline-now.js') }}"></script>
 {% endblock %}

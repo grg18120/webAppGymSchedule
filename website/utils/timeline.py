@@ -8,6 +8,20 @@ HOURS = tuple(range(START_HOUR, END_HOUR))
 HOUR_HEIGHT_PX = 48
 
 
+def now_line_percent(now, start_hour=START_HOUR, end_hour=END_HOUR):
+    """Percent from the top of the day grid for a gym-local datetime, or None."""
+    if now is None:
+        return None
+    start = now.replace(hour=start_hour, minute=0, second=0, microsecond=0)
+    end = now.replace(hour=end_hour, minute=0, second=0, microsecond=0)
+    if now < start or now > end:
+        return None
+    total = (end - start).total_seconds()
+    if total <= 0:
+        return None
+    return round(100.0 * (now - start).total_seconds() / total, 4)
+
+
 def monday_of(day_date):
     return day_date - timedelta(days=day_date.weekday())
 

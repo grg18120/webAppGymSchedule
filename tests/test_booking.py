@@ -1470,6 +1470,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Cancel this booked session? The client will lose the booking.", html)
         self.assertIn(b'name="next"', html)
         self.assertIn(b"/timeline?start=2099-06-16", html)
+        self.assertNotIn(b"data-timeline-now", html)
         self.assertIn(b"Publish this week", html)
         self.assertIn(b'<details class="publish-card publish-card--range timeline-publish">', html)
         self.assertIn(b"publish-card__summary", html)
@@ -1541,6 +1542,24 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b">Today<", current_week.data)
         self.assertIn(b"timeline__lane--today", current_week.data)
         self.assertIn(b"timeline__day-head--today", current_week.data)
+        self.assertIn(b"data-timeline-now", current_week.data)
+        self.assertIn(b"timeline__now", current_week.data)
+        self.assertIn(b"timeline-now.js", current_week.data)
+        self.assertIn(b'data-start-hour="6"', current_week.data)
+        self.assertIn(b'data-end-hour="23"', current_week.data)
+        from website.utils import timeline as timeline_view
+
+        self.assertIsNone(timeline_view.now_line_percent(datetime(2026, 9, 8, 5, 59)))
+        self.assertEqual(timeline_view.now_line_percent(datetime(2026, 9, 8, 6, 0)), 0.0)
+        self.assertEqual(timeline_view.now_line_percent(datetime(2026, 9, 8, 14, 30)), 50.0)
+        self.assertEqual(timeline_view.now_line_percent(datetime(2026, 9, 8, 23, 0)), 100.0)
+        self.assertIsNone(timeline_view.now_line_percent(datetime(2026, 9, 8, 23, 1)))
+        now_pct = timeline_view.now_line_percent(now_gym())
+        if now_pct is None:
+            self.assertIn(b"data-timeline-now", current_week.data)
+            self.assertRegex(current_week.data.decode("utf-8"), r'data-timeline-now[\s\S]*?\bhidden\b')
+        else:
+            self.assertIn(f"top: {now_pct}%;".encode(), current_week.data)
 
         status, css = self.static_bytes("/static/css/timeline.css")
         self.assertEqual(status, 200)
@@ -1592,10 +1611,16 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline-week-picker__panel", css)
         self.assertIn(b".timeline-week-picker__day.is-week", css)
         self.assertIn(b"cursor: pointer", css)
+        self.assertIn(b".timeline__now", css)
+        self.assertIn(b"#ff1744", css)
         status, picker_js = self.static_bytes("/static/js/timeline-week-picker.js")
         self.assertEqual(status, 200)
         self.assertIn(b"/timeline?start=", picker_js)
         self.assertIn(b"data-week-picker-grid", picker_js)
+        status, now_js = self.static_bytes("/static/js/timeline-now.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b"data-timeline-now", now_js)
+        self.assertIn(b"updateNowLine", now_js)
 
     def test_timeline_slot_editor_updates_time_positions_and_clients(self):
         from datetime import datetime, timedelta

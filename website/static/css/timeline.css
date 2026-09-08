@@ -360,6 +360,35 @@
   border-top-width: 0;
 }
 
+.timeline__now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  height: 2px;
+  margin-top: -1px;
+  pointer-events: none;
+  background: #ff1744;
+  box-shadow: 0 0 8px 1px rgba(255, 23, 68, 0.85);
+}
+
+.timeline__now::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff1744;
+  transform: translate(-15%, -50%);
+  box-shadow: 0 0 10px 2px rgba(255, 23, 68, 0.95);
+}
+
+.timeline__now[hidden] {
+  display: none !important;
+}
+
 .timeline__today-badge {
   display: inline-block;
   margin-top: 0.15rem;
