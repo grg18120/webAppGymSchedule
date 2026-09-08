@@ -303,6 +303,11 @@ class BookingRolesTest(unittest.TestCase):
         self.login("client@gym.com", "client123")
         client_cal = self.client.get("/book")
         self.assertIn(b"Book session monthly", client_cal.data)
+        self.assertRegex(
+            client_cal.data.decode(),
+            r'id="mainNav"[\s\S]*href="/timeline">\s*Bookings\s*</a>',
+        )
+        self.assertNotIn(b"Book session weekly", client_cal.data)
         self.assertNotIn(b"My availability", client_cal.data)
         self.assertNotIn(b"Client hours", client_cal.data)
         self.assertNotIn(b'href="/client-hours"', client_cal.data)
@@ -317,7 +322,11 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"Book a session", instructor_cal.data)
         self.assertNotIn(b"Book session monthly", instructor_cal.data)
         self.assertNotIn(b"My availability", instructor_cal.data)
-        self.assertIn(b"Book session weekly", instructor_cal.data)
+        self.assertRegex(
+            instructor_cal.data.decode(),
+            r'id="mainNav"[\s\S]*href="/timeline">\s*Bookings\s*</a>',
+        )
+        self.assertNotIn(b"Book session weekly", instructor_cal.data)
         self.assertNotIn(b"Client hours", instructor_cal.data)
         self.assertNotIn(b'href="/client-hours"', instructor_cal.data)
 
@@ -325,10 +334,15 @@ class BookingRolesTest(unittest.TestCase):
         self.login("admin@gym.com", "admin123")
         admin_cal = self.client.get("/book")
         self.assertIn(b"Calendar", admin_cal.data)
+        self.assertRegex(
+            admin_cal.data.decode(),
+            r'id="mainNav"[\s\S]*href="/timeline">\s*Bookings\s*</a>',
+        )
         self.assertIn(b"Client hours", admin_cal.data)
         self.assertIn(b'href="/client-hours"', admin_cal.data)
         self.assertNotIn(b"Book a session", admin_cal.data)
         self.assertNotIn(b"Book session monthly", admin_cal.data)
+        self.assertNotIn(b"Book session weekly", admin_cal.data)
         self.assertNotIn(b"My availability", admin_cal.data)
 
     def test_admin_client_hours_table_lists_booked_time_by_month(self):
