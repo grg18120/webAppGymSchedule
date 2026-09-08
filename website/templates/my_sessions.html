@@ -13,7 +13,7 @@
     <li class="session-card session-card--{{ session.status }}">
       <p class="session-status"><span class="status-dot" aria-hidden="true"></span>{{ session.status_label }}</p>
       <h3 class="h5">{{ session.datetime_start.strftime('%a %d %b %Y, %H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h3>
-      <p class="session-card__positions mb-1">{{ session.positions_label }}</p>
+      <p class="session-positions mb-1">{{ session.positions_label }}</p>
       <p>Instructor: {{ session.instructor.display_name }}{% if session.booked_clients %} · Client: {{ session.booked_clients | map(attribute='display_name') | join(', ') }}{% endif %}</p>
       {% if not session.is_past %}
         {% if user.is_client and session.is_booked_by(user) %}
@@ -53,7 +53,7 @@
       <p class="session-status"><span class="status-dot" aria-hidden="true"></span>{{ session.status_label }}</p>
       <h3 class="h5">{{ session.datetime_start.strftime('%a %d %b %Y, %H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</h3>
       <p class="mb-0">Instructor: {{ session.instructor.display_name }}{% if session.booked_clients %} · Client: {{ session.booked_clients | map(attribute='display_name') | join(', ') }}{% endif %}</p>
-      <p class="session-card__positions mb-0 mt-1">{{ session.positions_label }}</p>
+      <p class="session-positions mb-0 mt-1">{{ session.positions_label }}</p>
     </li>
     {% endfor %}
   </ul>

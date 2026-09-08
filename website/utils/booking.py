@@ -372,6 +372,8 @@ def cancel_session(session, actor):
         for row in list(session.bookings):
             if row.client_id == actor.id:
                 db.session.delete(row)
+        if session.client_id == actor.id:
+            session.client_id = None
         db.session.flush()
         db.session.expire(session, ["bookings"])
         session.sync_status()

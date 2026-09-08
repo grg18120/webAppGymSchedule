@@ -164,7 +164,8 @@ class GymSession(db.Model, SerializerMixin):
     def sync_status(self):
         if self.status == SESSION_CANCELLED:
             return
-        self.status = SESSION_BOOKED if self.is_full else SESSION_AVAILABLE
+        occupied = len(self.bookings)
+        self.status = SESSION_BOOKED if occupied >= int(self.position_count or 1) else SESSION_AVAILABLE
         first = self.bookings[0] if self.bookings else None
         self.client_id = first.client_id if first else None
 
