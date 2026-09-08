@@ -471,6 +471,7 @@
 }
 
 .slot-edit-clients__item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -481,19 +482,19 @@
 }
 
 .slot-edit-clients__remove {
-  display: none;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   margin: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .slot-edit-clients__item:hover .slot-edit-clients__remove,
 .slot-edit-clients__item:focus-within .slot-edit-clients__remove {
-  display: block;
-}
-
-@media (hover: none) {
-  .slot-edit-clients__remove {
-    display: block;
-  }
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .slot-edit-clients__empty {

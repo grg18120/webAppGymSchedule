@@ -1534,6 +1534,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline-day-chip", css)
         self.assertIn(b".slot-edit-modal", css)
         self.assertIn(b".slot-edit-clients__item:hover .slot-edit-clients__remove", css)
+        self.assertNotIn(b"@media (hover: none)", css)
         self.assertIn(b"cursor: pointer", css)
 
     def test_timeline_slot_editor_updates_time_positions_and_clients(self):
