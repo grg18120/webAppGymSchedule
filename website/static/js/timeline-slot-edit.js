@@ -189,6 +189,49 @@
     });
   }
 
+  function positionsShort(slot) {
+    return String(slot.booked_count || 0) + "/" + String(slot.position_count || 1);
+  }
+
+  function renderSeats(trigger, slot) {
+    var seats = trigger.querySelector("[data-slot-seats]");
+    if (!seats) return;
+    seats.innerHTML = "";
+    var booked = slot.booked_count || 0;
+    var total = slot.position_count || 1;
+    for (var i = 0; i < total; i += 1) {
+      var icon = document.createElement("i");
+      icon.className =
+        "fas fa-user timeline__seat " +
+        (i < booked ? "timeline__seat--booked" : "timeline__seat--open");
+      icon.setAttribute("aria-hidden", "true");
+      seats.appendChild(icon);
+    }
+  }
+
+  function fillTip(trigger, slot) {
+    var tip = trigger.querySelector("[data-slot-tip]");
+    if (!tip) return;
+    var time = tip.querySelector("[data-slot-tip-time]");
+    var instructor = tip.querySelector("[data-slot-tip-instructor]");
+    var clients = tip.querySelector("[data-slot-tip-clients]");
+    if (time) time.textContent = slot.time_label || "";
+    if (instructor) instructor.textContent = slot.instructor || "";
+    if (clients) {
+      if (slot.clients && slot.clients.length) {
+        clients.textContent = slot.clients
+          .map(function (client) {
+            return client.name;
+          })
+          .join(", ");
+      } else {
+        clients.textContent = slot.is_past
+          ? "No client has made a reservation"
+          : "No client yet";
+      }
+    }
+  }
+
   function updateTrigger(slot, block) {
     if (!currentTrigger) return;
     currentTrigger.setAttribute("data-slot", JSON.stringify(slot));
@@ -206,8 +249,12 @@
     if (block && typeof block.height === "number") {
       currentTrigger.style.height = block.height + "%";
     }
+    renderSeats(currentTrigger, slot);
+    fillTip(currentTrigger, slot);
     var positions = currentTrigger.querySelector(".timeline__block-positions");
-    if (positions) {
+    if (positions && currentTrigger.querySelector("[data-slot-seats]")) {
+      positions.textContent = slot.positions_short || positionsShort(slot);
+    } else if (positions) {
       positions.textContent = slot.positions_label ||
         "Positions: " + slot.booked_count + "/" + slot.position_count;
     }

@@ -53,6 +53,7 @@ def editor_payload(session, actor):
         "date_label": start.strftime("%A %d %B %Y"),
         "time_label": f"{start.strftime('%H:%M')} – {end.strftime('%H:%M')}",
         "positions_label": session.positions_label,
+        "positions_short": f"{session.booked_count}/{int(session.position_count or 1)}",
         "instructor": session.instructor.display_name if session.instructor else "",
         "clients": [
             {"id": client.id, "name": client.display_name}

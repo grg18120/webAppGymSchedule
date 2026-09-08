@@ -6,30 +6,33 @@
 {% block content %}
 {% macro timeline_block_caption(session) %}
   {% set occupants = session.booked_clients %}
+  {% set booked = session.booked_count %}
+  {% set total = session.position_count or 1 %}
   <span class="timeline__block-caption">
-    {% if user.is_admin %}
-    <span class="timeline__block-people">
-      <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
-      {% for occupant in occupants %}
-      <span class="timeline__block-person">{{ occupant.display_name }}</span>
+    {% if user.is_admin or user.is_instructor %}
+    <span class="timeline__seats" data-slot-seats>
+      {% for _ in range(total) %}
+      <i class="fas fa-user timeline__seat {% if loop.index0 < booked %}timeline__seat--booked{% else %}timeline__seat--open{% endif %}" aria-hidden="true"></i>
       {% endfor %}
     </span>
-    {% elif user.is_instructor and occupants %}
-    <span class="timeline__block-people">
-      {% for occupant in occupants %}
-      <span class="timeline__block-person">{{ occupant.display_name }}</span>
-      {% endfor %}
-    </span>
+    <span class="timeline__block-positions">{{ booked }}/{{ total }}</span>
     {% elif user.is_client %}
     <span class="timeline__block-people">
       <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
     </span>
-    {% endif %}
     <span class="timeline__block-positions">{{ session.positions_label }}</span>
+    {% endif %}
   </span>
+  {% if user.is_admin or user.is_instructor %}
+  <span class="timeline__block-tip" data-slot-tip id="slot-tip-{{ session.id }}" role="tooltip">
+    <span class="timeline__block-tip-time" data-slot-tip-time>{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</span>
+    <span class="timeline__block-tip-instructor" data-slot-tip-instructor>{{ session.instructor.display_name }}</span>
+    <span class="timeline__block-tip-clients" data-slot-tip-clients>{% if occupants %}{{ occupants | map(attribute='display_name') | join(', ') }}{% elif session.is_past %}No client has made a reservation{% else %}No client yet{% endif %}</span>
+  </span>
+  {% endif %}
   <span class="visually-hidden">
     {{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
-    {{ session.positions_label }},
+    {{ booked }}/{{ total }},
     instructor {{ session.instructor.display_name }}{% if occupants %}, client {{ occupants | map(attribute='display_name') | join(', ') }}{% elif session.is_past %}, no client has made a reservation{% else %}, no client yet{% endif %}
   </span>
 {% endmacro %}
@@ -217,6 +220,7 @@
             data-bs-target="#slotEditModal"
             data-slot='{{ block.editor|tojson }}'
             aria-haspopup="dialog"
+            {% if user.is_admin or user.is_instructor %}aria-describedby="slot-tip-{{ session.id }}"{% endif %}
             aria-label="{{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }} to {{ session.datetime_end.strftime('%H:%M') }}. Click to edit."
           >
             {{ timeline_block_caption(session) }}

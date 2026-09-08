@@ -157,7 +157,7 @@
 .timeline__scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 0.5rem 0.2rem;
+  padding: 3.2rem 0.2rem 3.2rem;
 }
 
 .timeline__head,
@@ -318,7 +318,7 @@
 .timeline__block:focus-within {
   outline: 2px solid #ffffff;
   outline-offset: 1px;
-  z-index: 3;
+  z-index: 6;
   overflow: visible;
 }
 
@@ -408,6 +408,68 @@
   min-width: 0;
   max-width: 100%;
   pointer-events: none;
+}
+
+.timeline__seats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  max-width: 100%;
+  line-height: 1;
+}
+
+.timeline__seat {
+  font-size: 0.64rem;
+}
+
+.timeline__seat--booked {
+  color: #ffffff;
+}
+
+.timeline__seat--open {
+  color: #9e9e9e;
+}
+
+.timeline__block-tip {
+  display: none;
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  min-width: 9.5rem;
+  max-width: 16rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  background: #102a3a;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+  text-align: left;
+  pointer-events: none;
+  white-space: normal;
+}
+
+.timeline__block:hover .timeline__block-tip,
+.timeline__block:focus-visible .timeline__block-tip,
+.timeline__block:focus-within .timeline__block-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.timeline__block-tip-time,
+.timeline__block-tip-instructor,
+.timeline__block-tip-clients {
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.timeline__block-tip-time {
+  font-weight: 800;
 }
 
 .timeline__block-people {
