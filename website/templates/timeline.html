@@ -20,7 +20,7 @@
     <span class="timeline__block-people">
       <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
     </span>
-    <span class="timeline__block-state" data-slot-state>{% if session.is_booked_by(user) %}Your booking{% else %}Open{% endif %}</span>
+    <span class="timeline__block-state" data-slot-state>{% if session.is_booked_by(user) %}Your booking{% elif session.is_full %}Full{% else %}Open{% endif %}</span>
     {% endif %}
   </span>
   {% if user.is_admin or user.is_instructor %}
@@ -32,7 +32,7 @@
   {% endif %}
   <span class="visually-hidden">
     {% if user.is_client %}
-    {% if session.is_booked_by(user) %}Your booking{% else %}Open slot{% endif %}
+    {% if session.is_booked_by(user) %}Your booking{% elif session.is_full %}Full{% else %}Open slot{% endif %}
     {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
     instructor {{ session.instructor.display_name }}
     {% else %}
@@ -45,7 +45,7 @@
 <div class="container py-4">
   <h1 class="h3 text-white">Session timeline</h1>
   {% if user.is_client %}
-  <p class="text-white-50">Dates across, times down. Click a slot to book or cancel. Green slots are open. Blue slots are sessions you already booked.</p>
+  <p class="text-white-50">Dates across, times down. Click a slot to book, cancel, or register interest. Green slots are open. Blue slots are sessions you already booked. Fully booked slots you did not book are marked Full — you can tell staff you want a place.</p>
   {% else %}
   <p class="text-white-50">Dates across, times down. Click a slot to edit it. Open slots are green; booked sessions are blue; part-booked slots mix those colors by how many seats are taken. Past slots keep those colors, faded.</p>
   {% endif %}
@@ -234,8 +234,10 @@
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Booked</li>
     <li><span class="timeline-swatch timeline-swatch--past-available" aria-hidden="true"></span> Past open</li>
     <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booked</li>
+    <li><span class="timeline-swatch timeline-swatch--interest" aria-hidden="true">!</span> Client interest</li>
     {% else %}
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Your booking</li>
+    <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Full</li>
     <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booking</li>
     {% endif %}
   </ul>
@@ -285,19 +287,42 @@
           {% if not user.is_client and session.is_partial %}
             {% set block_style = block_style ~ ' --booked-pct: ' ~ block.editor.booked_percent ~ '%;' %}
           {% endif %}
-          <button
-            type="button"
-            class="timeline__block timeline__block--{{ block_kind }}{% if not user.is_client and session.is_partial %} timeline__block--partial{% endif %}{% if session.is_past %} timeline__block--past{% endif %}"
+          <div
+            class="timeline__block timeline__block--{{ block_kind }}{% if not user.is_client and session.is_partial %} timeline__block--partial{% endif %}{% if session.is_past %} timeline__block--past{% endif %}{% if block.editor.has_interest %} timeline__block--has-interest{% endif %}"
             style="{{ block_style }}"
-            data-bs-toggle="modal"
-            data-bs-target="#slotEditModal"
             data-slot='{{ block.editor|tojson }}'
-            aria-haspopup="dialog"
-            {% if user.is_admin or user.is_instructor %}aria-describedby="slot-tip-{{ session.id }}"{% endif %}
-            aria-label="{{ block.editor.display_status_label }} {{ session.datetime_start.strftime('%H:%M') }} to {{ session.datetime_end.strftime('%H:%M') }}. Click to {% if user.is_client %}open{% else %}edit{% endif %}."
           >
-            {{ timeline_block_caption(session) }}
-          </button>
+            <button
+              type="button"
+              class="timeline__block-hit"
+              data-bs-toggle="modal"
+              data-bs-target="#slotEditModal"
+              aria-haspopup="dialog"
+              {% if user.is_admin or user.is_instructor %}aria-describedby="slot-tip-{{ session.id }}"{% endif %}
+              aria-label="{{ block.editor.display_status_label }} {{ session.datetime_start.strftime('%H:%M') }} to {{ session.datetime_end.strftime('%H:%M') }}. Click to {% if user.is_client %}open{% else %}edit{% endif %}."
+            >
+              {{ timeline_block_caption(session) }}
+            </button>
+            {% if block.editor.has_interest %}
+            <button
+              type="button"
+              class="timeline__interest-flag"
+              data-interest-flag
+              aria-expanded="false"
+              aria-controls="interest-panel-{{ session.id }}"
+              title="Clients interested"
+              aria-label="Show clients interested in this full slot"
+            >!</button>
+            <div class="timeline__interest-panel" id="interest-panel-{{ session.id }}" data-interest-panel hidden>
+              <p class="timeline__interest-panel-title">Interested</p>
+              <ul class="timeline__interest-panel-list" data-interest-list>
+                {% for person in block.editor.interested %}
+                <li>{{ person.name }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+          </div>
           {% endfor %}
         </div>
         {% endfor %}
@@ -401,6 +426,10 @@
               </div>
             </div>
             <p class="form-text mb-0" data-slot-add-hint hidden>Increase positions before adding another client.</p>
+            <div class="slot-edit-interest mt-3" data-slot-interested hidden>
+              <h3 class="slot-edit-people__title">Interested</h3>
+              <ul class="slot-edit-clients" data-slot-interested-list></ul>
+            </div>
             </div>
           </form>
           {% endif %}
@@ -416,6 +445,14 @@
           <form method="POST" data-slot-cancel-own-form hidden onsubmit="return confirm('Cancel this booking? The slot will become available again.');">
             <input type="hidden" name="next" value="{{ timeline_next }}">
             <button type="submit" class="btn btn-danger tap-target">Cancel booking</button>
+          </form>
+          <form method="POST" data-slot-interest-form hidden onsubmit="return confirm('Register interest in this fully booked session? Staff will see that you want a place.');">
+            <input type="hidden" name="next" value="{{ timeline_next }}">
+            <button type="submit" class="btn btn-warning tap-target">I'm interested</button>
+          </form>
+          <form method="POST" data-slot-interest-remove-form hidden onsubmit="return confirm('Remove your interest in this session?');">
+            <input type="hidden" name="next" value="{{ timeline_next }}">
+            <button type="submit" class="btn btn-outline-warning tap-target">Remove interest</button>
           </form>
           {% endif %}
         </div>

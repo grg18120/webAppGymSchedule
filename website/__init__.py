@@ -122,6 +122,7 @@ def create_database(app):
         db.create_all()
         _ensure_active_slot_index()
         _ensure_booking_unique_index()
+        _ensure_interest_unique_index()
         _migrate_client_id_bookings()
         if _should_seed(app):
             init_database(db)
@@ -213,6 +214,18 @@ def _ensure_booking_unique_index():
             """
             CREATE UNIQUE INDEX IF NOT EXISTS ux_gym_session_booking_client
             ON gym_session_booking (session_id, client_id)
+            """
+        )
+    )
+    db.session.commit()
+
+
+def _ensure_interest_unique_index():
+    db.session.execute(
+        text(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_gym_session_interest_client
+            ON gym_session_interest (session_id, client_id)
             """
         )
     )

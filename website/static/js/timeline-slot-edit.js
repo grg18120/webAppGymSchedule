@@ -23,6 +23,10 @@
   var saveBtn = modalEl.querySelector("[data-slot-save]");
   var bookForm = modalEl.querySelector("[data-slot-book-form]");
   var cancelOwnForm = modalEl.querySelector("[data-slot-cancel-own-form]");
+  var interestForm = modalEl.querySelector("[data-slot-interest-form]");
+  var interestRemoveForm = modalEl.querySelector("[data-slot-interest-remove-form]");
+  var interestedBox = modalEl.querySelector("[data-slot-interested]");
+  var interestedList = modalEl.querySelector("[data-slot-interested-list]");
   var deleteForm = modalEl.querySelector("[data-slot-delete-form]");
   var cancelAllForm = modalEl.querySelector("[data-slot-cancel-all-form]");
   var deleteBookedForm = modalEl.querySelector("[data-slot-delete-booked-form]");
@@ -314,6 +318,10 @@
         clientCopy.textContent = "You booked this session.";
       } else if (slot.can_book) {
         clientCopy.textContent = "You have not booked this session.";
+      } else if (slot.interested_by_me) {
+        clientCopy.textContent = "This session is full. You registered interest.";
+      } else if (slot.can_interest) {
+        clientCopy.textContent = "This session is fully booked. You can register interest so staff can see you want a place.";
       } else {
         clientCopy.textContent = "This session is not available to book.";
       }
@@ -321,6 +329,8 @@
     setFormAction(editForm, slot.edit_url);
     setFormAction(bookForm, slot.book_url);
     setFormAction(cancelOwnForm, slot.cancel_url);
+    setFormAction(interestForm, slot.interest_url);
+    setFormAction(interestRemoveForm, slot.interest_remove_url);
     setFormAction(deleteForm, slot.remove_url);
     setFormAction(cancelAllForm, slot.cancel_url);
     setFormAction(deleteBookedForm, slot.delete_url);
@@ -335,14 +345,30 @@
     writeClientIds();
     renderClients();
     filterAddClients();
+    renderInterested(slot);
     setHidden(bookForm, !slot.can_book);
     setHidden(cancelOwnForm, !slot.can_cancel_own);
+    setHidden(interestForm, !(slot.can_interest && !slot.interested_by_me));
+    setHidden(interestRemoveForm, !slot.interested_by_me);
     setHidden(deleteForm, !slot.can_delete);
     setHidden(cancelAllForm, !slot.can_cancel_all);
     setHidden(deleteBookedForm, !slot.can_delete_booked);
     modalEl.querySelectorAll('input[name="next"]').forEach(function (input) {
       input.value = nextInput;
     });
+  }
+
+  function renderInterested(slot) {
+    if (!interestedList) return;
+    interestedList.innerHTML = "";
+    var rows = (slot && slot.interested) || [];
+    rows.forEach(function (person) {
+      var item = document.createElement("li");
+      item.className = "slot-edit-clients__item";
+      item.textContent = person.name;
+      interestedList.appendChild(item);
+    });
+    setHidden(interestedBox, !(slot && slot.can_manage && rows.length));
   }
 
   function positionsShort(slot) {
@@ -430,10 +456,28 @@
     }
     var state = currentTrigger.querySelector("[data-slot-state]");
     if (state) {
-      state.textContent = slot.booked_by_me ? "Your booking" : "Open";
+      if (slot.booked_by_me) state.textContent = "Your booking";
+      else if (slot.display_status_label === "Full" || (slot.is_full && !slot.booked_by_me))
+        state.textContent = "Full";
+      else state.textContent = "Open";
     }
+    currentTrigger.classList.toggle("timeline__block--has-interest", Boolean(slot.has_interest));
+    var flag = currentTrigger.querySelector("[data-interest-flag]");
+    var panel = currentTrigger.querySelector("[data-interest-panel]");
+    var list = currentTrigger.querySelector("[data-interest-list]");
+    if (flag) flag.hidden = !slot.has_interest;
+    if (panel && list) {
+      list.innerHTML = "";
+      (slot.interested || []).forEach(function (person) {
+        var item = document.createElement("li");
+        item.textContent = person.name;
+        list.appendChild(item);
+      });
+      if (!slot.has_interest) panel.hidden = true;
+    }
+    var hit = currentTrigger.querySelector(".timeline__block-hit") || currentTrigger;
     var time = String(slot.time_label || "").replace(" – ", " to ");
-    currentTrigger.setAttribute(
+    hit.setAttribute(
       "aria-label",
       (slot.display_status_label || slot.status_label) + " " + time + ". Click to open."
     );
@@ -442,7 +486,7 @@
   modalEl.addEventListener("show.bs.modal", function (event) {
     var trigger = event.relatedTarget;
     if (!trigger) return;
-    currentTrigger = trigger;
+    currentTrigger = trigger.closest(".timeline__block") || trigger;
     var raw = trigger.getAttribute("data-slot");
     if (!raw) return;
     var slot;
@@ -472,6 +516,36 @@
       block.classList.remove("is-hover");
     });
   });
+
+  document.querySelectorAll("[data-interest-flag]").forEach(function (flag) {
+    flag.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      var block = flag.closest(".timeline__block");
+      var panel = block && block.querySelector("[data-interest-panel]");
+      if (!panel) return;
+      var open = panel.hidden;
+      document.querySelectorAll("[data-interest-panel]").forEach(function (other) {
+        other.hidden = true;
+      });
+      document.querySelectorAll("[data-interest-flag]").forEach(function (other) {
+        other.setAttribute("aria-expanded", "false");
+      });
+      panel.hidden = !open;
+      flag.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
+
+  document.addEventListener("click", function (event) {
+    if (event.target.closest("[data-interest-flag], [data-interest-panel]")) return;
+    document.querySelectorAll("[data-interest-panel]").forEach(function (panel) {
+      panel.hidden = true;
+    });
+    document.querySelectorAll("[data-interest-flag]").forEach(function (flag) {
+      flag.setAttribute("aria-expanded", "false");
+    });
+  });
+
 
   if (addButton) {
     addButton.addEventListener("click", addDraftClient);
