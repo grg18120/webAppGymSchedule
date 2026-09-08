@@ -13,7 +13,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import extract
+from sqlalchemy import extract, or_
 from werkzeug.security import generate_password_hash
 
 from website import db
@@ -25,12 +25,13 @@ from website.models import (
     SESSION_BOOKED,
     SESSION_CANCELLED,
     GymSession,
+    GymSessionBooking,
     User,
 )
 from website.utils import booking
 from website.utils.datetime_utils import get_days_in_month, string_to_datetime
 from website.utils.security import role_required
-from website.utils.timeutils import now_gym
+from website.utils.timeutils import gym_timezone_name, now_gym
 from website.utils import timeline as timeline_view
 from website.utils import stats as home_stats
 
@@ -77,6 +78,36 @@ def _safe_timeline_next(fallback):
     return nxt
 
 
+def _wants_json():
+    accept = request.headers.get("Accept", "")
+    return "application/json" in accept
+
+
+def _edit_session_reply(
+    ok, message, fallback, session=None, fields=None, original_date=None
+):
+    if _wants_json():
+        payload = {"ok": bool(ok), "message": message}
+        if fields:
+            payload["fields"] = list(fields)
+        if ok and session is not None:
+            payload["slot"] = timeline_view.editor_payload(session, current_user)
+            geometry = timeline_view.block_geometry(session)
+            if geometry:
+                payload["block"] = geometry
+            if (
+                original_date is not None
+                and session.datetime_start.date() != original_date
+            ):
+                monday = timeline_view.monday_of(session.datetime_start.date())
+                payload["redirect"] = url_for(
+                    "app.timeline", start=monday.isoformat()
+                )
+        return jsonify(payload)
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(fallback))
+
+
 @app.route("/")
 @login_required
 def home():
@@ -113,12 +144,18 @@ def book_calendar():
     booked_dates = set()
     for session in month_sessions:
         day_key = session.datetime_start.date()
-        if session.status == "booked":
-            if current_user.is_client and session.client_id != current_user.id:
-                continue
-            booked_dates.add(day_key)
-        elif session.status == "available":
+        has_open = session.free_count > 0
+        has_booked = (
+            session.is_booked_by(current_user)
+            if current_user.is_client
+            else session.booked_count > 0
+        )
+        if current_user.is_client and not has_open and not has_booked:
+            continue
+        if has_open:
             available_dates.add(day_key)
+        if has_booked:
+            booked_dates.add(day_key)
 
     prev_year, prev_month = _shift_month(selected_year, selected_month, -1)
     next_year, next_month = _shift_month(selected_year, selected_month, 1)
@@ -163,7 +200,7 @@ def book_day(year, month, day):
         flash("That past day has no bookings.", "error")
         return redirect(url_for("app.book_calendar", month=month, year=year))
     if current_user.is_client:
-        can_view = any(session.is_available or session.client_id == current_user.id for session in sessions)
+        can_view = any(session.is_available or session.is_booked_by(current_user) for session in sessions)
         if not can_view:
             flash("There are no open slots on that day.", "error")
             return redirect(url_for("app.book_calendar", month=month, year=year))
@@ -182,10 +219,10 @@ def book_day(year, month, day):
         clock_minutes=booking.CLOCK_MINUTES,
         slot_length_minutes=booking.SLOT_LENGTH_MINUTES,
         break_minutes=booking.BREAK_MINUTES,
-        available_count=sum(1 for session in sessions if session.status == SESSION_AVAILABLE),
+        available_count=sum(1 for session in sessions if session.status == SESSION_AVAILABLE and session.booked_count == 0),
         booked_count=sum(1 for session in sessions if session.status == SESSION_BOOKED),
         upcoming_booked_count=sum(
-            1 for session in sessions if session.status == SESSION_BOOKED and not session.is_past
+            1 for session in sessions if session.booked_count > 0 and not session.is_past
         ),
     )
 
@@ -232,7 +269,14 @@ def add_availability(year, month, day):
         flash("Choose an instructor for this slot.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day))
 
-    _session, error = booking.create_availability(instructor, start, end)
+    position_count, count_error = booking.parse_position_count(request.form.get("position_count"))
+    if count_error:
+        flash(count_error, "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+
+    _session, error = booking.create_availability(
+        instructor, start, end, position_count=position_count
+    )
     flash(error or "Availability published. Clients can now book this slot.", "error" if error else "success")
     return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
 
@@ -258,11 +302,15 @@ def publish_range(year, month, day):
             raise ValueError("Invalid slot length")
         if break_minutes not in booking.BREAK_MINUTES:
             raise ValueError("Invalid break time")
+        position_count, count_error = booking.parse_position_count(request.form.get("position_count"))
+        if count_error:
+            flash(count_error, "error")
+            return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
     except (TypeError, ValueError):
         flash("Choose a range, slot length, and break using minutes.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
     created, skipped, error = booking.publish_range_slots(
-        instructor, range_start, range_end, slot_minutes, break_minutes
+        instructor, range_start, range_end, slot_minutes, break_minutes, position_count=position_count
     )
     if error:
         flash(error, "error")
@@ -290,7 +338,11 @@ def publish_all_day(year, month, day):
     if not instructor:
         flash("Choose an instructor first.", "error")
         return redirect(url_for("app.book_day", year=year, month=month, day=day))
-    created, skipped = booking.publish_hourly_slots(instructor, day_date)
+    position_count, count_error = booking.parse_position_count(request.form.get("position_count"))
+    if count_error:
+        flash(count_error, "error")
+        return redirect(url_for("app.book_day", year=year, month=month, day=day, instructor_id=instructor.id))
+    created, skipped = booking.publish_hourly_slots(instructor, day_date, position_count=position_count)
     if created and skipped:
         flash(f"Published {created} hourly slots from 09:00 to 22:00. Skipped {skipped} overlapping or past hours.", "success")
     elif created:
@@ -366,7 +418,7 @@ def delete_booked_slots(year, month, day):
 @role_required(ROLE_CLIENT)
 def confirm_booking(session_id):
     session = _session_or_404(session_id)
-    if not session.is_available:
+    if not session.is_available or session.is_booked_by(current_user):
         flash("That session is no longer available.", "error")
         return redirect(url_for("app.book_calendar"))
     return render_template("confirm_booking.html", user=current_user, session=session)
@@ -435,6 +487,94 @@ def delete_booked_session(session_id):
     return redirect(_safe_timeline_next(fallback))
 
 
+@app.route("/sessions/<int:session_id>/edit", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def edit_session(session_id):
+    session = _session_or_404(session_id)
+    fallback = url_for("app.timeline")
+    original_date = session.datetime_start.date()
+    raw_date = request.form.get("session_date")
+    if raw_date:
+        try:
+            day_date = datetime.strptime(raw_date, "%Y-%m-%d")
+        except ValueError:
+            return _edit_session_reply(
+                False,
+                "That date is not valid.",
+                fallback,
+                fields=["session_date"],
+            )
+    else:
+        day_date = session.datetime_start.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+    try:
+        start = _parse_clock(day_date, "start_hour", "start_minute")
+        end = _parse_clock(day_date, "end_hour", "end_minute")
+    except (TypeError, ValueError):
+        return _edit_session_reply(
+            False,
+            "Choose a start and end time using 24-hour hours and minutes.",
+            fallback,
+            fields=["start_hour", "start_minute", "end_hour", "end_minute"],
+        )
+    client_ids = None
+    if request.form.get("sync_clients") == "1":
+        client_ids = []
+        for raw in request.form.getlist("client_id"):
+            raw = (raw or "").strip()
+            if not raw:
+                continue
+            try:
+                client_ids.append(int(raw))
+            except (TypeError, ValueError):
+                return _edit_session_reply(
+                    False,
+                    "Choose a client.",
+                    fallback,
+                    fields=["client_id"],
+                )
+    ok, message, fields = booking.update_session_slot(
+        session,
+        current_user,
+        start,
+        end,
+        request.form.get("position_count"),
+        client_ids=client_ids,
+    )
+    return _edit_session_reply(
+        ok,
+        message,
+        fallback,
+        session if ok else None,
+        fields=fields,
+        original_date=original_date,
+    )
+
+
+@app.route("/sessions/<int:session_id>/assign", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def assign_session_client(session_id):
+    session = _session_or_404(session_id)
+    client = db.session.get(User, request.form.get("client_id", type=int))
+    ok, message = booking.assign_client(session, current_user, client)
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(url_for("app.timeline")))
+
+
+@app.route("/sessions/<int:session_id>/unassign", methods=["POST"])
+@login_required
+@role_required(ROLE_ADMIN, ROLE_INSTRUCTOR)
+def unassign_session_client(session_id):
+    session = _session_or_404(session_id)
+    client = db.session.get(User, request.form.get("client_id", type=int))
+    ok, message = booking.unassign_client(session, current_user, client)
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(url_for("app.timeline")))
+
+
 MY_SESSIONS_PER_PAGE = 10
 
 
@@ -470,7 +610,8 @@ def _paginate_sessions(query, raw_page, per_page=MY_SESSIONS_PER_PAGE):
 @app.route("/timeline")
 @login_required
 def timeline():
-    today = now_gym().date()
+    now = now_gym()
+    today = now.date()
     raw_start = request.args.get("start")
     try:
         selected = datetime.strptime(raw_start, "%Y-%m-%d").date() if raw_start else today
@@ -489,6 +630,8 @@ def timeline():
         end_hour=timeline_view.END_HOUR,
         hour_height=timeline_view.HOUR_HEIGHT_PX,
         today=today,
+        now_line_percent=timeline_view.now_line_percent(now) if today >= monday and today <= sunday else None,
+        gym_timezone=gym_timezone_name(),
         week_start=monday,
         week_label=f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}",
         prev_url=url_for("app.timeline", start=prev_monday.isoformat()),
@@ -499,6 +642,7 @@ def timeline():
         slot_length_minutes=booking.SLOT_LENGTH_MINUTES,
         break_minutes=booking.BREAK_MINUTES,
         instructors=booking.instructors() if current_user.is_admin else [],
+        clients=booking.clients() if (current_user.is_admin or current_user.is_instructor) else [],
         can_publish_week=current_user.is_instructor or current_user.is_admin,
         has_publishable_days=any(day["date"] >= today for day in days),
     )
@@ -543,6 +687,10 @@ def publish_timeline_week():
         end_minute = int(request.form.get("range_end_minute"))
         slot_minutes = int(request.form.get("slot_minutes"))
         break_minutes = int(request.form.get("break_minutes", 0))
+        position_count, count_error = booking.parse_position_count(request.form.get("position_count"))
+        if count_error:
+            flash(count_error, "error")
+            return redirect(redirect_url)
     except (TypeError, ValueError):
         flash("Choose a range, slot length, and break using minutes.", "error")
         return redirect(redirect_url)
@@ -555,6 +703,7 @@ def publish_timeline_week():
         end_minute,
         slot_minutes,
         break_minutes,
+        position_count=position_count,
     )
     if error:
         flash(error, "error")
@@ -575,7 +724,12 @@ def publish_timeline_week():
 def my_sessions():
     now = now_gym()
     if current_user.is_client:
-        query = GymSession.query.filter(GymSession.client_id == current_user.id)
+        booked_ids = db.session.query(GymSessionBooking.session_id).filter(
+            GymSessionBooking.client_id == current_user.id
+        )
+        query = GymSession.query.filter(
+            or_(GymSession.client_id == current_user.id, GymSession.id.in_(booked_ids))
+        )
     elif current_user.is_instructor:
         query = GymSession.query.filter(GymSession.instructor_id == current_user.id)
     else:

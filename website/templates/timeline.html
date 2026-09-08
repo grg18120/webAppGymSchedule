@@ -5,39 +5,87 @@
 {% endblock %}
 {% block content %}
 {% macro timeline_block_caption(session) %}
-  {% set booked = session.status == SESSION_BOOKED %}
+  {% set occupants = session.booked_clients %}
+  {% set booked = session.booked_count %}
+  {% set total = session.position_count or 1 %}
   <span class="timeline__block-caption">
-    {% if user.is_admin %}
-    <span class="timeline__block-people">
-      <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
-      {% if booked and session.client %}
-      <span class="timeline__block-person">{{ session.client.display_name }}</span>
-      {% endif %}
+    {% if user.is_admin or user.is_instructor %}
+    <span class="timeline__seats" data-slot-seats>
+      {% for _ in range(total) %}
+      <i class="fas fa-user timeline__seat {% if loop.index0 < booked %}timeline__seat--booked{% else %}timeline__seat--open{% endif %}" aria-hidden="true"></i>
+      {% endfor %}
     </span>
-    {% elif user.is_instructor and booked and session.client %}
-    <span class="timeline__block-people">
-      <span class="timeline__block-person">{{ session.client.display_name }}</span>
-    </span>
+    <span class="timeline__block-positions">{{ booked }}/{{ total }}</span>
     {% elif user.is_client %}
     <span class="timeline__block-people">
       <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
     </span>
+    <span class="timeline__block-positions">{{ session.positions_label }}</span>
     {% endif %}
   </span>
+  {% if user.is_admin or user.is_instructor %}
+  <span class="timeline__block-tip" data-slot-tip id="slot-tip-{{ session.id }}" role="tooltip">
+    <span class="timeline__block-tip-time" data-slot-tip-time>{{ session.datetime_start.strftime('%H:%M') }} – {{ session.datetime_end.strftime('%H:%M') }}</span>
+    <span class="timeline__block-tip-instructor" data-slot-tip-instructor>{{ session.instructor.display_name }}</span>
+    <span class="timeline__block-tip-clients" data-slot-tip-clients>{% if occupants %}{{ occupants | map(attribute='display_name') | join(', ') }}{% elif session.is_past %}No client has made a reservation{% else %}No client yet{% endif %}</span>
+  </span>
+  {% endif %}
   <span class="visually-hidden">
     {{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
-    instructor {{ session.instructor.display_name }}{% if session.client %}, client {{ session.client.display_name }}{% elif session.is_past %}, no client has made a reservation{% else %}, no client yet{% endif %}
+    {{ booked }}/{{ total }},
+    instructor {{ session.instructor.display_name }}{% if occupants %}, client {{ occupants | map(attribute='display_name') | join(', ') }}{% elif session.is_past %}, no client has made a reservation{% else %}, no client yet{% endif %}
   </span>
 {% endmacro %}
 <div class="container py-4">
   <h1 class="h3 text-white">Session timeline</h1>
-  <p class="text-white-50">Dates across, times down. Open slots are green; booked sessions are blue. Past slots keep those colors, faded.</p>
+  <p class="text-white-50">Dates across, times down. Click a slot to edit it. Open slots are green; booked sessions are blue; part-booked slots mix those colors by how many seats are taken. Past slots keep those colors, faded.</p>
 
   <nav class="timeline-nav" aria-label="Change week">
     <a class="timeline-nav__btn tap-target" href="{{ prev_url }}" aria-label="Previous week">
       <span aria-hidden="true">&lt;</span>
     </a>
-    <h2 class="timeline-nav__title">{{ week_label }}</h2>
+    <div class="timeline-nav__current">
+      <h2 class="timeline-nav__title">{{ week_label }}</h2>
+      <div
+        class="timeline-week-picker"
+        data-week-start="{{ week_start.isoformat() }}"
+        data-today="{{ today.isoformat() }}"
+      >
+        <button
+          type="button"
+          class="timeline-nav__cal tap-target"
+          data-week-picker-toggle
+          aria-expanded="false"
+          aria-controls="timelineWeekCalendar"
+          aria-haspopup="dialog"
+          aria-label="Choose week"
+        >
+          <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+        </button>
+        <div
+          class="timeline-week-picker__panel"
+          id="timelineWeekCalendar"
+          data-week-picker-panel
+          hidden
+          role="dialog"
+          aria-label="Choose a week"
+        >
+          <div class="timeline-week-picker__month-nav">
+            <button type="button" class="timeline-week-picker__shift tap-target" data-week-picker-prev aria-label="Previous month">
+              <span aria-hidden="true">&lt;</span>
+            </button>
+            <p class="timeline-week-picker__month" data-week-picker-label></p>
+            <button type="button" class="timeline-week-picker__shift tap-target" data-week-picker-next aria-label="Next month">
+              <span aria-hidden="true">&gt;</span>
+            </button>
+          </div>
+          <div class="timeline-week-picker__dow" aria-hidden="true">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+          <div class="timeline-week-picker__grid" data-week-picker-grid></div>
+        </div>
+      </div>
+    </div>
     <a class="timeline-nav__btn tap-target" href="{{ next_url }}" aria-label="Next week">
       <span aria-hidden="true">&gt;</span>
     </a>
@@ -53,7 +101,7 @@
     </summary>
     <form method="POST" action="{{ url_for('app.publish_timeline_week') }}" class="publish-card__body">
       <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}">
-      <p class="mb-3">Create available 1-on-1 slots for the week on the timeline. Pick days, then a time range. Overlaps and past times are skipped.</p>
+      <p class="mb-3">Create available slots for the week on the timeline. Pick days, then a time range. Overlaps and past times are skipped.</p>
       {% if user.is_admin %}
       <div class="mb-3">
         <label class="form-label" for="week-instructor">Instructor</label>
@@ -141,6 +189,19 @@
             {% endfor %}
           </select>
         </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label" for="week_position_count">Positions</label>
+          <input
+            class="form-control tap-target"
+            type="number"
+            id="week_position_count"
+            name="position_count"
+            min="{{ POSITION_COUNT_MIN }}"
+            max="{{ POSITION_COUNT_MAX }}"
+            value="1"
+            required
+          >
+        </div>
         <div class="col-12">
           <button type="submit" class="btn btn-success tap-target" {% if not has_publishable_days %}disabled{% endif %}>
             Publish selected days
@@ -158,6 +219,7 @@
 
   <ul class="timeline-legend" aria-label="Timeline legend">
     <li><span class="timeline-swatch timeline-swatch--available" aria-hidden="true"></span> Open slot</li>
+    <li><span class="timeline-swatch timeline-swatch--partial" aria-hidden="true"></span> Open & Booked</li>
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Booked</li>
     <li><span class="timeline-swatch timeline-swatch--past-available" aria-hidden="true"></span> Past open</li>
     <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booked</li>
@@ -189,71 +251,37 @@
           {% for hour in hours %}
           <div class="timeline__slot" aria-hidden="true"></div>
           {% endfor %}
+          {% if day.date == today %}
+          <div
+            class="timeline__now"
+            data-timeline-now
+            data-timezone="{{ gym_timezone }}"
+            data-date="{{ today.isoformat() }}"
+            data-start-hour="{{ hours[0] }}"
+            data-end-hour="{{ end_hour }}"
+            {% if now_line_percent is not none %}style="top: {{ now_line_percent }}%;"{% else %}hidden{% endif %}
+            aria-hidden="true"
+          ></div>
+          {% endif %}
           {% for block in day.blocks %}
           {% set session = block.session %}
           {% set block_style = 'top: ' ~ block.top ~ '%; height: ' ~ block.height ~ '%; left: calc(' ~ block.col ~ ' / ' ~ block.cols ~ ' * 100% + 3px); width: calc(100% / ' ~ block.cols ~ ' - 6px);' %}
-          {% set show_delete = (user.is_instructor or user.is_admin) and session.status == SESSION_AVAILABLE and (not session.is_past or user.is_admin) %}
-          {% set show_staff_cancel = (user.is_instructor or user.is_admin) and session.status == SESSION_BOOKED and not session.is_past %}
-          {% set show_admin_delete_booked = user.is_admin and session.status == SESSION_BOOKED and session.is_past %}
-          {% set show_client_cancel = user.is_client and session.status == SESSION_BOOKED and session.client_id == user.id and not session.is_past %}
-          {% set show_client_book = user.is_client and session.status == SESSION_AVAILABLE and not session.is_past %}
-          <div
-            class="timeline__block timeline__block--{{ session.status }}{% if session.is_past %} timeline__block--past{% endif %}"
+          {% if session.is_partial %}
+            {% set block_style = block_style ~ ' --booked-pct: ' ~ block.editor.booked_percent ~ '%;' %}
+          {% endif %}
+          <button
+            type="button"
+            class="timeline__block timeline__block--{{ session.status }}{% if session.is_partial %} timeline__block--partial{% endif %}{% if session.is_past %} timeline__block--past{% endif %}"
             style="{{ block_style }}"
+            data-bs-toggle="modal"
+            data-bs-target="#slotEditModal"
+            data-slot='{{ block.editor|tojson }}'
+            aria-haspopup="dialog"
+            {% if user.is_admin or user.is_instructor %}aria-describedby="slot-tip-{{ session.id }}"{% endif %}
+            aria-label="{{ session.status_label }} {{ session.datetime_start.strftime('%H:%M') }} to {{ session.datetime_end.strftime('%H:%M') }}. Click to edit."
           >
             {{ timeline_block_caption(session) }}
-            {% if show_delete %}
-            <form
-              class="timeline__block-action"
-              method="POST"
-              action="{{ url_for('app.remove_availability', session_id=session.id) }}"
-              onsubmit="return confirm('Delete this available slot?');"
-            >
-              <input type="hidden" name="next" value="{{ timeline_next }}">
-              <button type="submit">Delete</button>
-            </form>
-            {% elif show_staff_cancel %}
-            <form
-              class="timeline__block-action"
-              method="POST"
-              action="{{ url_for('app.cancel_session', session_id=session.id) }}"
-              onsubmit="return confirm('Cancel this booked session? The client will lose the booking.');"
-            >
-              <input type="hidden" name="next" value="{{ timeline_next }}">
-              <button type="submit">Cancel</button>
-            </form>
-            {% elif show_admin_delete_booked %}
-            <form
-              class="timeline__block-action"
-              method="POST"
-              action="{{ url_for('app.delete_booked_session', session_id=session.id) }}"
-              onsubmit="return confirm('Delete this past booked session? This cannot be undone.');"
-            >
-              <input type="hidden" name="next" value="{{ timeline_next }}">
-              <button type="submit">Delete</button>
-            </form>
-            {% elif show_client_cancel %}
-            <form
-              class="timeline__block-action"
-              method="POST"
-              action="{{ url_for('app.cancel_session', session_id=session.id) }}"
-              onsubmit="return confirm('Cancel this booking? The slot will become available again.');"
-            >
-              <input type="hidden" name="next" value="{{ timeline_next }}">
-              <button type="submit">Cancel</button>
-            </form>
-            {% elif show_client_book %}
-            <form
-              class="timeline__block-action timeline__block-action--book"
-              method="POST"
-              action="{{ url_for('app.book_session', session_id=session.id) }}"
-              onsubmit="return confirm('Book this session?');"
-            >
-              <input type="hidden" name="next" value="{{ timeline_next }}">
-              <button type="submit">Book</button>
-            </form>
-            {% endif %}
-          </div>
+          </button>
           {% endfor %}
         </div>
         {% endfor %}
@@ -261,4 +289,149 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade slot-edit-modal" id="slotEditModal" tabindex="-1" aria-labelledby="slotEditTitle" aria-hidden="true" data-timeline-next="{{ timeline_next }}" data-today="{{ today.isoformat() }}">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title h5" id="slotEditTitle">Edit session</h2>
+          <p class="slot-edit-modal__meta mb-0" data-slot-meta></p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="slot-edit-modal__flash alert mb-3" data-slot-flash hidden role="status" aria-live="polite"></p>
+        <p class="slot-edit-modal__status mb-3" data-slot-status></p>
+        <p class="mb-3" data-slot-instructor></p>
+
+        <div data-slot-staff hidden>
+          {% if user.is_instructor or user.is_admin %}
+          <form method="POST" id="slotEditForm" data-slot-edit-form novalidate>
+            <input type="hidden" name="next" value="{{ timeline_next }}">
+            <input type="hidden" name="sync_clients" value="1">
+            <div data-slot-client-ids></div>
+            <div class="slot-edit-schedule">
+            <fieldset class="clock-fieldset mb-3" data-slot-time-fields>
+              <legend class="form-label">Time</legend>
+              <div class="row g-3">
+                <div class="col-12">
+                  <span class="form-label">Start</span>
+                  <div class="clock-selects">
+                    <label class="visually-hidden" for="slot_start_hour">Start hour</label>
+                    <select class="form-select tap-target" id="slot_start_hour" name="start_hour" required>
+                      {% for hour in clock_hours %}
+                        <option value="{{ hour }}">{{ '%02d'|format(hour) }}</option>
+                      {% endfor %}
+                    </select>
+                    <span class="clock-sep" aria-hidden="true">:</span>
+                    <label class="visually-hidden" for="slot_start_minute">Start minutes</label>
+                    <select class="form-select tap-target" id="slot_start_minute" name="start_minute" required>
+                      {% for minute in clock_minutes %}
+                        <option value="{{ minute }}">{{ '%02d'|format(minute) }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <span class="form-label">End</span>
+                  <div class="clock-selects">
+                    <label class="visually-hidden" for="slot_end_hour">End hour</label>
+                    <select class="form-select tap-target" id="slot_end_hour" name="end_hour" required>
+                      {% for hour in clock_hours %}
+                        <option value="{{ hour }}">{{ '%02d'|format(hour) }}</option>
+                      {% endfor %}
+                    </select>
+                    <span class="clock-sep" aria-hidden="true">:</span>
+                    <label class="visually-hidden" for="slot_end_minute">End minutes</label>
+                    <select class="form-select tap-target" id="slot_end_minute" name="end_minute" required>
+                      {% for minute in clock_minutes %}
+                        <option value="{{ minute }}">{{ '%02d'|format(minute) }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <p class="form-text mb-0">Time is saved only if it does not overlap another slot for this instructor.</p>
+            </fieldset>
+            <div class="mb-0">
+              <label class="form-label" for="slot_position_count">Positions</label>
+              <input
+                class="form-control tap-target"
+                type="number"
+                id="slot_position_count"
+                name="position_count"
+                min="{{ POSITION_COUNT_MIN }}"
+                max="{{ POSITION_COUNT_MAX }}"
+                required
+              >
+              <span class="form-text">Cannot go below the number of clients on this session.</span>
+            </div>
+            </div>
+
+            <div class="slot-edit-people">
+            <h3 class="slot-edit-people__title">Clients</h3>
+            <ul class="slot-edit-clients" data-slot-clients></ul>
+            <div class="slot-edit-add" data-slot-add-form>
+              <label class="form-label" for="slot_add_client">Add a client</label>
+              <div class="d-flex flex-wrap gap-2">
+                <select class="form-select tap-target" id="slot_add_client">
+                  <option value="">Select client</option>
+                  {% for client in clients %}
+                  <option value="{{ client.id }}">{{ client.display_name }}</option>
+                  {% endfor %}
+                </select>
+                <button type="button" class="btn btn-success tap-target" data-slot-add-client>Add</button>
+              </div>
+            </div>
+            <p class="form-text mb-0" data-slot-add-hint hidden>Increase positions before adding another client.</p>
+            </div>
+          </form>
+          {% endif %}
+        </div>
+
+        <div data-slot-client hidden>
+          {% if user.is_client %}
+          <p class="mb-3" data-slot-client-copy></p>
+          <form method="POST" data-slot-book-form hidden onsubmit="return confirm('Book this session?');">
+            <input type="hidden" name="next" value="{{ timeline_next }}">
+            <button type="submit" class="btn btn-primary tap-target">Book this session</button>
+          </form>
+          <form method="POST" data-slot-cancel-own-form hidden onsubmit="return confirm('Cancel this booking? The slot will become available again.');">
+            <input type="hidden" name="next" value="{{ timeline_next }}">
+            <button type="submit" class="btn btn-danger tap-target">Cancel booking</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      <div class="modal-footer flex-wrap">
+        {% if user.is_instructor or user.is_admin %}
+        <form method="POST" data-slot-delete-form hidden onsubmit="return confirm('Delete this available slot?');">
+          <input type="hidden" name="next" value="{{ timeline_next }}">
+          <button type="submit" class="btn btn-delete-slot tap-target">Delete slot</button>
+        </form>
+        <form method="POST" data-slot-cancel-all-form hidden onsubmit="return confirm('Cancel this booked session? The client will lose the booking.');">
+          <input type="hidden" name="next" value="{{ timeline_next }}">
+          <button type="submit" class="btn btn-danger tap-target">Cancel all bookings</button>
+        </form>
+        {% if user.is_admin %}
+        <form method="POST" data-slot-delete-booked-form hidden onsubmit="return confirm('Delete this past booked session? This cannot be undone.');">
+          <input type="hidden" name="next" value="{{ timeline_next }}">
+          <button type="submit" class="btn btn-delete-slot tap-target">Delete session</button>
+        </form>
+        {% endif %}
+        {% endif %}
+        {% if user.is_instructor or user.is_admin %}
+        <button type="submit" class="btn btn-primary tap-target ms-auto" form="slotEditForm" data-slot-save>Save changes</button>
+        {% endif %}
+        <button type="button" class="btn btn-outline-secondary tap-target" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/timeline-slot-edit.js') }}"></script>
+<script src="{{ url_for('static', filename='js/timeline-week-picker.js') }}"></script>
+<script src="{{ url_for('static', filename='js/timeline-now.js') }}"></script>
 {% endblock %}

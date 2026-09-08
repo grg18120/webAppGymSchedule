@@ -10,6 +10,7 @@ from website.models import (
     SESSION_BOOKED,
     SESSION_CANCELLED,
     GymSession,
+    GymSessionBooking,
     User,
 )
 from website.utils.timeutils import now_gym
@@ -67,6 +68,7 @@ def init_database(db):
     _ensure_demo_sessions(db)
     _ensure_extra_client_bookings(db)
     _ensure_jul_aug_sep_sessions(db)
+    _ensure_multi_client_classes(db)
 
 
 def _ensure_demo_users(db):
@@ -151,6 +153,9 @@ def _ensure_demo_sessions(db):
             session.client_id = client.id
             session.status = SESSION_BOOKED
         db.session.add(session)
+        db.session.flush()
+        if index == 2:
+            db.session.add(GymSessionBooking(session_id=session.id, client_id=client.id))
     db.session.commit()
 
 
@@ -183,20 +188,65 @@ def _ensure_extra_client_bookings(db):
         db.session.commit()
 
 
-def _add_session_if_missing(db, instructor, start, end, client=None):
+def _add_session_if_missing(db, instructor, start, end, client=None, clients=None, position_count=1):
     from website.utils.booking import overlapping_sessions
 
     if overlapping_sessions(instructor.id, start, end):
         return False
+    occupants = list(clients or [])
+    if client is not None and client not in occupants:
+        occupants.append(client)
+    count = max(1, int(position_count or 1))
     session = GymSession(
         instructor_id=instructor.id,
         datetime_start=start,
         datetime_end=end,
-        status=SESSION_BOOKED if client else SESSION_AVAILABLE,
-        client_id=client.id if client else None,
+        status=SESSION_BOOKED if occupants and len(occupants) >= count else SESSION_AVAILABLE,
+        client_id=occupants[0].id if occupants else None,
+        position_count=count,
     )
     db.session.add(session)
+    db.session.flush()
+    for occupant in occupants:
+        db.session.add(GymSessionBooking(session_id=session.id, client_id=occupant.id))
     return True
+
+
+def _ensure_multi_client_classes(db):
+    instructor = User.query.filter_by(email="instructor@gym.com").first()
+    casey = User.query.filter_by(email="client@gym.com").first()
+    jordan = User.query.filter_by(email="jordan@gym.com").first()
+    riley = User.query.filter_by(email="riley@gym.com").first()
+    morgan = User.query.filter_by(email="morgan@gym.com").first()
+    if not instructor or not all((casey, jordan, riley, morgan)):
+        return
+
+    base = _next_hour()
+    created = False
+    created = (
+        _add_session_if_missing(
+            db,
+            instructor,
+            base + timedelta(hours=96),
+            base + timedelta(hours=97),
+            clients=[casey, jordan],
+            position_count=3,
+        )
+        or created
+    )
+    created = (
+        _add_session_if_missing(
+            db,
+            instructor,
+            base + timedelta(hours=98),
+            base + timedelta(hours=99),
+            clients=[riley, morgan],
+            position_count=2,
+        )
+        or created
+    )
+    if created:
+        db.session.commit()
 
 
 def _ensure_jul_aug_sep_sessions(db):

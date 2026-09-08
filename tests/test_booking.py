@@ -5,6 +5,7 @@ import unittest
 from website import create_app, db
 from website.models import (
     GymSession,
+    GymSessionBooking,
     ROLE_CLIENT,
     SESSION_AVAILABLE,
     SESSION_BOOKED,
@@ -740,6 +741,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b">0 min</option>", html)
         self.assertIn(b"Break between slots", html)
         self.assertIn(b"Slot length", html)
+        self.assertIn(b'name="position_count"', html)
+        self.assertIn(b"Positions", html)
         self.assertIn(b"Delete all Available slots", html)
         self.assertIn(b"btn-delete-available", html)
         self.assertIn(b"publish-card--custom", html)
@@ -1355,6 +1358,18 @@ class BookingRolesTest(unittest.TestCase):
             self.client.post("/timeline/availability").status_code,
             403,
         )
+        self.assertEqual(
+            self.client.post("/sessions/1/edit").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/sessions/1/assign").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/sessions/1/unassign").status_code,
+            403,
+        )
 
     def test_timeline_is_available_to_every_role(self):
         from datetime import datetime, timedelta
@@ -1376,7 +1391,20 @@ class BookingRolesTest(unittest.TestCase):
             datetime_end=casey_start + timedelta(hours=1),
             status=SESSION_BOOKED,
         )
-        db.session.add_all([open_slot, booked_slot])
+        partial_start = datetime(2099, 6, 16, 16, 0)
+        partial_slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=partial_start,
+            datetime_end=partial_start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=3,
+        )
+        db.session.add_all([open_slot, booked_slot, partial_slot])
+        db.session.flush()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        db.session.add(GymSessionBooking(session_id=partial_slot.id, client_id=casey.id))
+        db.session.add(GymSessionBooking(session_id=partial_slot.id, client_id=jordan.id))
+        partial_slot.sync_status()
         db.session.commit()
         open_id = open_slot.id
         booked_id = booked_slot.id
@@ -1395,10 +1423,23 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"timeline__block", html)
         self.assertNotIn(b"Available Slot", html)
         self.assertNotIn(b"Booked Slot", html)
-        self.assertIn(b'timeline__block-person">Casey Client', html)
+        self.assertIn(b"fa-user", html)
+        self.assertIn(b"timeline__seat--booked", html)
+        self.assertIn(b"timeline__seat--open", html)
+        self.assertIn(b"timeline__block-tip", html)
+        self.assertIn(b"Casey Client", html)
+        self.assertIn(b"Alex Instructor", html)
+        self.assertNotIn(b'timeline__block-person">Casey Client', html)
         self.assertNotIn(b'timeline__block-person">Alex Instructor', html)
+        self.assertIn(b'<span class="timeline__block-positions">1/1</span>', html)
+        self.assertIn(b'<span class="timeline__block-positions">0/1</span>', html)
+        self.assertNotIn(b'<span class="timeline__block-positions">Positions:', html)
         self.assertNotIn(b"timeline__block-time", html)
         self.assertIn(b'timeline__block--booked', html)
+        self.assertIn(b"timeline__block--partial", html)
+        self.assertIn(b"--booked-pct: 66.6667%", html)
+        self.assertIn(b"Open &amp; Booked", html)
+        self.assertIn(b"timeline-swatch--partial", html)
         self.assertIn(b">06:00<", html)
         self.assertIn(b">23:00<", html)
         self.assertIn(b"Tue", html)
@@ -1407,7 +1448,24 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"timeline__block-link", html)
         self.assertIn(b"Previous week", html)
         self.assertIn(b"Next week", html)
-        self.assertIn(b"timeline__block-action", html)
+        self.assertIn(b"timeline-nav__title", html)
+        self.assertIn(b"timeline-week-picker", html)
+        self.assertIn(b"Choose week", html)
+        self.assertIn(b"timeline-week-picker.js", html)
+        self.assertIn(b"slotEditModal", html)
+        self.assertIn(b'data-bs-toggle="modal"', html)
+        self.assertIn(b"data-slot=", html)
+        self.assertIn(b"Save changes", html)
+        self.assertNotIn(b"Save time and positions", html)
+        self.assertNotIn(b'name="session_date"', html)
+        self.assertNotIn(b"slot_session_date", html)
+        self.assertIn(b"slot-edit-schedule", html)
+        self.assertIn(b"slot-edit-people", html)
+        self.assertIn(b"data-slot-add-client", html)
+        self.assertIn(b'name="sync_clients"', html)
+        self.assertIn(b"data-slot-edit-form", html)
+        self.assertIn(b"data-slot-flash", html)
+        self.assertIn(b"/sessions/", html)
         self.assertIn(remove_path, html)
         self.assertIn(cancel_path, html)
         self.assertNotIn(book_path, html)
@@ -1415,6 +1473,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Cancel this booked session? The client will lose the booking.", html)
         self.assertIn(b'name="next"', html)
         self.assertIn(b"/timeline?start=2099-06-16", html)
+        self.assertNotIn(b"data-timeline-now", html)
         self.assertIn(b"Publish this week", html)
         self.assertIn(b'<details class="publish-card publish-card--range timeline-publish">', html)
         self.assertIn(b"publish-card__summary", html)
@@ -1434,11 +1493,12 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b'timeline__block-person">Casey Client', casey_page.data)
         self.assertIn(cancel_path, casey_page.data)
         self.assertIn(book_path, casey_page.data)
-        self.assertIn(b"timeline__block-action", casey_page.data)
+        self.assertIn(b"slotEditModal", casey_page.data)
         self.assertIn(b"Book this session?", casey_page.data)
         self.assertIn(b"Cancel this booking? The slot will become available again.", casey_page.data)
         self.assertNotIn(remove_path, casey_page.data)
         self.assertNotIn(b"/remove", casey_page.data)
+        self.assertNotIn(b"Save changes", casey_page.data)
         self.assertNotIn(b"Delete this available slot?", casey_page.data)
         self.assertNotIn(b"Cancel this booked session? The client will lose the booking.", casey_page.data)
         self.assertNotIn(b"Publish this week", casey_page.data)
@@ -1454,7 +1514,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"timeline__block--booked", jordan_page.data)
         self.assertIn(book_path, jordan_page.data)
         self.assertIn(b"Book this session?", jordan_page.data)
-        self.assertIn(b"timeline__block-action", jordan_page.data)
+        self.assertIn(b"slotEditModal", jordan_page.data)
         self.assertNotIn(cancel_path, jordan_page.data)
         self.assertNotIn(b"/remove", jordan_page.data)
 
@@ -1463,10 +1523,14 @@ class BookingRolesTest(unittest.TestCase):
         admin_page = self.client.get("/timeline?start=2099-06-16")
         self.assertEqual(admin_page.status_code, 200)
         self.assertIn(b"Timeline", admin_page.data)
-        self.assertIn(b'timeline__block-person">Alex Instructor', admin_page.data)
-        self.assertIn(b'timeline__block-person">Casey Client', admin_page.data)
+        self.assertIn(b"fa-user", admin_page.data)
+        self.assertIn(b"timeline__block-tip", admin_page.data)
+        self.assertIn(b"Alex Instructor", admin_page.data)
+        self.assertIn(b"Casey Client", admin_page.data)
+        self.assertNotIn(b'timeline__block-person">Alex Instructor', admin_page.data)
+        self.assertNotIn(b'timeline__block-person">Casey Client', admin_page.data)
         self.assertIn(b"14:00", admin_page.data)
-        self.assertIn(b"timeline__block-action", admin_page.data)
+        self.assertIn(b"slotEditModal", admin_page.data)
         self.assertIn(remove_path, admin_page.data)
         self.assertIn(cancel_path, admin_page.data)
         self.assertNotIn(book_path, admin_page.data)
@@ -1481,6 +1545,24 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b">Today<", current_week.data)
         self.assertIn(b"timeline__lane--today", current_week.data)
         self.assertIn(b"timeline__day-head--today", current_week.data)
+        self.assertIn(b"data-timeline-now", current_week.data)
+        self.assertIn(b"timeline__now", current_week.data)
+        self.assertIn(b"timeline-now.js", current_week.data)
+        self.assertIn(b'data-start-hour="6"', current_week.data)
+        self.assertIn(b'data-end-hour="23"', current_week.data)
+        from website.utils import timeline as timeline_view
+
+        self.assertIsNone(timeline_view.now_line_percent(datetime(2026, 9, 8, 5, 59)))
+        self.assertEqual(timeline_view.now_line_percent(datetime(2026, 9, 8, 6, 0)), 0.0)
+        self.assertEqual(timeline_view.now_line_percent(datetime(2026, 9, 8, 14, 30)), 50.0)
+        self.assertEqual(timeline_view.now_line_percent(datetime(2026, 9, 8, 23, 0)), 100.0)
+        self.assertIsNone(timeline_view.now_line_percent(datetime(2026, 9, 8, 23, 1)))
+        now_pct = timeline_view.now_line_percent(now_gym())
+        if now_pct is None:
+            self.assertIn(b"data-timeline-now", current_week.data)
+            self.assertRegex(current_week.data.decode("utf-8"), r'data-timeline-now[\s\S]*?\bhidden\b')
+        else:
+            self.assertIn(f"top: {now_pct}%;".encode(), current_week.data)
 
         status, css = self.static_bytes("/static/css/timeline.css")
         self.assertEqual(status, 200)
@@ -1489,6 +1571,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline__block-action", css)
         self.assertIn(b".timeline__block-action--book", css)
         self.assertIn(b".timeline__block--available {\n  background: #2e7d32;", css)
+        self.assertIn(b".timeline__block--partial", css)
+        self.assertIn(b"--booked-pct", css)
+        self.assertIn(b".timeline-swatch--partial", css)
         self.assertIn(b".timeline__block-action--book button {\n  background: #ffffff;", css)
         self.assertIn(b".timeline__block-action button {\n  font-size: 0.52rem;", css)
         self.assertIn(b"color: #c62828;", css)
@@ -1509,9 +1594,530 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline-swatch--past-booked", css)
         self.assertIn(b".timeline__block-people", css)
         self.assertIn(b".timeline__block-person", css)
+        self.assertIn(b".timeline__seat--booked", css)
+        self.assertIn(b".timeline__seat--open", css)
+        self.assertIn(b".timeline__block-tip", css)
+        self.assertIn(b".timeline__block:hover .timeline__block-tip", css)
+        self.assertIn(b".timeline__block.is-hover .timeline__block-tip", css)
         self.assertNotIn(b".timeline__block-link", css)
         self.assertIn(b".timeline-publish", css)
         self.assertIn(b".timeline-day-chip", css)
+        self.assertIn(b".slot-edit-modal", css)
+        self.assertIn(b".slot-edit-people", css)
+        self.assertIn(b".slot-edit-schedule", css)
+        self.assertIn(b".slot-edit-clients__item:hover .slot-edit-clients__remove", css)
+        self.assertIn(b".slot-edit-clients__item.is-hover .slot-edit-clients__remove", css)
+        self.assertIn(b".slot-edit-clients__remove .btn", css)
+        self.assertIn(b"@keyframes slot-edit-shake", css)
+        self.assertIn(b".slot-edit-modal .modal-dialog.is-shake", css)
+        self.assertIn(b".slot-edit-modal .form-control.is-invalid", css)
+        self.assertIn(b"flex: 1 1 12rem", css)
+        self.assertNotIn(b"@media (hover: none)", css)
+        self.assertIn(b".timeline-week-picker__panel", css)
+        self.assertIn(b".timeline-week-picker__day.is-week", css)
+        self.assertIn(b"cursor: pointer", css)
+        self.assertIn(b".timeline__now", css)
+        self.assertIn(b"#ff1744", css)
+        status, picker_js = self.static_bytes("/static/js/timeline-week-picker.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b"/timeline?start=", picker_js)
+        self.assertIn(b"data-week-picker-grid", picker_js)
+        status, now_js = self.static_bytes("/static/js/timeline-now.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b"data-timeline-now", now_js)
+        self.assertIn(b"updateNowLine", now_js)
+
+    def test_timeline_slot_editor_updates_time_positions_and_clients(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        first_start = datetime(2099, 10, 20, 9, 0)
+        second_start = datetime(2099, 10, 20, 11, 0)
+        first = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=first_start,
+            datetime_end=first_start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=1,
+        )
+        second = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=second_start,
+            datetime_end=second_start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=1,
+        )
+        db.session.add_all([first, second])
+        db.session.commit()
+        first_id = first.id
+        second_id = second.id
+        next_week = "/timeline?start=2099-10-19"
+
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/timeline?start=2099-10-19")
+        self.assertIn(b"slotEditModal", page.data)
+        self.assertIn(f"/sessions/{second_id}/edit".encode(), page.data)
+        self.assertIn(b"Add a client", page.data)
+
+        overlap = self.client.post(
+            f"/sessions/{second_id}/edit",
+            data={
+                "start_hour": "9",
+                "start_minute": "30",
+                "end_hour": "10",
+                "end_minute": "30",
+                "position_count": "1",
+                "next": next_week,
+            },
+            follow_redirects=True,
+        )
+        self.assertIn(b"overlaps an existing session", overlap.data)
+        unchanged = db.session.get(GymSession, second_id)
+        self.assertEqual(unchanged.datetime_start, second_start)
+
+        moved = self.client.post(
+            f"/sessions/{second_id}/edit",
+            data={
+                "start_hour": "13",
+                "start_minute": "0",
+                "end_hour": "14",
+                "end_minute": "0",
+                "position_count": "3",
+                "next": next_week,
+            },
+            follow_redirects=True,
+        )
+        self.assertIn(b"Session updated", moved.data)
+        refreshed = db.session.get(GymSession, second_id)
+        self.assertEqual(refreshed.datetime_start, datetime(2099, 10, 20, 13, 0))
+        self.assertEqual(refreshed.datetime_end, datetime(2099, 10, 20, 14, 0))
+        self.assertEqual(refreshed.position_count, 3)
+
+        added = self.client.post(
+            f"/sessions/{second_id}/assign",
+            data={"client_id": casey.id, "next": next_week},
+            follow_redirects=True,
+        )
+        self.assertIn(b"Client booked on this session", added.data)
+        self.client.post(
+            f"/sessions/{second_id}/assign",
+            data={"client_id": jordan.id, "next": next_week},
+            follow_redirects=True,
+        )
+        with_clients = db.session.get(GymSession, second_id)
+        self.assertEqual(with_clients.booked_count, 2)
+        self.assertEqual(with_clients.status, SESSION_AVAILABLE)
+
+        too_few = self.client.post(
+            f"/sessions/{second_id}/edit",
+            data={
+                "start_hour": "13",
+                "start_minute": "0",
+                "end_hour": "14",
+                "end_minute": "0",
+                "position_count": "1",
+                "next": next_week,
+            },
+            follow_redirects=True,
+        )
+        self.assertIn(b"Positions cannot be fewer than clients already booked", too_few.data)
+
+        removed = self.client.post(
+            f"/sessions/{second_id}/unassign",
+            data={"client_id": casey.id, "next": next_week},
+            follow_redirects=True,
+        )
+        self.assertIn(b"Client removed from this session", removed.data)
+        after_remove = db.session.get(GymSession, second_id)
+        self.assertEqual(after_remove.booked_count, 1)
+        self.assertFalse(after_remove.is_booked_by(casey))
+        self.assertTrue(after_remove.is_booked_by(jordan))
+        self.assertIsNotNone(db.session.get(GymSession, first_id))
+
+    def test_edit_session_json_saves_without_redirect(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        start = datetime(2099, 11, 3, 10, 0)
+        neighbor = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=datetime(2099, 11, 3, 8, 0),
+            datetime_end=datetime(2099, 11, 3, 9, 0),
+            status=SESSION_AVAILABLE,
+            position_count=1,
+        )
+        session = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=1,
+        )
+        db.session.add_all([neighbor, session])
+        db.session.commit()
+        session_id = session.id
+
+        self.login("instructor@gym.com", "instructor123")
+        overlap = self.client.post(
+            f"/sessions/{session_id}/edit",
+            data={
+                "start_hour": "8",
+                "start_minute": "0",
+                "end_hour": "9",
+                "end_minute": "0",
+                "position_count": "1",
+                "next": "/timeline?start=2099-11-02",
+            },
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(overlap.status_code, 200)
+        self.assertNotIn("Location", overlap.headers)
+        overlap_body = overlap.get_json()
+        self.assertFalse(overlap_body["ok"])
+        self.assertIn("overlaps an existing session", overlap_body["message"])
+        self.assertIn("start_hour", overlap_body.get("fields", []))
+        self.assertNotIn("slot", overlap_body)
+        unchanged = db.session.get(GymSession, session_id)
+        self.assertEqual(unchanged.datetime_start, start)
+
+        saved = self.client.post(
+            f"/sessions/{session_id}/edit",
+            data={
+                "start_hour": "15",
+                "start_minute": "0",
+                "end_hour": "16",
+                "end_minute": "30",
+                "position_count": "4",
+                "next": "/timeline?start=2099-11-02",
+            },
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertNotIn("Location", saved.headers)
+        body = saved.get_json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["message"], "Session updated.")
+        self.assertEqual(body["slot"]["start_hour"], 15)
+        self.assertEqual(body["slot"]["end_hour"], 16)
+        self.assertEqual(body["slot"]["end_minute"], 30)
+        self.assertEqual(body["slot"]["position_count"], 4)
+        self.assertEqual(body["slot"]["positions_label"], "Positions: 0/4")
+        self.assertEqual(body["slot"]["positions_short"], "0/4")
+        self.assertFalse(body["slot"]["is_partial"])
+        self.assertEqual(body["slot"]["booked_percent"], 0.0)
+        self.assertIn("block", body)
+        self.assertGreater(body["block"]["height"], 0)
+        refreshed = db.session.get(GymSession, session_id)
+        self.assertEqual(refreshed.datetime_start, datetime(2099, 11, 3, 15, 0))
+        self.assertEqual(refreshed.datetime_end, datetime(2099, 11, 3, 16, 30))
+        self.assertEqual(refreshed.position_count, 4)
+
+        status, js = self.static_bytes("/static/js/timeline-slot-edit.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b'event.preventDefault()', js)
+        self.assertIn(b"application/json", js)
+        self.assertIn(b"is-hover", js)
+        self.assertIn(b"mouseenter", js)
+        self.assertIn(b"is-shake", js)
+        self.assertIn(b"is-invalid", js)
+        self.assertIn(b"writeClientIds", js)
+        self.assertIn(b"!(full &&", js)
+        self.assertIn(b"closeModal", js)
+        self.assertIn(b"instance.hide()", js)
+
+    def test_edit_session_json_saves_date_and_clients_together(self):
+        from datetime import datetime, timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        start = datetime(2099, 12, 1, 10, 0)
+        session = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=2,
+        )
+        db.session.add(session)
+        db.session.commit()
+        session_id = session.id
+        booked, _ = booking.book_session(session, casey)
+        self.assertTrue(booked)
+
+        self.login("instructor@gym.com", "instructor123")
+        invalid = self.client.post(
+            f"/sessions/{session_id}/edit",
+            data={
+                "session_date": "2099-12-01",
+                "start_hour": "11",
+                "start_minute": "0",
+                "end_hour": "10",
+                "end_minute": "0",
+                "position_count": "2",
+                "sync_clients": "1",
+                "client_id": [str(casey.id)],
+                "next": "/timeline?start=2099-11-30",
+            },
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(invalid.status_code, 200)
+        invalid_body = invalid.get_json()
+        self.assertFalse(invalid_body["ok"])
+        self.assertIn("End time must be after start time", invalid_body["message"])
+        self.assertIn("end_hour", invalid_body.get("fields", []))
+
+        saved = self.client.post(
+            f"/sessions/{session_id}/edit",
+            data={
+                "session_date": "2099-12-03",
+                "start_hour": "15",
+                "start_minute": "0",
+                "end_hour": "16",
+                "end_minute": "0",
+                "position_count": "3",
+                "sync_clients": "1",
+                "client_id": [str(jordan.id)],
+                "next": "/timeline?start=2099-11-30",
+            },
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(saved.status_code, 200)
+        body = saved.get_json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["message"], "Session updated.")
+        self.assertEqual(body["slot"]["date"], "2099-12-03")
+        self.assertEqual(body["slot"]["start_hour"], 15)
+        self.assertEqual(body["slot"]["position_count"], 3)
+        self.assertEqual(body["slot"]["booked_count"], 1)
+        self.assertEqual(body["slot"]["clients"][0]["id"], jordan.id)
+        self.assertIn("/timeline?start=2099-11-30", body["redirect"])
+        refreshed = db.session.get(GymSession, session_id)
+        self.assertEqual(refreshed.datetime_start, datetime(2099, 12, 3, 15, 0))
+        self.assertEqual(refreshed.position_count, 3)
+        self.assertFalse(refreshed.is_booked_by(casey))
+        self.assertTrue(refreshed.is_booked_by(jordan))
+
+    def test_two_clients_can_share_a_two_position_session(self):
+        from datetime import timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        riley = User.query.filter_by(email="riley@gym.com").first()
+        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=25)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=2,
+        )
+        db.session.add(slot)
+        db.session.commit()
+        ok_first, _ = booking.book_session(slot, casey)
+        ok_second, _ = booking.book_session(slot, jordan)
+        ok_third, message = booking.book_session(slot, riley)
+        self.assertTrue(ok_first)
+        self.assertTrue(ok_second)
+        self.assertFalse(ok_third)
+        self.assertIn("no longer available", message)
+        refreshed = db.session.get(GymSession, slot.id)
+        self.assertEqual(refreshed.status, SESSION_BOOKED)
+        self.assertEqual(refreshed.booked_count, 2)
+        self.assertEqual(refreshed.position_count, 2)
+        self.assertTrue(refreshed.is_booked_by(casey))
+        self.assertTrue(refreshed.is_booked_by(jordan))
+        self.assertFalse(refreshed.is_booked_by(riley))
+
+    def test_same_client_cannot_book_two_positions(self):
+        from datetime import timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=26)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=3,
+        )
+        db.session.add(slot)
+        db.session.commit()
+        ok_first, _ = booking.book_session(slot, casey)
+        ok_second, message = booking.book_session(slot, casey)
+        self.assertTrue(ok_first)
+        self.assertFalse(ok_second)
+        self.assertIn("already have a place", message)
+        refreshed = db.session.get(GymSession, slot.id)
+        self.assertEqual(refreshed.booked_count, 1)
+        self.assertEqual(refreshed.status, SESSION_AVAILABLE)
+
+    def test_client_cancel_reopens_a_full_multi_position_session(self):
+        from datetime import timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        start = now_gym().replace(minute=0, second=0, microsecond=0) + timedelta(days=27)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=2,
+        )
+        db.session.add(slot)
+        db.session.commit()
+        self.assertTrue(booking.book_session(slot, casey)[0])
+        self.assertTrue(booking.book_session(slot, jordan)[0])
+        refreshed = db.session.get(GymSession, slot.id)
+        self.assertEqual(refreshed.status, SESSION_BOOKED)
+        ok, message = booking.cancel_session(refreshed, casey)
+        self.assertTrue(ok)
+        self.assertIn("available again", message)
+        again = db.session.get(GymSession, slot.id)
+        self.assertEqual(again.status, SESSION_AVAILABLE)
+        self.assertEqual(again.booked_count, 1)
+        self.assertFalse(again.is_booked_by(casey))
+        self.assertTrue(again.is_booked_by(jordan))
+
+    def test_partial_session_is_open_and_booked_on_calendar(self):
+        from datetime import datetime
+
+        from website.models import GymSessionBooking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        start = datetime(2099, 10, 12, 10, 0)
+        slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start.replace(hour=11),
+            status=SESSION_AVAILABLE,
+            position_count=3,
+        )
+        db.session.add(slot)
+        db.session.flush()
+        db.session.add(GymSessionBooking(session_id=slot.id, client_id=casey.id))
+        db.session.add(GymSessionBooking(session_id=slot.id, client_id=jordan.id))
+        slot.sync_status()
+        db.session.commit()
+
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/book?month=10&year=2099").get_data(as_text=True)
+        marker = "/book/2099/10/12"
+        idx = page.find(marker)
+        self.assertNotEqual(idx, -1)
+        cell = page[page.rfind("<a", 0, idx) : page.find("</a>", idx)]
+        self.assertIn("has-open has-booked", cell)
+        self.assertIn("Open & Booked", cell)
+
+        day = self.client.get("/book/2099/10/12")
+        self.assertEqual(day.status_code, 200)
+        self.assertIn(b"Positions: 2/3", day.data)
+        self.assertIn(b"Open &amp; Booked", day.data)
+        self.assertIn(b"Casey Client", day.data)
+        self.assertIn(b"Jordan Lee", day.data)
+        self.assertIn(b"Cancel session", day.data)
+        self.assertNotIn(b"Delete slot", day.data)
+
+        self.client.get("/logout")
+        self.login("client@gym.com", "client123")
+        client_day = self.client.get("/book/2099/10/12")
+        self.assertIn(b"Positions: 2/3", client_day.data)
+        self.assertIn(b"Cancel booking", client_day.data)
+        self.assertNotIn(b"Book this session", client_day.data)
+
+        self.client.get("/logout")
+        self.login("riley@gym.com", "client123")
+        riley_day = self.client.get("/book/2099/10/12")
+        self.assertIn(b"Positions: 2/3", riley_day.data)
+        self.assertIn(b"Book this session", riley_day.data)
+        self.assertNotIn(b"Cancel booking", riley_day.data)
+
+    def test_one_seat_day_card_still_shows_positions(self):
+        from datetime import datetime, timedelta
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        start = datetime(2099, 10, 13, 9, 0)
+        db.session.add(
+            GymSession(
+                instructor_id=instructor.id,
+                datetime_start=start,
+                datetime_end=start + timedelta(hours=1),
+                status=SESSION_AVAILABLE,
+                position_count=1,
+            )
+        )
+        db.session.commit()
+        self.login("instructor@gym.com", "instructor123")
+        page = self.client.get("/book/2099/10/13")
+        self.assertIn(b"Positions: 0/1", page.data)
+
+    def test_publish_custom_slot_stores_position_count(self):
+        from datetime import datetime
+
+        self.login("instructor@gym.com", "instructor123")
+        published = self.client.post(
+            "/book/2099/10/14/availability",
+            data={
+                "start_hour": "9",
+                "start_minute": "0",
+                "end_hour": "10",
+                "end_minute": "0",
+                "position_count": "4",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(published.status_code, 200)
+        self.assertIn(b"Availability published", published.data)
+        slot = (
+            GymSession.query.filter(GymSession.datetime_start == datetime(2099, 10, 14, 9, 0))
+            .one()
+        )
+        self.assertEqual(slot.position_count, 4)
+        self.assertIn(b"Positions: 0/4", published.data)
+
+    def test_seeded_multi_position_classes_exist(self):
+        from website.models import GymSessionBooking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        riley = User.query.filter_by(email="riley@gym.com").first()
+        morgan = User.query.filter_by(email="morgan@gym.com").first()
+        partial = (
+            GymSession.query.filter_by(instructor_id=instructor.id, position_count=3)
+            .filter(GymSession.status != SESSION_CANCELLED)
+            .first()
+        )
+        full = (
+            GymSession.query.filter_by(instructor_id=instructor.id, position_count=2)
+            .filter(GymSession.status == SESSION_BOOKED)
+            .first()
+        )
+        self.assertIsNotNone(partial)
+        self.assertEqual(partial.status, SESSION_AVAILABLE)
+        self.assertEqual(partial.booked_count, 2)
+        occupant_ids = {row.client_id for row in GymSessionBooking.query.filter_by(session_id=partial.id)}
+        self.assertEqual(occupant_ids, {casey.id, jordan.id})
+        self.assertIsNotNone(full)
+        self.assertEqual(full.booked_count, 2)
+        full_ids = {row.client_id for row in GymSessionBooking.query.filter_by(session_id=full.id)}
+        self.assertEqual(full_ids, {riley.id, morgan.id})
 
     def test_instructor_can_publish_week_from_timeline(self):
         from datetime import datetime
