@@ -15,6 +15,7 @@ from website.models import (
     SESSION_CANCELLED,
     GymSession,
     GymSessionBooking,
+    GymSessionInterest,
     User,
 )
 from website.utils.timeutils import now_gym
@@ -439,6 +440,7 @@ def _add_client_booking(session, client):
 
     db.session.expire(session, ["bookings"])
     session.sync_status()
+    _clear_interest(session, client)
     return True, "Client booked on this session."
 
 
@@ -579,4 +581,42 @@ def update_session_slot(session, actor, start, end, position_count, client_ids=N
     session.sync_status()
     db.session.commit()
     return True, "Session updated.", []
+
+
+def _clear_interest(session, client):
+    if not session or not client:
+        return
+    GymSessionInterest.query.filter_by(session_id=session.id, client_id=client.id).delete()
+
+
+def add_interest(session, client):
+    if not client or client.role != ROLE_CLIENT or client.status != 1:
+        return False, "Only clients can register interest."
+    if not session:
+        return False, "Session not found."
+    if session.status == SESSION_CANCELLED:
+        return False, "That session is no longer available."
+    if session.is_past:
+        return False, "Past sessions cannot take interest."
+    if session.is_booked_by(client):
+        return False, "You already have a place on this session."
+    if not session.is_full:
+        return False, "Register interest only when the session is fully booked."
+    if session.is_interested_by(client):
+        return False, "You already registered interest in this session."
+    db.session.add(GymSessionInterest(session_id=session.id, client_id=client.id))
+    db.session.commit()
+    db.session.expire(session, ["interests"])
+    return True, "Interest registered. Staff can see that you want this session."
+
+
+def remove_interest(session, client):
+    if not client or client.role != ROLE_CLIENT:
+        return False, "Only clients can change interest."
+    if not session or not session.is_interested_by(client):
+        return False, "You have not registered interest in this session."
+    _clear_interest(session, client)
+    db.session.commit()
+    db.session.expire(session, ["interests"])
+    return True, "Interest removed."
 

@@ -42,7 +42,13 @@ def visible_sessions(actor, range_start, range_end, instructor_id=None):
         query = query.filter(GymSession.instructor_id == actor.id)
     sessions = query.order_by(GymSession.datetime_start, GymSession.id).all()
     if actor.is_client:
-        return [session for session in sessions if session.is_available or session.is_booked_by(actor)]
+        return [
+            session
+            for session in sessions
+            if session.is_available
+            or session.is_booked_by(actor)
+            or (session.is_full and not session.is_past)
+        ]
     return sessions
 
 
@@ -54,11 +60,23 @@ def editor_payload(session, actor):
         end_hour, end_minute = 24, 0
     can_manage = actor.is_admin or (actor.is_instructor and session.instructor_id == actor.id)
     booked_by_me = bool(actor.is_client and session.is_booked_by(actor))
+    interested_by_me = bool(actor.is_client and session.is_interested_by(actor))
+    can_interest = bool(
+        actor.is_client
+        and session.is_full
+        and not session.is_past
+        and not booked_by_me
+        and session.status != SESSION_CANCELLED
+    )
     if actor.is_client:
-        display_status = "booked" if booked_by_me else "available"
         if booked_by_me:
+            display_status = "booked"
             display_status_label = "Past booking" if session.is_past else "Your booking"
+        elif session.is_full:
+            display_status = "booked"
+            display_status_label = "Full"
         else:
+            display_status = "available"
             display_status_label = "Past open" if session.is_past else "Open slot"
         show_partial = False
     else:
@@ -85,6 +103,10 @@ def editor_payload(session, actor):
         "show_partial": show_partial,
         "viewer_is_client": bool(actor.is_client),
         "booked_by_me": booked_by_me,
+        "is_full": session.is_full,
+        "interested_by_me": interested_by_me,
+        "can_interest": can_interest,
+        "has_interest": bool(can_manage and session.is_full and session.interests),
         "display_status": display_status,
         "display_status_label": display_status_label,
         "booked_percent": round(
@@ -96,6 +118,12 @@ def editor_payload(session, actor):
             {"id": client.id, "name": client.display_name}
             for client in session.booked_clients
         ],
+        "interested": [
+            {"id": client.id, "name": client.display_name}
+            for client in session.interested_clients
+        ]
+        if can_manage
+        else [],
         "can_manage": can_manage,
         "can_book": bool(
             actor.is_client and session.is_available and not session.is_booked_by(actor)
@@ -129,6 +157,9 @@ def editor_payload(session, actor):
             data["book_url"] = f"/sessions/{session.id}/book"
         if data["can_cancel_own"]:
             data["cancel_url"] = f"/sessions/{session.id}/cancel"
+        if data["can_interest"]:
+            data["interest_url"] = f"/sessions/{session.id}/interest"
+            data["interest_remove_url"] = f"/sessions/{session.id}/withdraw-interest"
     return data
 
 

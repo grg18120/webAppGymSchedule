@@ -435,6 +435,26 @@ def book_session(session_id):
     return redirect(_safe_timeline_next(fallback))
 
 
+@app.route("/sessions/<int:session_id>/interest", methods=["POST"])
+@login_required
+@role_required(ROLE_CLIENT)
+def add_session_interest(session_id):
+    session = _session_or_404(session_id)
+    ok, message = booking.add_interest(session, current_user)
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(url_for("app.timeline")))
+
+
+@app.route("/sessions/<int:session_id>/withdraw-interest", methods=["POST"])
+@login_required
+@role_required(ROLE_CLIENT)
+def remove_session_interest(session_id):
+    session = _session_or_404(session_id)
+    ok, message = booking.remove_interest(session, current_user)
+    flash(message, "success" if ok else "error")
+    return redirect(_safe_timeline_next(url_for("app.timeline")))
+
+
 @app.route("/sessions/<int:session_id>/cancel", methods=["POST"])
 @login_required
 def cancel_session(session_id):

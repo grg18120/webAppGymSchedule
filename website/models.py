@@ -81,6 +81,21 @@ class GymSessionBooking(db.Model, SerializerMixin):
     __table_args__ = (UniqueConstraint("session_id", "client_id", name="ux_gym_session_booking_client"),)
 
 
+class GymSessionInterest(db.Model, SerializerMixin):
+    __tablename__ = "gym_session_interest"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey("gym_session.id"), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    datetime_created = db.Column(db.DateTime, default=datetime.now)
+
+    client = db.relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("session_id", "client_id", name="ux_gym_session_interest_client"),
+    )
+
+
 class GymSession(db.Model, SerializerMixin):
     __tablename__ = "gym_session"
 
@@ -98,6 +113,12 @@ class GymSession(db.Model, SerializerMixin):
     client = db.relationship("User", foreign_keys=[client_id], backref="booked_sessions")
     bookings = db.relationship(
         "GymSessionBooking",
+        backref="session",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    interests = db.relationship(
+        "GymSessionInterest",
         backref="session",
         cascade="all, delete-orphan",
         lazy="selectin",
@@ -160,6 +181,15 @@ class GymSession(db.Model, SerializerMixin):
         if self.bookings:
             return False
         return self.client_id == user.id
+
+    def is_interested_by(self, user):
+        if not user:
+            return False
+        return any(row.client_id == user.id for row in self.interests)
+
+    @property
+    def interested_clients(self):
+        return [row.client for row in self.interests if row.client]
 
     def sync_status(self):
         if self.status == SESSION_CANCELLED:
