@@ -1582,6 +1582,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"@media (hover: none)", css)
         self.assertIn(b".timeline-week-picker__panel", css)
         self.assertIn(b".timeline-week-picker__day.is-week", css)
+        self.assertIn(b"cursor: pointer", css)
         status, picker_js = self.static_bytes("/static/js/timeline-week-picker.js")
         self.assertEqual(status, 200)
         self.assertIn(b"/timeline?start=", picker_js)
