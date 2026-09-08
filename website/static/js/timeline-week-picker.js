@@ -92,6 +92,7 @@
   if (toggle) {
     toggle.addEventListener("click", function (event) {
       event.preventDefault();
+      event.stopPropagation();
       setOpen(!isOpen());
     });
   }
