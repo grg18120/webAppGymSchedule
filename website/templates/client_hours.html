@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Client hours · Gym Sessions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/hours.css') }}">
+{% endblock %}
+{% block content %}
+<div class="container py-4 hours-page">
+  <h1 class="h3">{{ report.title }}</h1>
+  <p class="hours-lead">Booked training time for each client. {{ report.window_label }}. Gym time.</p>
+
+  <div class="hours-table-wrap">
+    <table class="hours-table" aria-label="Client booked hours by month">
+      <thead>
+        <tr>
+          <th scope="col">Client</th>
+          {% for month in report.months %}
+          <th scope="col" {% if month.is_current %}class="is-current"{% endif %}>{{ month.label }}</th>
+          {% endfor %}
+          <th scope="col">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report.rows %}
+        <tr>
+          <th scope="row">
+            <span class="hours-table__name">{{ row.name }}</span>
+            <span class="hours-table__email">{{ row.email }}</span>
+          </th>
+          {% for value in row.hours %}
+          <td>{{ value }}</td>
+          {% endfor %}
+          <td class="hours-table__total">{{ row.total }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ report.months|length + 2 }}">No clients yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

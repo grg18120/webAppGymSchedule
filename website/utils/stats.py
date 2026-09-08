@@ -401,6 +401,54 @@ def client_dashboard(user, now):
     }
 
 
+def client_hours_report(now):
+    months = _last_months(now)
+    sessions = _query_sessions(now, months)
+    clients = (
+        User.query.filter_by(role=ROLE_CLIENT)
+        .order_by(User.name_last, User.name_first, User.email)
+        .all()
+    )
+    totals = {client.id: {key: 0 for key in months} for client in clients}
+    for session in sessions:
+        key = (session.datetime_start.year, session.datetime_start.month)
+        if key not in months:
+            continue
+        minutes = _minutes(session)
+        for occupant in session.booked_clients:
+            if occupant.id in totals:
+                totals[occupant.id][key] += minutes
+    month_headers = [
+        {
+            "key": f"{year}-{month:02d}",
+            "label": datetime(year, month, 1).strftime("%b %Y"),
+            "is_current": (year, month) == (now.year, now.month),
+        }
+        for year, month in months
+    ]
+    rows = []
+    for client in clients:
+        minutes_by_month = [totals[client.id][key] for key in months]
+        total_minutes = sum(minutes_by_month)
+        rows.append(
+            {
+                "id": client.id,
+                "name": client.display_name,
+                "email": client.email,
+                "minutes": minutes_by_month,
+                "hours": [_format_duration(value) for value in minutes_by_month],
+                "total_minutes": total_minutes,
+                "total": _format_duration(total_minutes),
+            }
+        )
+    return {
+        "title": "Client booked hours",
+        "window_label": f"Last {MONTH_WINDOW} months",
+        "months": month_headers,
+        "rows": rows,
+    }
+
+
 def admin_dashboard(now):
     months = _last_months(now)
     sessions = _query_sessions(now, months)
