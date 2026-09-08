@@ -278,7 +278,7 @@
   </div>
 </div>
 
-<div class="modal fade slot-edit-modal" id="slotEditModal" tabindex="-1" aria-labelledby="slotEditTitle" aria-hidden="true" data-timeline-next="{{ timeline_next }}">
+<div class="modal fade slot-edit-modal" id="slotEditModal" tabindex="-1" aria-labelledby="slotEditTitle" aria-hidden="true" data-timeline-next="{{ timeline_next }}" data-today="{{ today.isoformat() }}">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -295,8 +295,21 @@
 
         <div data-slot-staff hidden>
           {% if user.is_instructor or user.is_admin %}
-          <form method="POST" data-slot-edit-form>
+          <form method="POST" id="slotEditForm" data-slot-edit-form novalidate>
             <input type="hidden" name="next" value="{{ timeline_next }}">
+            <input type="hidden" name="sync_clients" value="1">
+            <div data-slot-client-ids></div>
+            <div class="mb-3">
+              <label class="form-label" for="slot_session_date">Date</label>
+              <input
+                class="form-control tap-target"
+                type="date"
+                id="slot_session_date"
+                name="session_date"
+                required
+                data-slot-date
+              >
+            </div>
             <fieldset class="clock-fieldset mb-3" data-slot-time-fields>
               <legend class="form-label">Time</legend>
               <div class="row g-3">
@@ -350,27 +363,25 @@
                 max="{{ POSITION_COUNT_MAX }}"
                 required
               >
-              <span class="form-text">Cannot go below the number of clients already booked.</span>
+              <span class="form-text">Cannot go below the number of clients on this session.</span>
             </div>
-            <button type="submit" class="btn btn-primary tap-target mb-3">Save time and positions</button>
-          </form>
 
-          <h3 class="h6">Clients</h3>
-          <ul class="slot-edit-clients" data-slot-clients></ul>
-          <form method="POST" class="slot-edit-add" data-slot-add-form>
-            <input type="hidden" name="next" value="{{ timeline_next }}">
-            <label class="form-label" for="slot_add_client">Add a client</label>
-            <div class="d-flex flex-wrap gap-2">
-              <select class="form-select tap-target" id="slot_add_client" name="client_id" required>
-                <option value="">Select client</option>
-                {% for client in clients %}
-                <option value="{{ client.id }}">{{ client.display_name }}</option>
-                {% endfor %}
-              </select>
-              <button type="submit" class="btn btn-success tap-target">Add</button>
+            <h3 class="h6">Clients</h3>
+            <ul class="slot-edit-clients" data-slot-clients></ul>
+            <div class="slot-edit-add" data-slot-add-form>
+              <label class="form-label" for="slot_add_client">Add a client</label>
+              <div class="d-flex flex-wrap gap-2">
+                <select class="form-select tap-target" id="slot_add_client">
+                  <option value="">Select client</option>
+                  {% for client in clients %}
+                  <option value="{{ client.id }}">{{ client.display_name }}</option>
+                  {% endfor %}
+                </select>
+                <button type="button" class="btn btn-success tap-target" data-slot-add-client>Add</button>
+              </div>
             </div>
+            <p class="form-text" data-slot-add-hint hidden>Increase positions before adding another client.</p>
           </form>
-          <p class="form-text" data-slot-add-hint hidden>Increase positions before adding another client.</p>
           {% endif %}
         </div>
 
@@ -404,6 +415,9 @@
           <button type="submit" class="btn btn-delete-slot tap-target">Delete session</button>
         </form>
         {% endif %}
+        {% endif %}
+        {% if user.is_instructor or user.is_admin %}
+        <button type="submit" class="btn btn-primary tap-target ms-auto" form="slotEditForm" data-slot-save>Save changes</button>
         {% endif %}
         <button type="button" class="btn btn-outline-secondary tap-target" data-bs-dismiss="modal">Close</button>
       </div>

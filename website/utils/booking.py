@@ -409,7 +409,7 @@ def actor_can_manage_session(actor, session):
     return actor.is_instructor and session.instructor_id == actor.id
 
 
-def _place_booking(session, client):
+def _add_client_booking(session, client):
     if not client or client.role != ROLE_CLIENT or client.status != 1:
         return False, "Choose a client."
     if not session:
@@ -439,9 +439,30 @@ def _place_booking(session, client):
 
     db.session.expire(session, ["bookings"])
     session.sync_status()
+    return True, "Client booked on this session."
+
+
+def _remove_client_booking(session, client):
+    if not client or not session.is_booked_by(client):
+        return False, "That client is not booked on this session."
+    for row in list(session.bookings):
+        if row.client_id == client.id:
+            db.session.delete(row)
+    if session.client_id == client.id:
+        session.client_id = None
+    db.session.flush()
+    db.session.expire(session, ["bookings"])
+    session.sync_status()
+    return True, "Client removed from this session."
+
+
+def _place_booking(session, client):
+    ok, message = _add_client_booking(session, client)
+    if not ok:
+        return ok, message
     db.session.commit()
     db.session.expire(session)
-    return True, "Client booked on this session."
+    return True, message
 
 
 def book_session(session, client):
@@ -470,41 +491,67 @@ def unassign_client(session, actor, client):
         return False, "You can only edit your own slots."
     if session.is_past:
         return False, "Past sessions cannot be changed."
-    if not client or not session.is_booked_by(client):
-        return False, "That client is not booked on this session."
-
-    for row in list(session.bookings):
-        if row.client_id == client.id:
-            db.session.delete(row)
-    if session.client_id == client.id:
-        session.client_id = None
-    db.session.flush()
-    db.session.expire(session, ["bookings"])
-    session.sync_status()
-    db.session.commit()
-    return True, "Client removed from this session."
+    ok, message = _remove_client_booking(session, client)
+    if ok:
+        db.session.commit()
+    return ok, message
 
 
-def update_session_slot(session, actor, start, end, position_count):
+def update_session_slot(session, actor, start, end, position_count, client_ids=None):
+    time_fields = [
+        "session_date",
+        "start_hour",
+        "start_minute",
+        "end_hour",
+        "end_minute",
+    ]
     if not session:
-        return False, "Session not found."
+        return False, "Session not found.", []
     if not actor_can_manage_session(actor, session):
-        return False, "You can only edit your own slots."
+        return False, "You can only edit your own slots.", []
     if session.status == SESSION_CANCELLED:
-        return False, "That session is cancelled."
+        return False, "That session is cancelled.", []
     if end <= start:
-        return False, "End time must be after start time."
+        return False, "End time must be after start time.", ["end_hour", "end_minute"]
     time_changed = start != session.datetime_start or end != session.datetime_end
     if time_changed:
         if start <= now_gym():
-            return False, "Cannot move a session into the past."
+            return False, "Cannot move a session into the past.", [
+                "session_date",
+                "start_hour",
+                "start_minute",
+            ]
         if overlapping_sessions(session.instructor_id, start, end, exclude_id=session.id):
-            return False, "This time overlaps an existing session for that instructor."
+            return False, "This time overlaps an existing session for that instructor.", time_fields
     count, error = parse_position_count(position_count)
     if error:
-        return False, error
-    if count < session.booked_count:
-        return False, "Positions cannot be fewer than clients already booked."
+        return False, error, ["position_count"]
+
+    desired_clients = None
+    if client_ids is not None:
+        desired_clients = []
+        seen = set()
+        for cid in client_ids:
+            if cid in seen:
+                continue
+            seen.add(cid)
+            client = db.session.get(User, cid)
+            if not client or client.role != ROLE_CLIENT or client.status != 1:
+                return False, "Choose a client.", ["client_id"]
+            desired_clients.append(client)
+        if count < len(desired_clients):
+            return False, "Positions cannot be fewer than clients already booked.", [
+                "position_count"
+            ]
+        if start <= now_gym():
+            current_ids = {client.id for client in session.booked_clients}
+            if {client.id for client in desired_clients} != current_ids:
+                return False, "Past sessions cannot be changed.", ["client_id"]
+    elif count < session.booked_count:
+        return False, "Positions cannot be fewer than clients already booked.", [
+            "position_count"
+        ]
+
     session.datetime_start = start
     session.datetime_end = end
     session.position_count = count
@@ -512,8 +559,24 @@ def update_session_slot(session, actor, start, end, position_count):
         with db.session.begin_nested():
             db.session.flush()
     except IntegrityError:
-        return False, "This time overlaps an existing session for that instructor."
+        return False, "This time overlaps an existing session for that instructor.", time_fields
+
+    if desired_clients is not None:
+        desired_ids = {client.id for client in desired_clients}
+        for client in list(session.booked_clients):
+            if client.id not in desired_ids:
+                ok, message = _remove_client_booking(session, client)
+                if not ok:
+                    db.session.rollback()
+                    return False, message, ["client_id"]
+        for client in desired_clients:
+            if not session.is_booked_by(client):
+                ok, message = _add_client_booking(session, client)
+                if not ok:
+                    db.session.rollback()
+                    return False, message, ["client_id"]
+
     session.sync_status()
     db.session.commit()
-    return True, "Session updated."
+    return True, "Session updated.", []
 

@@ -764,3 +764,44 @@
   min-width: 12rem;
 }
 
+.slot-edit-modal .form-control.is-invalid,
+.slot-edit-modal .form-select.is-invalid {
+  border-color: #c62828;
+  box-shadow: 0 0 0 0.2rem rgba(198, 40, 40, 0.25);
+}
+
+.slot-edit-modal .clock-fieldset.is-invalid {
+  outline: 2px solid #c62828;
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+@keyframes slot-edit-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-10px);
+  }
+  40% {
+    transform: translateX(10px);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+.slot-edit-modal .modal-dialog.is-shake {
+  animation: slot-edit-shake 0.45s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-edit-modal .modal-dialog.is-shake {
+    animation: none;
+  }
+}
+

@@ -83,14 +83,26 @@ def _wants_json():
     return "application/json" in accept
 
 
-def _edit_session_reply(ok, message, fallback, session=None):
+def _edit_session_reply(
+    ok, message, fallback, session=None, fields=None, original_date=None
+):
     if _wants_json():
         payload = {"ok": bool(ok), "message": message}
+        if fields:
+            payload["fields"] = list(fields)
         if ok and session is not None:
             payload["slot"] = timeline_view.editor_payload(session, current_user)
             geometry = timeline_view.block_geometry(session)
             if geometry:
                 payload["block"] = geometry
+            if (
+                original_date is not None
+                and session.datetime_start.date() != original_date
+            ):
+                monday = timeline_view.monday_of(session.datetime_start.date())
+                payload["redirect"] = url_for(
+                    "app.timeline", start=monday.isoformat()
+                )
         return jsonify(payload)
     flash(message, "success" if ok else "error")
     return redirect(_safe_timeline_next(fallback))
@@ -481,7 +493,22 @@ def delete_booked_session(session_id):
 def edit_session(session_id):
     session = _session_or_404(session_id)
     fallback = url_for("app.timeline")
-    day_date = session.datetime_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    original_date = session.datetime_start.date()
+    raw_date = request.form.get("session_date")
+    if raw_date:
+        try:
+            day_date = datetime.strptime(raw_date, "%Y-%m-%d")
+        except ValueError:
+            return _edit_session_reply(
+                False,
+                "That date is not valid.",
+                fallback,
+                fields=["session_date"],
+            )
+    else:
+        day_date = session.datetime_start.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
     try:
         start = _parse_clock(day_date, "start_hour", "start_minute")
         end = _parse_clock(day_date, "end_hour", "end_minute")
@@ -490,15 +517,40 @@ def edit_session(session_id):
             False,
             "Choose a start and end time using 24-hour hours and minutes.",
             fallback,
+            fields=["start_hour", "start_minute", "end_hour", "end_minute"],
         )
-    ok, message = booking.update_session_slot(
+    client_ids = None
+    if request.form.get("sync_clients") == "1":
+        client_ids = []
+        for raw in request.form.getlist("client_id"):
+            raw = (raw or "").strip()
+            if not raw:
+                continue
+            try:
+                client_ids.append(int(raw))
+            except (TypeError, ValueError):
+                return _edit_session_reply(
+                    False,
+                    "Choose a client.",
+                    fallback,
+                    fields=["client_id"],
+                )
+    ok, message, fields = booking.update_session_slot(
         session,
         current_user,
         start,
         end,
         request.form.get("position_count"),
+        client_ids=client_ids,
     )
-    return _edit_session_reply(ok, message, fallback, session)
+    return _edit_session_reply(
+        ok,
+        message,
+        fallback,
+        session if ok else None,
+        fields=fields,
+        original_date=original_date,
+    )
 
 
 @app.route("/sessions/<int:session_id>/assign", methods=["POST"])

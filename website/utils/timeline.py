@@ -50,6 +50,7 @@ def editor_payload(session, actor):
         "start_minute": start.minute,
         "end_hour": end_hour,
         "end_minute": end_minute,
+        "date": start.strftime("%Y-%m-%d"),
         "date_label": start.strftime("%A %d %B %Y"),
         "time_label": f"{start.strftime('%H:%M')} – {end.strftime('%H:%M')}",
         "positions_label": session.positions_label,

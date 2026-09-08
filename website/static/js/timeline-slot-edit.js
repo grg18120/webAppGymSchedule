@@ -12,19 +12,27 @@
   var addForm = modalEl.querySelector("[data-slot-add-form]");
   var addHint = modalEl.querySelector("[data-slot-add-hint]");
   var addSelect = modalEl.querySelector("#slot_add_client");
+  var addButton = modalEl.querySelector("[data-slot-add-client]");
   var clientsList = modalEl.querySelector("[data-slot-clients]");
+  var clientIdsBox = modalEl.querySelector("[data-slot-client-ids]");
+  var dateInput = modalEl.querySelector("[data-slot-date]");
   var startHour = modalEl.querySelector("#slot_start_hour");
   var startMinute = modalEl.querySelector("#slot_start_minute");
   var endHour = modalEl.querySelector("#slot_end_hour");
   var endMinute = modalEl.querySelector("#slot_end_minute");
   var positionInput = modalEl.querySelector("#slot_position_count");
+  var saveBtn = modalEl.querySelector("[data-slot-save]");
   var bookForm = modalEl.querySelector("[data-slot-book-form]");
   var cancelOwnForm = modalEl.querySelector("[data-slot-cancel-own-form]");
   var deleteForm = modalEl.querySelector("[data-slot-delete-form]");
   var cancelAllForm = modalEl.querySelector("[data-slot-cancel-all-form]");
   var deleteBookedForm = modalEl.querySelector("[data-slot-delete-booked-form]");
   var flashEl = modalEl.querySelector("[data-slot-flash]");
+  var dialogEl = modalEl.querySelector(".modal-dialog");
   var currentTrigger = null;
+  var currentSlot = null;
+  var draftClients = [];
+  var originalDate = "";
 
   function setHidden(node, hidden) {
     if (!node) return;
@@ -50,6 +58,58 @@
       (kind === "success" ? "alert-success" : "alert-danger");
   }
 
+  function fieldMap() {
+    return {
+      session_date: dateInput,
+      start_hour: startHour,
+      start_minute: startMinute,
+      end_hour: endHour,
+      end_minute: endMinute,
+      position_count: positionInput,
+      client_id: addSelect,
+    };
+  }
+
+  function clearInvalid() {
+    modalEl.querySelectorAll(".is-invalid").forEach(function (el) {
+      el.classList.remove("is-invalid");
+      el.removeAttribute("aria-invalid");
+    });
+  }
+
+  function markInvalid(name) {
+    var el = fieldMap()[name];
+    if (el) {
+      el.classList.add("is-invalid");
+      el.setAttribute("aria-invalid", "true");
+    }
+    if (
+      name === "start_hour" ||
+      name === "start_minute" ||
+      name === "end_hour" ||
+      name === "end_minute"
+    ) {
+      var fieldset = modalEl.querySelector("[data-slot-time-fields]");
+      if (fieldset) fieldset.classList.add("is-invalid");
+    }
+  }
+
+  function shake(fields) {
+    clearInvalid();
+    (fields || []).forEach(markInvalid);
+    if (!dialogEl) return;
+    dialogEl.classList.remove("is-shake");
+    void dialogEl.offsetWidth;
+    dialogEl.classList.add("is-shake");
+    dialogEl.addEventListener(
+      "animationend",
+      function () {
+        dialogEl.classList.remove("is-shake");
+      },
+      { once: true }
+    );
+  }
+
   function ensureOption(select, value) {
     if (!select) return;
     var raw = String(value);
@@ -71,46 +131,75 @@
     form.action = path;
   }
 
-  function renderClients(slot) {
+  function clockMinutes(hourEl, minuteEl) {
+    var hour = Number(hourEl && hourEl.value);
+    var minute = Number(minuteEl && minuteEl.value);
+    if (hour === 24) return 24 * 60;
+    return hour * 60 + minute;
+  }
+
+  function positionCount() {
+    var count = positionInput ? Number(positionInput.value) : NaN;
+    return Number.isInteger(count) ? count : NaN;
+  }
+
+  function updatePositionMin() {
+    if (!positionInput) return;
+    positionInput.min = String(Math.max(1, draftClients.length));
+  }
+
+  function writeClientIds() {
+    if (!clientIdsBox) return;
+    clientIdsBox.innerHTML = "";
+    draftClients.forEach(function (client) {
+      var input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "client_id";
+      input.value = String(client.id);
+      clientIdsBox.appendChild(input);
+    });
+  }
+
+  function renderClients() {
     if (!clientsList) return;
     clientsList.innerHTML = "";
-    if (!slot.clients || !slot.clients.length) {
+    if (!draftClients.length) {
       var empty = document.createElement("li");
       empty.className = "slot-edit-clients__empty";
-      empty.textContent = slot.is_past
-        ? "No client has made a reservation"
-        : "No client yet";
+      empty.textContent =
+        currentSlot && currentSlot.is_past
+          ? "No client has made a reservation"
+          : "No client yet";
       clientsList.appendChild(empty);
       return;
     }
-    slot.clients.forEach(function (client) {
+    draftClients.forEach(function (client) {
       var item = document.createElement("li");
       item.className = "slot-edit-clients__item";
       var name = document.createElement("span");
       name.textContent = client.name;
       item.appendChild(name);
-      if (slot.can_manage && !slot.is_past) {
-        var form = document.createElement("form");
-        form.method = "POST";
-        form.action = slot.unassign_url;
-        form.className = "slot-edit-clients__remove";
-        var next = document.createElement("input");
-        next.type = "hidden";
-        next.name = "next";
-        next.value = timelineNext();
-        var clientId = document.createElement("input");
-        clientId.type = "hidden";
-        clientId.name = "client_id";
-        clientId.value = String(client.id);
+      if (currentSlot && currentSlot.can_manage && !currentSlot.is_past) {
+        var removeWrap = document.createElement("div");
+        removeWrap.className = "slot-edit-clients__remove";
         var button = document.createElement("button");
-        button.type = "submit";
+        button.type = "button";
         button.className = "btn btn-outline-danger tap-target";
         button.textContent = "Remove";
         button.setAttribute("aria-label", "Remove " + client.name);
-        form.appendChild(next);
-        form.appendChild(clientId);
-        form.appendChild(button);
-        item.appendChild(form);
+        button.addEventListener("click", function () {
+          draftClients = draftClients.filter(function (row) {
+            return row.id !== client.id;
+          });
+          clearInvalid();
+          showFlash("");
+          renderClients();
+          filterAddClients();
+          writeClientIds();
+          updatePositionMin();
+        });
+        removeWrap.appendChild(button);
+        item.appendChild(removeWrap);
         item.addEventListener("mouseenter", function () {
           item.classList.add("is-hover");
         });
@@ -122,10 +211,10 @@
     });
   }
 
-  function filterAddClients(slot) {
+  function filterAddClients() {
     if (!addSelect) return;
     var booked = {};
-    (slot.clients || []).forEach(function (client) {
+    draftClients.forEach(function (client) {
       booked[String(client.id)] = true;
     });
     var available = 0;
@@ -137,15 +226,86 @@
       if (!taken) available += 1;
     });
     addSelect.value = "";
-    var full = slot.booked_count >= slot.position_count;
-    setHidden(addForm, full || slot.is_past || !slot.can_manage);
-    setHidden(addHint, !(full && slot.can_manage && !slot.is_past));
-    if (!available) {
-      setHidden(addForm, true);
+    var count = positionCount();
+    var full = Number.isInteger(count) && draftClients.length >= count;
+    var locked = !currentSlot || !currentSlot.can_manage || currentSlot.is_past;
+    setHidden(addForm, locked || full || !available);
+    setHidden(addHint, Boolean(full && currentSlot && currentSlot.can_manage && !currentSlot.is_past));
+  }
+
+  function addDraftClient() {
+    if (!addSelect || !addSelect.value) {
+      showFlash("Choose a client.", "error");
+      shake(["client_id"]);
+      return;
     }
+    var count = positionCount();
+    if (Number.isInteger(count) && draftClients.length >= count) {
+      showFlash("Increase positions before adding another client.", "error");
+      shake(["position_count", "client_id"]);
+      return;
+    }
+    var option = addSelect.options[addSelect.selectedIndex];
+    draftClients.push({
+      id: Number(option.value),
+      name: option.textContent.replace(/^\s+|\s+$/g, ""),
+    });
+    showFlash("");
+    clearInvalid();
+    renderClients();
+    filterAddClients();
+    writeClientIds();
+    updatePositionMin();
+  }
+
+  function validateSave() {
+    var fields = [];
+    var today = modalEl.getAttribute("data-today") || "";
+    var dateVal = dateInput ? dateInput.value : "";
+    if (dateInput && !dateVal) fields.push("session_date");
+    if (dateVal && today && dateVal < today && dateVal !== originalDate) {
+      fields.push("session_date");
+    }
+    if (
+      startHour &&
+      endHour &&
+      !(clockMinutes(endHour, endMinute) > clockMinutes(startHour, startMinute))
+    ) {
+      fields.push("end_hour", "end_minute");
+    }
+    var count = positionCount();
+    if (!Number.isInteger(count) || count < 1 || count > 20) {
+      fields.push("position_count");
+    } else if (count < draftClients.length) {
+      fields.push("position_count");
+    }
+    return fields;
+  }
+
+  function invalidMessage(fields) {
+    if (fields.indexOf("end_hour") !== -1 || fields.indexOf("end_minute") !== -1) {
+      return "End time must be after start time.";
+    }
+    if (fields.indexOf("session_date") !== -1) {
+      if (dateInput && !dateInput.value) return "Choose a date.";
+      return "Cannot move a session into the past.";
+    }
+    if (fields.indexOf("position_count") !== -1) {
+      if (Number.isInteger(positionCount()) && positionCount() < draftClients.length) {
+        return "Positions cannot be fewer than clients already booked.";
+      }
+      return "Positions must be a number from 1 to 20.";
+    }
+    if (fields.indexOf("client_id") !== -1) return "Choose a client.";
+    return "Check the highlighted fields.";
   }
 
   function fillModal(slot) {
+    currentSlot = slot;
+    originalDate = slot.date || "";
+    draftClients = (slot.clients || []).map(function (client) {
+      return { id: client.id, name: client.name };
+    });
     var nextInput = timelineNext();
     if (meta) meta.textContent = slot.date_label + " · " + slot.time_label;
     if (statusEl) {
@@ -155,6 +315,7 @@
     if (instructorEl) instructorEl.textContent = "Instructor: " + slot.instructor;
     setHidden(staffEl, !slot.can_manage);
     setHidden(clientEl, slot.can_manage);
+    setHidden(saveBtn, !slot.can_manage);
     if (clientCopy) {
       clientCopy.textContent = slot.can_book
         ? "This session has a free position."
@@ -163,22 +324,23 @@
           : "This session is full or already on your list.";
     }
     setFormAction(editForm, slot.edit_url);
-    setFormAction(addForm, slot.assign_url);
     setFormAction(bookForm, slot.book_url);
     setFormAction(cancelOwnForm, slot.cancel_url);
     setFormAction(deleteForm, slot.remove_url);
     setFormAction(cancelAllForm, slot.cancel_url);
     setFormAction(deleteBookedForm, slot.delete_url);
+    if (dateInput && slot.date) dateInput.value = slot.date;
     ensureOption(startHour, slot.start_hour);
     ensureOption(startMinute, slot.start_minute);
     ensureOption(endHour, slot.end_hour);
     ensureOption(endMinute, slot.end_minute);
     if (positionInput) {
       positionInput.value = slot.position_count;
-      positionInput.min = String(Math.max(1, slot.booked_count || 0));
     }
-    renderClients(slot);
-    filterAddClients(slot);
+    updatePositionMin();
+    writeClientIds();
+    renderClients();
+    filterAddClients();
     setHidden(bookForm, !slot.can_book);
     setHidden(cancelOwnForm, !slot.can_cancel_own);
     setHidden(deleteForm, !slot.can_delete);
@@ -291,12 +453,16 @@
       return;
     }
     showFlash("");
+    clearInvalid();
     fillModal(slot);
   });
 
   modalEl.addEventListener("hidden.bs.modal", function () {
     currentTrigger = null;
+    currentSlot = null;
+    draftClients = [];
     showFlash("");
+    clearInvalid();
   });
 
   document.querySelectorAll(".timeline__block").forEach(function (block) {
@@ -308,10 +474,27 @@
     });
   });
 
+  if (addButton) {
+    addButton.addEventListener("click", addDraftClient);
+  }
+
+  if (positionInput) {
+    positionInput.addEventListener("input", function () {
+      filterAddClients();
+    });
+  }
+
   if (editForm) {
     editForm.addEventListener("submit", function (event) {
       event.preventDefault();
-      var submitBtn = editForm.querySelector('button[type="submit"]');
+      writeClientIds();
+      var invalid = validateSave();
+      if (invalid.length) {
+        showFlash(invalidMessage(invalid), "error");
+        shake(invalid);
+        return;
+      }
+      var submitBtn = saveBtn || editForm.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true;
       fetch(editForm.action, {
         method: "POST",
@@ -326,13 +509,23 @@
         })
         .then(function (data) {
           showFlash(data.message || "Could not save this session.", data.ok ? "success" : "error");
-          if (data.ok && data.slot) {
+          if (!data.ok) {
+            shake(data.fields || []);
+            return;
+          }
+          clearInvalid();
+          if (data.redirect) {
+            window.location.assign(data.redirect);
+            return;
+          }
+          if (data.slot) {
             fillModal(data.slot);
             updateTrigger(data.slot, data.block);
           }
         })
         .catch(function () {
           showFlash("Could not save this session. Try again.", "error");
+          shake([]);
         })
         .finally(function () {
           if (submitBtn) submitBtn.disabled = false;

@@ -1455,7 +1455,11 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"slotEditModal", html)
         self.assertIn(b'data-bs-toggle="modal"', html)
         self.assertIn(b"data-slot=", html)
-        self.assertIn(b"Save time and positions", html)
+        self.assertIn(b"Save changes", html)
+        self.assertNotIn(b"Save time and positions", html)
+        self.assertIn(b'name="session_date"', html)
+        self.assertIn(b'name="sync_clients"', html)
+        self.assertIn(b"data-slot-add-client", html)
         self.assertIn(b"data-slot-edit-form", html)
         self.assertIn(b"data-slot-flash", html)
         self.assertIn(b"/sessions/", html)
@@ -1490,6 +1494,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Cancel this booking? The slot will become available again.", casey_page.data)
         self.assertNotIn(remove_path, casey_page.data)
         self.assertNotIn(b"/remove", casey_page.data)
+        self.assertNotIn(b"Save changes", casey_page.data)
         self.assertNotIn(b"Delete this available slot?", casey_page.data)
         self.assertNotIn(b"Cancel this booked session? The client will lose the booking.", casey_page.data)
         self.assertNotIn(b"Publish this week", casey_page.data)
@@ -1579,6 +1584,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".slot-edit-clients__item:hover .slot-edit-clients__remove", css)
         self.assertIn(b".slot-edit-clients__item.is-hover .slot-edit-clients__remove", css)
         self.assertIn(b".slot-edit-clients__remove .btn", css)
+        self.assertIn(b"@keyframes slot-edit-shake", css)
+        self.assertIn(b".slot-edit-modal .modal-dialog.is-shake", css)
+        self.assertIn(b".slot-edit-modal .form-control.is-invalid", css)
         self.assertNotIn(b"@media (hover: none)", css)
         self.assertIn(b".timeline-week-picker__panel", css)
         self.assertIn(b".timeline-week-picker__day.is-week", css)
@@ -1738,6 +1746,7 @@ class BookingRolesTest(unittest.TestCase):
         overlap_body = overlap.get_json()
         self.assertFalse(overlap_body["ok"])
         self.assertIn("overlaps an existing session", overlap_body["message"])
+        self.assertIn("start_hour", overlap_body.get("fields", []))
         self.assertNotIn("slot", overlap_body)
         unchanged = db.session.get(GymSession, session_id)
         self.assertEqual(unchanged.datetime_start, start)
@@ -1780,6 +1789,84 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"application/json", js)
         self.assertIn(b"is-hover", js)
         self.assertIn(b"mouseenter", js)
+        self.assertIn(b"is-shake", js)
+        self.assertIn(b"is-invalid", js)
+        self.assertIn(b"writeClientIds", js)
+
+    def test_edit_session_json_saves_date_and_clients_together(self):
+        from datetime import datetime, timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        start = datetime(2099, 12, 1, 10, 0)
+        session = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=2,
+        )
+        db.session.add(session)
+        db.session.commit()
+        session_id = session.id
+        booked, _ = booking.book_session(session, casey)
+        self.assertTrue(booked)
+
+        self.login("instructor@gym.com", "instructor123")
+        invalid = self.client.post(
+            f"/sessions/{session_id}/edit",
+            data={
+                "session_date": "2099-12-01",
+                "start_hour": "11",
+                "start_minute": "0",
+                "end_hour": "10",
+                "end_minute": "0",
+                "position_count": "2",
+                "sync_clients": "1",
+                "client_id": [str(casey.id)],
+                "next": "/timeline?start=2099-11-30",
+            },
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(invalid.status_code, 200)
+        invalid_body = invalid.get_json()
+        self.assertFalse(invalid_body["ok"])
+        self.assertIn("End time must be after start time", invalid_body["message"])
+        self.assertIn("end_hour", invalid_body.get("fields", []))
+
+        saved = self.client.post(
+            f"/sessions/{session_id}/edit",
+            data={
+                "session_date": "2099-12-03",
+                "start_hour": "15",
+                "start_minute": "0",
+                "end_hour": "16",
+                "end_minute": "0",
+                "position_count": "3",
+                "sync_clients": "1",
+                "client_id": [str(jordan.id)],
+                "next": "/timeline?start=2099-11-30",
+            },
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(saved.status_code, 200)
+        body = saved.get_json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["message"], "Session updated.")
+        self.assertEqual(body["slot"]["date"], "2099-12-03")
+        self.assertEqual(body["slot"]["start_hour"], 15)
+        self.assertEqual(body["slot"]["position_count"], 3)
+        self.assertEqual(body["slot"]["booked_count"], 1)
+        self.assertEqual(body["slot"]["clients"][0]["id"], jordan.id)
+        self.assertIn("/timeline?start=2099-11-30", body["redirect"])
+        refreshed = db.session.get(GymSession, session_id)
+        self.assertEqual(refreshed.datetime_start, datetime(2099, 12, 3, 15, 0))
+        self.assertEqual(refreshed.position_count, 3)
+        self.assertFalse(refreshed.is_booked_by(casey))
+        self.assertTrue(refreshed.is_booked_by(jordan))
 
     def test_two_clients_can_share_a_two_position_session(self):
         from datetime import timedelta
