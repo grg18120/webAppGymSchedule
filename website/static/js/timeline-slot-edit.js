@@ -230,7 +230,10 @@
     var full = Number.isInteger(count) && draftClients.length >= count;
     var locked = !currentSlot || !currentSlot.can_manage || currentSlot.is_past;
     setHidden(addForm, locked || full || !available);
-    setHidden(addHint, Boolean(full && currentSlot && currentSlot.can_manage && !currentSlot.is_past));
+    setHidden(
+      addHint,
+      !(full && currentSlot && currentSlot.can_manage && !currentSlot.is_past)
+    );
   }
 
   function addDraftClient() {

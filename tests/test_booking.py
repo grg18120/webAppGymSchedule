@@ -1792,6 +1792,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"is-shake", js)
         self.assertIn(b"is-invalid", js)
         self.assertIn(b"writeClientIds", js)
+        self.assertIn(b"!(full &&", js)
 
     def test_edit_session_json_saves_date_and_clients_together(self):
         from datetime import datetime, timedelta
