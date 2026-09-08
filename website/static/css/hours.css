@@ -1,0 +1,67 @@
+.hours-page h1 {
+  color: #ffffff;
+}
+
+.hours-lead {
+  color: rgba(255, 255, 255, 0.78);
+  max-width: 42rem;
+  margin-bottom: 1.25rem;
+}
+
+.hours-table-wrap {
+  overflow-x: auto;
+  background: #ffffff;
+  color: #102a3a;
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.hours-table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.hours-table th,
+.hours-table td {
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid #e0e6ea;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.hours-table thead th {
+  background: #1b3a4b;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.hours-table thead th.is-current {
+  background: #1565c0;
+}
+
+.hours-table tbody th {
+  font-weight: 700;
+}
+
+.hours-table__name {
+  display: block;
+}
+
+.hours-table__email {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #546e7a;
+}
+
+.hours-table__total {
+  font-weight: 700;
+}
+
+.hours-table tbody tr:last-child th,
+.hours-table tbody tr:last-child td {
+  border-bottom: 0;
+}

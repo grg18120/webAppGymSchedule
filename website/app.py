@@ -830,6 +830,18 @@ def _create_user_from_form():
     return redirect(url_for("app.users"))
 
 
+@app.route("/client-hours")
+@login_required
+@role_required(ROLE_ADMIN)
+def client_hours():
+    report = home_stats.client_hours_report(now_gym())
+    return render_template(
+        "client_hours.html",
+        user=current_user,
+        report=report,
+    )
+
+
 @app.route("/get_user", methods=["POST"])
 @login_required
 @role_required(ROLE_ADMIN)

@@ -67,6 +67,7 @@ class BookingRolesTest(unittest.TestCase):
         response = self.client.get("/users")
         self.assertEqual(response.status_code, 403)
         self.assertIn(b"You do not have access", response.data)
+        self.assertEqual(self.client.get("/client-hours").status_code, 403)
 
     def test_book_then_slot_unavailable(self):
         session = GymSession.query.filter_by(status=SESSION_AVAILABLE).first()
@@ -303,6 +304,8 @@ class BookingRolesTest(unittest.TestCase):
         client_cal = self.client.get("/book")
         self.assertIn(b"Book session monthly", client_cal.data)
         self.assertNotIn(b"My availability", client_cal.data)
+        self.assertNotIn(b"Client hours", client_cal.data)
+        self.assertNotIn(b'href="/client-hours"', client_cal.data)
 
         self.client.get("/logout")
         self.login("instructor@gym.com", "instructor123")
@@ -315,14 +318,74 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"Book session monthly", instructor_cal.data)
         self.assertNotIn(b"My availability", instructor_cal.data)
         self.assertIn(b"Book session weekly", instructor_cal.data)
+        self.assertNotIn(b"Client hours", instructor_cal.data)
+        self.assertNotIn(b'href="/client-hours"', instructor_cal.data)
 
         self.client.get("/logout")
         self.login("admin@gym.com", "admin123")
         admin_cal = self.client.get("/book")
         self.assertIn(b"Calendar", admin_cal.data)
+        self.assertIn(b"Client hours", admin_cal.data)
+        self.assertIn(b'href="/client-hours"', admin_cal.data)
         self.assertNotIn(b"Book a session", admin_cal.data)
         self.assertNotIn(b"Book session monthly", admin_cal.data)
         self.assertNotIn(b"My availability", admin_cal.data)
+
+    def test_admin_client_hours_table_lists_booked_time_by_month(self):
+        from datetime import datetime, timedelta
+
+        from website.utils import stats as home_stats
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        now = now_gym()
+        before = home_stats.client_hours_report(now)
+        casey_before = next(row for row in before["rows"] if row["email"] == "client@gym.com")
+        start = datetime(now.year, now.month, min(now.day, 28), 3, 0)
+        if start.month != now.month:
+            start = datetime(now.year, now.month, 1, 3, 0)
+        self.cancel_active_start(instructor.id, start)
+        session = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=2),
+            status=SESSION_BOOKED,
+            position_count=1,
+        )
+        db.session.add(session)
+        db.session.flush()
+        db.session.add(GymSessionBooking(session_id=session.id, client_id=casey.id))
+        session.sync_status()
+        db.session.commit()
+
+        report = home_stats.client_hours_report(now)
+        casey_row = next(row for row in report["rows"] if row["email"] == "client@gym.com")
+        self.assertEqual(casey_row["minutes"][-1], casey_before["minutes"][-1] + 120)
+        self.assertEqual(casey_row["hours"][-1], home_stats._format_duration(casey_row["minutes"][-1]))
+        self.assertEqual(len(report["months"]), 6)
+        self.assertTrue(report["months"][-1]["is_current"])
+
+        self.login("instructor@gym.com", "instructor123")
+        self.assertEqual(self.client.get("/client-hours").status_code, 403)
+
+        self.client.get("/logout")
+        self.login("admin@gym.com", "admin123")
+        page = self.client.get("/client-hours")
+        self.assertEqual(page.status_code, 200)
+        html = page.data
+        self.assertIn(b"Client booked hours", html)
+        self.assertIn(b"Casey Client", html)
+        self.assertIn(b"client@gym.com", html)
+        self.assertIn(b"Jordan Lee", html)
+        self.assertIn(b"hours-table", html)
+        self.assertIn(now.strftime("%b %Y").encode(), html)
+        self.assertIn(casey_row["hours"][-1].encode(), html)
+        self.assertIn(casey_row["total"].encode(), html)
+        self.assertIn(b"Total", html)
+        self.assertIn(b"Client hours", html)
+        status, css = self.static_bytes("/static/css/hours.css")
+        self.assertEqual(status, 200)
+        self.assertIn(b".hours-table", css)
 
     def test_instructor_cannot_book_as_client(self):
         session = GymSession.query.filter_by(status=SESSION_AVAILABLE).first()
@@ -351,6 +414,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b'nav-item d-flex align-items-center', home.data)
         self.assertIn(b'navbar-text me-lg-3', home.data)
         self.assertEqual(self.client.get("/users").status_code, 403)
+        self.assertEqual(self.client.get("/client-hours").status_code, 403)
 
         self.client.get("/logout")
         self.login("admin@gym.com", "admin123")
