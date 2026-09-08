@@ -1681,7 +1681,7 @@ class BookingRolesTest(unittest.TestCase):
             headers={"Accept": "application/json"},
         )
         self.assertEqual(overlap.status_code, 200)
-        self.assertFalse(overlap.is_redirect)
+        self.assertNotIn("Location", overlap.headers)
         overlap_body = overlap.get_json()
         self.assertFalse(overlap_body["ok"])
         self.assertIn("overlaps an existing session", overlap_body["message"])
@@ -1702,7 +1702,7 @@ class BookingRolesTest(unittest.TestCase):
             headers={"Accept": "application/json"},
         )
         self.assertEqual(saved.status_code, 200)
-        self.assertFalse(saved.is_redirect)
+        self.assertNotIn("Location", saved.headers)
         body = saved.get_json()
         self.assertTrue(body["ok"])
         self.assertEqual(body["message"], "Session updated.")
