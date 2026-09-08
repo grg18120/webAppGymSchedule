@@ -1448,6 +1448,10 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"timeline__block-link", html)
         self.assertIn(b"Previous week", html)
         self.assertIn(b"Next week", html)
+        self.assertIn(b"timeline-nav__title", html)
+        self.assertIn(b"timeline-week-picker", html)
+        self.assertIn(b"Choose week", html)
+        self.assertIn(b"timeline-week-picker.js", html)
         self.assertIn(b"slotEditModal", html)
         self.assertIn(b'data-bs-toggle="modal"', html)
         self.assertIn(b"data-slot=", html)
@@ -1576,7 +1580,12 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".slot-edit-clients__item.is-hover .slot-edit-clients__remove", css)
         self.assertIn(b".slot-edit-clients__remove .btn", css)
         self.assertNotIn(b"@media (hover: none)", css)
-        self.assertIn(b"cursor: pointer", css)
+        self.assertIn(b".timeline-week-picker__panel", css)
+        self.assertIn(b".timeline-week-picker__day.is-week", css)
+        status, picker_js = self.static_bytes("/static/js/timeline-week-picker.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b"/timeline?start=", picker_js)
+        self.assertIn(b"data-week-picker-grid", picker_js)
 
     def test_timeline_slot_editor_updates_time_positions_and_clients(self):
         from datetime import datetime, timedelta

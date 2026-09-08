@@ -44,7 +44,48 @@
     <a class="timeline-nav__btn tap-target" href="{{ prev_url }}" aria-label="Previous week">
       <span aria-hidden="true">&lt;</span>
     </a>
-    <h2 class="timeline-nav__title">{{ week_label }}</h2>
+    <div class="timeline-nav__current">
+      <h2 class="timeline-nav__title">{{ week_label }}</h2>
+      <div
+        class="timeline-week-picker"
+        data-week-start="{{ week_start.isoformat() }}"
+        data-today="{{ today.isoformat() }}"
+      >
+        <button
+          type="button"
+          class="timeline-nav__cal tap-target"
+          data-week-picker-toggle
+          aria-expanded="false"
+          aria-controls="timelineWeekCalendar"
+          aria-haspopup="dialog"
+          aria-label="Choose week"
+        >
+          <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+        </button>
+        <div
+          class="timeline-week-picker__panel"
+          id="timelineWeekCalendar"
+          data-week-picker-panel
+          hidden
+          role="dialog"
+          aria-label="Choose a week"
+        >
+          <div class="timeline-week-picker__month-nav">
+            <button type="button" class="timeline-week-picker__shift tap-target" data-week-picker-prev aria-label="Previous month">
+              <span aria-hidden="true">&lt;</span>
+            </button>
+            <p class="timeline-week-picker__month" data-week-picker-label></p>
+            <button type="button" class="timeline-week-picker__shift tap-target" data-week-picker-next aria-label="Next month">
+              <span aria-hidden="true">&gt;</span>
+            </button>
+          </div>
+          <div class="timeline-week-picker__dow" aria-hidden="true">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+          <div class="timeline-week-picker__grid" data-week-picker-grid></div>
+        </div>
+      </div>
+    </div>
     <a class="timeline-nav__btn tap-target" href="{{ next_url }}" aria-label="Next week">
       <span aria-hidden="true">&gt;</span>
     </a>
@@ -372,4 +413,5 @@
 {% endblock %}
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/timeline-slot-edit.js') }}"></script>
+<script src="{{ url_for('static', filename='js/timeline-week-picker.js') }}"></script>
 {% endblock %}
