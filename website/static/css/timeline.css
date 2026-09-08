@@ -314,6 +314,7 @@
 }
 
 .timeline__block:hover,
+.timeline__block.is-hover,
 .timeline__block:focus-visible,
 .timeline__block:focus-within {
   outline: 2px solid #ffffff;
@@ -453,6 +454,7 @@
 }
 
 .timeline__block:hover .timeline__block-tip,
+.timeline__block.is-hover .timeline__block-tip,
 .timeline__block:focus-visible .timeline__block-tip,
 .timeline__block:focus-within .timeline__block-tip {
   display: flex;

@@ -1547,6 +1547,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline__seat--open", css)
         self.assertIn(b".timeline__block-tip", css)
         self.assertIn(b".timeline__block:hover .timeline__block-tip", css)
+        self.assertIn(b".timeline__block.is-hover .timeline__block-tip", css)
         self.assertNotIn(b".timeline__block-link", css)
         self.assertIn(b".timeline-publish", css)
         self.assertIn(b".timeline-day-chip", css)

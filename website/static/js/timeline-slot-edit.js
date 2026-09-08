@@ -286,6 +286,15 @@
     showFlash("");
   });
 
+  document.querySelectorAll(".timeline__block").forEach(function (block) {
+    block.addEventListener("mouseenter", function () {
+      block.classList.add("is-hover");
+    });
+    block.addEventListener("mouseleave", function () {
+      block.classList.remove("is-hover");
+    });
+  });
+
   if (editForm) {
     editForm.addEventListener("submit", function (event) {
       event.preventDefault();
