@@ -238,10 +238,23 @@
     currentTrigger.classList.remove(
       "timeline__block--available",
       "timeline__block--booked",
-      "timeline__block--cancelled"
+      "timeline__block--cancelled",
+      "timeline__block--partial"
     );
     if (slot.status) {
       currentTrigger.classList.add("timeline__block--" + slot.status);
+    }
+    var booked = slot.booked_count || 0;
+    var total = slot.position_count || 1;
+    if (booked > 0 && booked < total) {
+      currentTrigger.classList.add("timeline__block--partial");
+      var pct =
+        typeof slot.booked_percent === "number"
+          ? slot.booked_percent
+          : (100 * booked) / total;
+      currentTrigger.style.setProperty("--booked-pct", pct + "%");
+    } else {
+      currentTrigger.style.removeProperty("--booked-pct");
     }
     if (block && typeof block.top === "number") {
       currentTrigger.style.top = block.top + "%";

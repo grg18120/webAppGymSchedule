@@ -38,7 +38,7 @@
 {% endmacro %}
 <div class="container py-4">
   <h1 class="h3 text-white">Session timeline</h1>
-  <p class="text-white-50">Dates across, times down. Click a slot to edit it. Open slots are green; booked sessions are blue. Past slots keep those colors, faded.</p>
+  <p class="text-white-50">Dates across, times down. Click a slot to edit it. Open slots are green; booked sessions are blue; part-booked slots mix those colors by how many seats are taken. Past slots keep those colors, faded.</p>
 
   <nav class="timeline-nav" aria-label="Change week">
     <a class="timeline-nav__btn tap-target" href="{{ prev_url }}" aria-label="Previous week">
@@ -178,6 +178,7 @@
 
   <ul class="timeline-legend" aria-label="Timeline legend">
     <li><span class="timeline-swatch timeline-swatch--available" aria-hidden="true"></span> Open slot</li>
+    <li><span class="timeline-swatch timeline-swatch--partial" aria-hidden="true"></span> Open & Booked</li>
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Booked</li>
     <li><span class="timeline-swatch timeline-swatch--past-available" aria-hidden="true"></span> Past open</li>
     <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booked</li>
@@ -212,9 +213,12 @@
           {% for block in day.blocks %}
           {% set session = block.session %}
           {% set block_style = 'top: ' ~ block.top ~ '%; height: ' ~ block.height ~ '%; left: calc(' ~ block.col ~ ' / ' ~ block.cols ~ ' * 100% + 3px); width: calc(100% / ' ~ block.cols ~ ' - 6px);' %}
+          {% if session.is_partial %}
+            {% set block_style = block_style ~ ' --booked-pct: ' ~ block.editor.booked_percent ~ '%;' %}
+          {% endif %}
           <button
             type="button"
-            class="timeline__block timeline__block--{{ session.status }}{% if session.is_past %} timeline__block--past{% endif %}"
+            class="timeline__block timeline__block--{{ session.status }}{% if session.is_partial %} timeline__block--partial{% endif %}{% if session.is_past %} timeline__block--past{% endif %}"
             style="{{ block_style }}"
             data-bs-toggle="modal"
             data-bs-target="#slotEditModal"

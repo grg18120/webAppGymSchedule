@@ -54,6 +54,11 @@ def editor_payload(session, actor):
         "time_label": f"{start.strftime('%H:%M')} – {end.strftime('%H:%M')}",
         "positions_label": session.positions_label,
         "positions_short": f"{session.booked_count}/{int(session.position_count or 1)}",
+        "is_partial": session.is_partial,
+        "booked_percent": round(
+            100.0 * session.booked_count / max(1, int(session.position_count or 1)),
+            4,
+        ),
         "instructor": session.instructor.display_name if session.instructor else "",
         "clients": [
             {"id": client.id, "name": client.display_name}

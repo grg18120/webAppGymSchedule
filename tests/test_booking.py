@@ -5,6 +5,7 @@ import unittest
 from website import create_app, db
 from website.models import (
     GymSession,
+    GymSessionBooking,
     ROLE_CLIENT,
     SESSION_AVAILABLE,
     SESSION_BOOKED,
@@ -1390,7 +1391,20 @@ class BookingRolesTest(unittest.TestCase):
             datetime_end=casey_start + timedelta(hours=1),
             status=SESSION_BOOKED,
         )
-        db.session.add_all([open_slot, booked_slot])
+        partial_start = datetime(2099, 6, 16, 16, 0)
+        partial_slot = GymSession(
+            instructor_id=instructor.id,
+            datetime_start=partial_start,
+            datetime_end=partial_start + timedelta(hours=1),
+            status=SESSION_AVAILABLE,
+            position_count=3,
+        )
+        db.session.add_all([open_slot, booked_slot, partial_slot])
+        db.session.flush()
+        jordan = User.query.filter_by(email="jordan@gym.com").first()
+        db.session.add(GymSessionBooking(session_id=partial_slot.id, client_id=casey.id))
+        db.session.add(GymSessionBooking(session_id=partial_slot.id, client_id=jordan.id))
+        partial_slot.sync_status()
         db.session.commit()
         open_id = open_slot.id
         booked_id = booked_slot.id
@@ -1422,6 +1436,10 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b'<span class="timeline__block-positions">Positions:', html)
         self.assertNotIn(b"timeline__block-time", html)
         self.assertIn(b'timeline__block--booked', html)
+        self.assertIn(b"timeline__block--partial", html)
+        self.assertIn(b"--booked-pct: 66.6667%", html)
+        self.assertIn(b"Open &amp; Booked", html)
+        self.assertIn(b"timeline-swatch--partial", html)
         self.assertIn(b">06:00<", html)
         self.assertIn(b">23:00<", html)
         self.assertIn(b"Tue", html)
@@ -1522,6 +1540,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline__block-action", css)
         self.assertIn(b".timeline__block-action--book", css)
         self.assertIn(b".timeline__block--available {\n  background: #2e7d32;", css)
+        self.assertIn(b".timeline__block--partial", css)
+        self.assertIn(b"--booked-pct", css)
+        self.assertIn(b".timeline-swatch--partial", css)
         self.assertIn(b".timeline__block-action--book button {\n  background: #ffffff;", css)
         self.assertIn(b".timeline__block-action button {\n  font-size: 0.52rem;", css)
         self.assertIn(b"color: #c62828;", css)
@@ -1734,6 +1755,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(body["slot"]["position_count"], 4)
         self.assertEqual(body["slot"]["positions_label"], "Positions: 0/4")
         self.assertEqual(body["slot"]["positions_short"], "0/4")
+        self.assertFalse(body["slot"]["is_partial"])
+        self.assertEqual(body["slot"]["booked_percent"], 0.0)
         self.assertIn("block", body)
         self.assertGreater(body["block"]["height"], 0)
         refreshed = db.session.get(GymSession, session_id)
