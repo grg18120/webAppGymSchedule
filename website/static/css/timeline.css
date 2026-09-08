@@ -505,6 +505,20 @@
   align-items: center;
 }
 
+.slot-edit-clients__remove .btn {
+  color: #c62828;
+  background: #ffffff;
+  border: 1px solid #c62828;
+  font-weight: 700;
+}
+
+.slot-edit-clients__remove .btn:hover,
+.slot-edit-clients__remove .btn:focus-visible {
+  color: #ffffff;
+  background: #c62828;
+  border-color: #c62828;
+}
+
 .slot-edit-clients__empty {
   color: #78909c;
   padding: 0.25rem 0 0.75rem;
