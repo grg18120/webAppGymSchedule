@@ -1587,6 +1587,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"@keyframes slot-edit-shake", css)
         self.assertIn(b".slot-edit-modal .modal-dialog.is-shake", css)
         self.assertIn(b".slot-edit-modal .form-control.is-invalid", css)
+        self.assertIn(b"flex: 1 1 12rem", css)
         self.assertNotIn(b"@media (hover: none)", css)
         self.assertIn(b".timeline-week-picker__panel", css)
         self.assertIn(b".timeline-week-picker__day.is-week", css)

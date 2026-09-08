@@ -762,6 +762,12 @@
 
 .slot-edit-add .form-select {
   min-width: 12rem;
+  width: auto;
+  flex: 1 1 12rem;
+}
+
+.slot-edit-add .d-flex {
+  align-items: stretch;
 }
 
 .slot-edit-modal .form-control.is-invalid,

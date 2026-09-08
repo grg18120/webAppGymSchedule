@@ -218,14 +218,14 @@
       booked[String(client.id)] = true;
     });
     var available = 0;
+    var current = addSelect.value;
     Array.prototype.forEach.call(addSelect.options, function (option) {
       if (!option.value) return;
       var taken = Boolean(booked[option.value]);
-      option.hidden = taken;
       option.disabled = taken;
       if (!taken) available += 1;
     });
-    addSelect.value = "";
+    if (!current || booked[current]) addSelect.value = "";
     var count = positionCount();
     var full = Number.isInteger(count) && draftClients.length >= count;
     var locked = !currentSlot || !currentSlot.can_manage || currentSlot.is_past;
@@ -483,9 +483,17 @@
 
   if (positionInput) {
     positionInput.addEventListener("input", function () {
+      clearInvalid();
       filterAddClients();
     });
   }
+
+  [dateInput, startHour, startMinute, endHour, endMinute].forEach(function (el) {
+    if (!el) return;
+    el.addEventListener("change", function () {
+      clearInvalid();
+    });
+  });
 
   if (editForm) {
     editForm.addEventListener("submit", function (event) {
