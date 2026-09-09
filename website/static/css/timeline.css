@@ -960,6 +960,8 @@
 }
 
 .slot-edit-add__plus {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -968,6 +970,8 @@
   padding: 0;
   border: 0;
   background: transparent;
+  background-color: transparent;
+  box-shadow: none;
   color: #2e7d32;
   font-size: 1.45rem;
   line-height: 1;
