@@ -539,7 +539,7 @@
   });
 
   document.addEventListener("click", function (event) {
-    if (event.target.closest("[data-interest-flag], [data-interest-panel]")) return;
+    if (event.target.closest("[data-interest-flag], [data-interest-panel], .timeline__interest-remove")) return;
     document.querySelectorAll("[data-interest-panel]").forEach(function (panel) {
       panel.hidden = true;
     });

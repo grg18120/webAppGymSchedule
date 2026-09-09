@@ -508,6 +508,7 @@
 
 .timeline__block--has-interest {
   overflow: visible;
+  z-index: 8;
 }
 
 .timeline__block-hit {
@@ -554,11 +555,12 @@
 
 .timeline__interest-panel {
   position: absolute;
-  z-index: 9;
-  top: 1.5rem;
+  z-index: 20;
+  top: auto;
+  bottom: calc(100% + 4px);
   right: 0;
-  min-width: 9rem;
-  max-width: 14rem;
+  min-width: 10rem;
+  max-width: 16rem;
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
   background: #fffde7;
@@ -588,13 +590,20 @@
 }
 
 .timeline__interest-remove {
-  margin: 0.5rem 0 0;
+  margin: 0 0 0.4rem;
 }
 
-.timeline__interest-remove .btn {
+.timeline__interest-remove button {
   width: 100%;
+  min-height: 36px;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #f9a825;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #e65100;
   font-size: 0.78rem;
-  padding: 0.35rem 0.5rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .timeline__block:hover,

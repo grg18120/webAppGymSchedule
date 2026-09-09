@@ -316,11 +316,6 @@
             >!</button>
             <div class="timeline__interest-panel" id="interest-panel-{{ session.id }}" data-interest-panel hidden>
               <p class="timeline__interest-panel-title">{% if user.is_client %}Your interest{% else %}Interested{% endif %}</p>
-              <ul class="timeline__interest-panel-list" data-interest-list>
-                {% for person in block.editor.interested %}
-                <li>{{ person.name }}</li>
-                {% endfor %}
-              </ul>
               {% if user.is_client and block.editor.interested_by_me %}
               <form
                 method="POST"
@@ -329,9 +324,14 @@
                 onsubmit="return confirm('Remove your interest in this session?');"
               >
                 <input type="hidden" name="next" value="{{ timeline_next }}">
-                <button type="submit" class="btn btn-outline-warning tap-target">Remove interest</button>
+                <button type="submit">Remove interest</button>
               </form>
               {% endif %}
+              <ul class="timeline__interest-panel-list" data-interest-list>
+                {% for person in block.editor.interested %}
+                <li>{{ person.name }}</li>
+                {% endfor %}
+              </ul>
             </div>
             {% endif %}
           </div>
@@ -462,14 +462,16 @@
             <input type="hidden" name="next" value="{{ timeline_next }}">
             <button type="submit" class="btn btn-warning tap-target">I'm interested</button>
           </form>
-          <form method="POST" data-slot-interest-remove-form hidden onsubmit="return confirm('Remove your interest in this session?');">
-            <input type="hidden" name="next" value="{{ timeline_next }}">
-            <button type="submit" class="btn btn-outline-warning tap-target">Remove interest</button>
-          </form>
           {% endif %}
         </div>
       </div>
       <div class="modal-footer flex-wrap">
+        {% if user.is_client %}
+        <form method="POST" data-slot-interest-remove-form hidden onsubmit="return confirm('Remove your interest in this session?');">
+          <input type="hidden" name="next" value="{{ timeline_next }}">
+          <button type="submit" class="btn btn-outline-warning tap-target">Remove interest</button>
+        </form>
+        {% endif %}
         {% if user.is_instructor or user.is_admin %}
         <form method="POST" data-slot-delete-form hidden onsubmit="return confirm('Delete this available slot?');">
           <input type="hidden" name="next" value="{{ timeline_next }}">
