@@ -1627,7 +1627,10 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(riley_page.status_code, 200)
         self.assertIn(b"data-slot-state>Open", riley_page.data)
         self.assertNotIn(b"data-slot-state>Your booking", riley_page.data)
-        self.assertIn(b"timeline__block--booked", riley_page.data)
+        self.assertIn(b"timeline__block--full", riley_page.data)
+        self.assertNotIn(b"timeline__block--booked", riley_page.data)
+        self.assertIn(b"timeline-swatch--full", riley_page.data)
+        self.assertIn(b"Your interest", riley_page.data)
         self.assertIn(b"data-slot-state>Full", riley_page.data)
         self.assertIn(f"/sessions/{booked_id}/interest".encode(), riley_page.data)
         self.assertIn(b"I'm interested", riley_page.data)
@@ -1691,6 +1694,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline__block-action", css)
         self.assertIn(b".timeline__block-action--book", css)
         self.assertIn(b".timeline__block--available {\n  background: #2e7d32;", css)
+        self.assertIn(b".timeline__block--full {\n  background: #e65100;", css)
+        self.assertIn(b".timeline-swatch--full", css)
         self.assertIn(b".timeline__block--partial", css)
         self.assertIn(b"--booked-pct", css)
         self.assertIn(b".timeline-swatch--partial", css)
@@ -1703,6 +1708,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"rgba(46, 125, 50, 0.22)", css)
         self.assertIn(b".timeline__block--booked.timeline__block--past", css)
         self.assertIn(b"rgba(21, 101, 192, 0.22)", css)
+        self.assertIn(b".timeline__block--full.timeline__block--past", css)
+        self.assertIn(b"rgba(230, 81, 0, 0.22)", css)
         self.assertIn(b".timeline__today-badge", css)
         self.assertIn(b"3px solid #ffffff", css)
         self.assertIn(b"0 0 0 2px #fff, 0 0 0 5px #102a3a", css)
@@ -1785,6 +1792,7 @@ class BookingRolesTest(unittest.TestCase):
         page = self.client.get("/timeline?start=2099-08-17")
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"data-slot-state>Full", page.data)
+        self.assertIn(b"timeline__block--full", page.data)
         self.assertIn(interest_path.encode(), page.data)
         self.assertIn(b"I'm interested", page.data)
         self.assertNotIn(b"timeline__interest-flag", page.data)
@@ -1806,10 +1814,32 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Interest registered", marked.data)
         self.assertTrue(db.session.get(GymSession, session_id).is_interested_by(riley))
         self.assertIn(b"Remove interest", marked.data)
+        self.assertIn(b"timeline__interest-flag", marked.data)
+        self.assertIn(b"Your interest", marked.data)
+        self.assertIn(b"Riley Patel", marked.data)
+        self.assertIn(f"/sessions/{session_id}/withdraw-interest".encode(), marked.data)
         self.assertEqual(
             GymSessionInterest.query.filter_by(session_id=session_id, client_id=riley.id).count(),
             1,
         )
+
+        withdrawn = self.client.post(
+            f"/sessions/{session_id}/withdraw-interest",
+            data={"next": "/timeline?start=2099-08-17"},
+            follow_redirects=True,
+        )
+        self.assertEqual(withdrawn.status_code, 200)
+        self.assertIn(b"Interest removed", withdrawn.data)
+        self.assertFalse(db.session.get(GymSession, session_id).is_interested_by(riley))
+        self.assertNotIn(b"timeline__interest-flag", withdrawn.data)
+        self.assertIn(b"I'm interested", withdrawn.data)
+
+        marked = self.client.post(
+            interest_path,
+            data={"next": "/timeline?start=2099-08-17"},
+            follow_redirects=True,
+        )
+        self.assertIn(b"timeline__interest-flag", marked.data)
 
         again = self.client.post(
             interest_path,
@@ -1844,16 +1874,22 @@ class BookingRolesTest(unittest.TestCase):
             follow_redirects=True,
         )
         self.assertIn(b"already have a place", own.data)
+        own_page = self.client.get("/timeline?start=2099-08-17")
+        self.assertNotIn(b"timeline__interest-flag", own_page.data)
+        self.assertNotIn(b"timeline__block--full", own_page.data)
 
         status, css = self.static_bytes("/static/css/timeline.css")
         self.assertEqual(status, 200)
         self.assertIn(b".timeline__interest-flag", css)
         self.assertIn(b"#ffeb3b", css)
         self.assertIn(b".timeline__interest-panel", css)
+        self.assertIn(b".timeline__interest-remove", css)
+        self.assertIn(b".timeline__block--full", css)
         status, js = self.static_bytes("/static/js/timeline-slot-edit.js")
         self.assertEqual(status, 200)
         self.assertIn(b"data-interest-flag", js)
         self.assertIn(b"can_interest", js)
+        self.assertIn(b"timeline__block--full", js)
 
     def test_timeline_slot_editor_updates_time_positions_and_clients(self):
         from datetime import datetime, timedelta

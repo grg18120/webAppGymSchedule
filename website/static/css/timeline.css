@@ -273,6 +273,10 @@
   background: #1565c0;
 }
 
+.timeline-swatch--full {
+  background: #e65100;
+}
+
 .timeline-swatch--partial {
   background: linear-gradient(
     to right,
@@ -583,6 +587,16 @@
   font-weight: 600;
 }
 
+.timeline__interest-remove {
+  margin: 0.5rem 0 0;
+}
+
+.timeline__interest-remove .btn {
+  width: 100%;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.5rem;
+}
+
 .timeline__block:hover,
 .timeline__block.is-hover,
 .timeline__block:focus-visible,
@@ -656,6 +670,12 @@
   color: #ffffff;
 }
 
+.timeline__block--full {
+  background: #e65100;
+  border: 2px solid #bf360c;
+  color: #ffffff;
+}
+
 .timeline__block--past {
   color: rgba(255, 255, 255, 0.92);
 }
@@ -668,6 +688,11 @@
 .timeline__block--booked.timeline__block--past {
   background: rgba(21, 101, 192, 0.22);
   border: 2px solid rgba(21, 101, 192, 0.4);
+}
+
+.timeline__block--full.timeline__block--past {
+  background: rgba(230, 81, 0, 0.22);
+  border: 2px solid rgba(230, 81, 0, 0.4);
 }
 
 .timeline__block--partial {
