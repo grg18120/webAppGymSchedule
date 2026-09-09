@@ -274,7 +274,7 @@
 }
 
 .timeline-swatch--full {
-  background: #e65100;
+  background: #8d2500;
 }
 
 .timeline-swatch--partial {
@@ -680,8 +680,8 @@
 }
 
 .timeline__block--full {
-  background: #e65100;
-  border: 2px solid #bf360c;
+  background: #8d2500;
+  border: 2px solid #5c1800;
   color: #ffffff;
 }
 
@@ -700,8 +700,8 @@
 }
 
 .timeline__block--full.timeline__block--past {
-  background: rgba(230, 81, 0, 0.22);
-  border: 2px solid rgba(230, 81, 0, 0.4);
+  background: rgba(141, 37, 0, 0.28);
+  border: 2px solid rgba(141, 37, 0, 0.5);
 }
 
 .timeline__block--partial {
