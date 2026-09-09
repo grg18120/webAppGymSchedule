@@ -1739,7 +1739,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".slot-edit-people", css)
         self.assertIn(b".slot-edit-schedule", css)
         self.assertIn(b".slot-edit-add__plus", css)
-        self.assertIn(b".slot-edit-add__plus {\n  display: inline-flex;", css)
+        self.assertIn(b".slot-edit-add__plus {\n  appearance: none;", css)
         self.assertIn(b".slot-edit-clients__item:hover .slot-edit-clients__remove", css)
         self.assertIn(b".slot-edit-clients__item.is-hover .slot-edit-clients__remove", css)
         self.assertIn(b".slot-edit-clients__remove .btn", css)
