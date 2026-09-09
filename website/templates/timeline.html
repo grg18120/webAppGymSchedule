@@ -431,7 +431,7 @@
                 <select class="form-select tap-target" id="slot_add_client">
                   <option value="">Select client</option>
                   {% for client in clients %}
-                  <option value="{{ client.id }}">{{ client.display_name }}</option>
+                  <option value="{{ client.id }}" data-client-name="{{ client.display_name }}">{{ client.display_name }}</option>
                   {% endfor %}
                 </select>
                 <button type="button" class="btn btn-success tap-target" data-slot-add-client>Add</button>

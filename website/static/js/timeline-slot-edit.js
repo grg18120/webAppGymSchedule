@@ -149,6 +149,38 @@
     positionInput.min = String(Math.max(1, draftClients.length));
   }
 
+  function interestedIds() {
+    var ids = {};
+    ((currentSlot && currentSlot.interested) || []).forEach(function (person) {
+      if (person && person.id != null) ids[String(person.id)] = true;
+    });
+    return ids;
+  }
+
+  function clientLabel(name, id) {
+    var base = String(name || "").replace(/^\s+|\s+$/g, "");
+    if (interestedIds()[String(id)]) return base + " (!)";
+    return base;
+  }
+
+  function optionBaseName(option) {
+    if (!option) return "";
+    return (
+      option.getAttribute("data-client-name") ||
+      String(option.textContent || "").replace(/\s*\(!\)\s*$/, "")
+    ).replace(/^\s+|\s+$/g, "");
+  }
+
+  function markAddClientOptions() {
+    if (!addSelect) return;
+    Array.prototype.forEach.call(addSelect.options, function (option) {
+      if (!option.value) return;
+      var base = optionBaseName(option);
+      option.setAttribute("data-client-name", base);
+      option.textContent = clientLabel(base, option.value);
+    });
+  }
+
   function writeClientIds() {
     if (!clientIdsBox) return;
     clientIdsBox.innerHTML = "";
@@ -178,7 +210,7 @@
       var item = document.createElement("li");
       item.className = "slot-edit-clients__item";
       var name = document.createElement("span");
-      name.textContent = client.name;
+      name.textContent = clientLabel(client.name, client.id);
       item.appendChild(name);
       if (currentSlot && currentSlot.can_manage && !currentSlot.is_past) {
         var removeWrap = document.createElement("div");
@@ -220,6 +252,7 @@
     });
     var available = 0;
     var current = addSelect.value;
+    markAddClientOptions();
     Array.prototype.forEach.call(addSelect.options, function (option) {
       if (!option.value) return;
       var taken = Boolean(booked[option.value]);
@@ -252,7 +285,7 @@
     var option = addSelect.options[addSelect.selectedIndex];
     draftClients.push({
       id: Number(option.value),
-      name: option.textContent.replace(/^\s+|\s+$/g, ""),
+      name: optionBaseName(option),
     });
     showFlash("");
     clearInvalid();
@@ -365,7 +398,7 @@
     rows.forEach(function (person) {
       var item = document.createElement("li");
       item.className = "slot-edit-clients__item";
-      item.textContent = person.name;
+      item.textContent = clientLabel(person.name, person.id);
       interestedList.appendChild(item);
     });
     setHidden(interestedBox, !(slot && slot.can_manage && rows.length));

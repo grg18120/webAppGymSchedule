@@ -1550,6 +1550,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"slot-edit-schedule", html)
         self.assertIn(b"slot-edit-people", html)
         self.assertIn(b"data-slot-add-client", html)
+        self.assertIn(b"data-client-name", html)
         self.assertIn(b'name="sync_clients"', html)
         self.assertIn(b"data-slot-edit-form", html)
         self.assertIn(b"data-slot-flash", html)
@@ -1855,6 +1856,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"timeline__interest-flag", staff.data)
         self.assertIn(b">!<", staff.data)
         self.assertIn(b"Riley Patel", staff.data)
+        self.assertIn(b'data-client-name="Riley Patel"', staff.data)
         self.assertIn(b"Interested", staff.data)
         self.assertIn(b"Client interest", staff.data)
         self.assertEqual(self.client.post(interest_path).status_code, 403)
@@ -1890,6 +1892,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"data-interest-flag", js)
         self.assertIn(b"can_interest", js)
         self.assertIn(b"timeline__block--full", js)
+        self.assertIn(b"data-client-name", js)
+        self.assertIn(b" (!)", js)
 
     def test_timeline_slot_editor_updates_time_positions_and_clients(self):
         from datetime import datetime, timedelta
