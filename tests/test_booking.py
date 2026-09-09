@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 import unittest
 
@@ -1692,7 +1693,13 @@ class BookingRolesTest(unittest.TestCase):
             self.assertIn(b"data-timeline-now", current_week.data)
             self.assertRegex(current_week.data.decode("utf-8"), r'data-timeline-now[\s\S]*?\bhidden\b')
         else:
-            self.assertIn(f"top: {now_pct}%;".encode(), current_week.data)
+            html = current_week.data.decode("utf-8")
+            match = re.search(
+                r'class="timeline__now"[\s\S]*?style="top:\s*([0-9.]+)%;"',
+                html,
+            )
+            self.assertIsNotNone(match)
+            self.assertAlmostEqual(float(match.group(1)), now_pct, places=3)
 
         status, css = self.static_bytes("/static/css/timeline.css")
         self.assertEqual(status, 200)
