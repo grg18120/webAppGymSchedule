@@ -1543,13 +1543,17 @@ class BookingRolesTest(unittest.TestCase):
             html.decode(),
             r'<button[^>]*class="timeline__block-hit"[^>]*data-slot=',
         )
-        self.assertIn(b"Save changes", html)
+        self.assertIn(b">Save</button>", html)
         self.assertNotIn(b"Save time and positions", html)
+        self.assertNotIn(b"Save changes", html)
         self.assertNotIn(b'name="session_date"', html)
         self.assertNotIn(b"slot_session_date", html)
         self.assertIn(b"slot-edit-schedule", html)
         self.assertIn(b"slot-edit-people", html)
         self.assertIn(b"data-slot-add-client", html)
+        self.assertIn(b"slot-edit-add__plus", html)
+        self.assertIn(b"fa-plus", html)
+        self.assertNotIn(b">Add</button>", html)
         self.assertIn(b"data-client-name", html)
         self.assertIn(b'name="sync_clients"', html)
         self.assertIn(b"data-slot-edit-form", html)

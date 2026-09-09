@@ -956,7 +956,30 @@
 }
 
 .slot-edit-add .d-flex {
-  align-items: stretch;
+  align-items: center;
+}
+
+.slot-edit-add__plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2e7d32;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.slot-edit-add__plus:hover,
+.slot-edit-add__plus:focus-visible {
+  color: #1b5e20;
+  background: transparent;
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
 }
 
 .slot-edit-modal .form-control.is-invalid,

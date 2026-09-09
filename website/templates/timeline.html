@@ -434,7 +434,14 @@
                   <option value="{{ client.id }}" data-client-name="{{ client.display_name }}">{{ client.display_name }}</option>
                   {% endfor %}
                 </select>
-                <button type="button" class="btn btn-success tap-target" data-slot-add-client>Add</button>
+                <button
+                  type="button"
+                  class="slot-edit-add__plus tap-target"
+                  data-slot-add-client
+                  aria-label="Add client"
+                >
+                  <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                </button>
               </div>
             </div>
             <p class="form-text mb-0" data-slot-add-hint hidden>Increase positions before adding another client.</p>
@@ -489,7 +496,7 @@
         {% endif %}
         {% endif %}
         {% if user.is_instructor or user.is_admin %}
-        <button type="submit" class="btn btn-primary tap-target ms-auto" form="slotEditForm" data-slot-save>Save changes</button>
+        <button type="submit" class="btn btn-primary tap-target ms-auto" form="slotEditForm" data-slot-save>Save</button>
         {% endif %}
         <button type="button" class="btn btn-outline-secondary tap-target" data-bs-dismiss="modal">Close</button>
       </div>
