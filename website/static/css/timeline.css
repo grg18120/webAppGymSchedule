@@ -273,6 +273,10 @@
   background: #1565c0;
 }
 
+.timeline-swatch--full {
+  background: #8d2500;
+}
+
 .timeline-swatch--partial {
   background: linear-gradient(
     to right,
@@ -504,6 +508,7 @@
 
 .timeline__block--has-interest {
   overflow: visible;
+  z-index: 8;
 }
 
 .timeline__block-hit {
@@ -550,11 +555,12 @@
 
 .timeline__interest-panel {
   position: absolute;
-  z-index: 9;
-  top: 1.5rem;
+  z-index: 20;
+  top: auto;
+  bottom: calc(100% + 4px);
   right: 0;
-  min-width: 9rem;
-  max-width: 14rem;
+  min-width: 10rem;
+  max-width: 16rem;
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
   background: #fffde7;
@@ -581,6 +587,23 @@
   padding-left: 1rem;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.timeline__interest-remove {
+  margin: 0 0 0.4rem;
+}
+
+.timeline__interest-remove button {
+  width: 100%;
+  min-height: 36px;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #f9a825;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #e65100;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .timeline__block:hover,
@@ -656,6 +679,12 @@
   color: #ffffff;
 }
 
+.timeline__block--full {
+  background: #8d2500;
+  border: 2px solid #5c1800;
+  color: #ffffff;
+}
+
 .timeline__block--past {
   color: rgba(255, 255, 255, 0.92);
 }
@@ -668,6 +697,11 @@
 .timeline__block--booked.timeline__block--past {
   background: rgba(21, 101, 192, 0.22);
   border: 2px solid rgba(21, 101, 192, 0.4);
+}
+
+.timeline__block--full.timeline__block--past {
+  background: rgba(141, 37, 0, 0.28);
+  border: 2px solid rgba(141, 37, 0, 0.5);
 }
 
 .timeline__block--partial {
@@ -855,6 +889,23 @@
   padding-bottom: 0.35rem;
 }
 
+.slot-edit-interest {
+  background: #fff3e0;
+  border-color: #ffcc80;
+}
+
+.slot-edit-interest .slot-edit-people__title {
+  color: #bf360c;
+}
+
+.slot-edit-interest .slot-edit-clients {
+  margin-bottom: 0;
+}
+
+.slot-edit-interest .slot-edit-clients__item {
+  border-bottom-color: #ffcc80;
+}
+
 .slot-edit-clients {
   list-style: none;
   margin: 0 0 1rem;
@@ -922,7 +973,34 @@
 }
 
 .slot-edit-add .d-flex {
-  align-items: stretch;
+  align-items: center;
+}
+
+.slot-edit-add__plus {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  color: #2e7d32;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.slot-edit-add__plus:hover,
+.slot-edit-add__plus:focus-visible {
+  color: #1b5e20;
+  background: transparent;
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
 }
 
 .slot-edit-modal .form-control.is-invalid,

@@ -73,7 +73,7 @@ def editor_payload(session, actor):
             display_status = "booked"
             display_status_label = "Past booking" if session.is_past else "Your booking"
         elif session.is_full:
-            display_status = "booked"
+            display_status = "full"
             display_status_label = "Full"
         else:
             display_status = "available"
@@ -106,7 +106,9 @@ def editor_payload(session, actor):
         "is_full": session.is_full,
         "interested_by_me": interested_by_me,
         "can_interest": can_interest,
-        "has_interest": bool(can_manage and session.is_full and session.interests),
+        "has_interest": bool(
+            (can_manage and session.is_full and session.interests) or interested_by_me
+        ),
         "display_status": display_status,
         "display_status_label": display_status_label,
         "booked_percent": round(
@@ -118,12 +120,16 @@ def editor_payload(session, actor):
             {"id": client.id, "name": client.display_name}
             for client in session.booked_clients
         ],
-        "interested": [
-            {"id": client.id, "name": client.display_name}
-            for client in session.interested_clients
-        ]
-        if can_manage
-        else [],
+        "interested": (
+            [{"id": actor.id, "name": actor.display_name}]
+            if actor.is_client and interested_by_me
+            else [
+                {"id": client.id, "name": client.display_name}
+                for client in session.interested_clients
+            ]
+            if can_manage
+            else []
+        ),
         "can_manage": can_manage,
         "can_book": bool(
             actor.is_client and session.is_available and not session.is_booked_by(actor)
@@ -159,6 +165,7 @@ def editor_payload(session, actor):
             data["cancel_url"] = f"/sessions/{session.id}/cancel"
         if data["can_interest"]:
             data["interest_url"] = f"/sessions/{session.id}/interest"
+        if data["can_interest"] or data["interested_by_me"]:
             data["interest_remove_url"] = f"/sessions/{session.id}/withdraw-interest"
     return data
 
