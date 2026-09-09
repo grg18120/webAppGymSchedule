@@ -1,4 +1,4 @@
-const CACHE_NAME = "gym-sessions-static-v35";
+const CACHE_NAME = "gym-sessions-static-v36";
 const PRECACHE_URLS = [
   "/static/css/base.css",
   "/static/css/app.css",

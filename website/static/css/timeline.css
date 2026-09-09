@@ -889,6 +889,23 @@
   padding-bottom: 0.35rem;
 }
 
+.slot-edit-interest {
+  background: #fff3e0;
+  border-color: #ffcc80;
+}
+
+.slot-edit-interest .slot-edit-people__title {
+  color: #bf360c;
+}
+
+.slot-edit-interest .slot-edit-clients {
+  margin-bottom: 0;
+}
+
+.slot-edit-interest .slot-edit-clients__item {
+  border-bottom-color: #ffcc80;
+}
+
 .slot-edit-clients {
   list-style: none;
   margin: 0 0 1rem;
