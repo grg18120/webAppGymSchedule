@@ -1533,7 +1533,16 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"timeline-week-picker.js", html)
         self.assertIn(b"slotEditModal", html)
         self.assertIn(b'data-bs-toggle="modal"', html)
+        self.assertIn(b"timeline__block-hit", html)
         self.assertIn(b"data-slot=", html)
+        self.assertRegex(
+            html.decode(),
+            r'<div\s+class="timeline__block\b[^"]*"[^>]*data-slot=',
+        )
+        self.assertNotRegex(
+            html.decode(),
+            r'<button[^>]*class="timeline__block-hit"[^>]*data-slot=',
+        )
         self.assertIn(b"Save changes", html)
         self.assertNotIn(b"Save time and positions", html)
         self.assertNotIn(b'name="session_date"', html)
@@ -2048,6 +2057,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"viewer_is_client", js)
         self.assertIn(b"booked_by_me", js)
         self.assertIn(b"You booked this session.", js)
+        self.assertIn(b'closest(".timeline__block")', js)
+        self.assertIn(b'currentTrigger.getAttribute("data-slot")', js)
 
     def test_edit_session_json_saves_date_and_clients_together(self):
         from datetime import datetime, timedelta
