@@ -1551,6 +1551,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"slot-edit-schedule", html)
         self.assertIn(b"slot-edit-people", html)
         self.assertIn(b"data-slot-add-client", html)
+        self.assertIn(b'id="slot_add_client"', html)
+        self.assertIn(b"data-slot-add-picker", html)
+        self.assertIn(b"slot-edit-add-picker__toggle", html)
         self.assertIn(b'name="sync_clients"', html)
         self.assertIn(b"data-slot-edit-form", html)
         self.assertIn(b"data-slot-flash", html)
@@ -1752,6 +1755,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".slot-edit-modal .modal-dialog.is-shake", css)
         self.assertIn(b".slot-edit-modal .form-control.is-invalid", css)
         self.assertIn(b"flex: 1 1 12rem", css)
+        self.assertIn(b".slot-edit-add-picker", css)
+        self.assertIn(b".slot-edit-add-picker__option", css)
         self.assertNotIn(b"@media (hover: none)", css)
         self.assertIn(b".timeline-week-picker__panel", css)
         self.assertIn(b".timeline-week-picker__day.is-week", css)
@@ -2163,6 +2168,9 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"You booked this session.", js)
         self.assertIn(b'currentTrigger.getAttribute("data-slot")', js)
         self.assertNotIn(b'var raw = trigger.getAttribute("data-slot");', js)
+        self.assertIn(b"data-slot-add-picker", js)
+        self.assertIn(b"timeline-swatch--interest", js)
+        self.assertIn(b", interested", js)
 
     def test_edit_session_json_saves_date_and_clients_together(self):
         from datetime import datetime, timedelta

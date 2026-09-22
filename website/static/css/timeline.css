@@ -969,6 +969,74 @@
   flex: 1 1 12rem;
 }
 
+.slot-edit-add-picker {
+  position: relative;
+  flex: 1 1 12rem;
+  min-width: 12rem;
+}
+
+.slot-edit-add-picker__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  width: 100%;
+  text-align: left;
+}
+
+.slot-edit-add-picker__toggle .timeline-swatch {
+  margin-right: 0;
+  flex: 0 0 auto;
+}
+
+.slot-edit-add-picker__menu {
+  position: absolute;
+  z-index: 12;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 14rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow: auto;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid #90a4ae;
+  border-radius: 8px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+}
+
+.slot-edit-add-picker__menu[hidden] {
+  display: none !important;
+}
+
+.slot-edit-add-picker__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.45rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: #102a3a;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.slot-edit-add-picker__option:hover,
+.slot-edit-add-picker__option:focus-visible {
+  background: #eceff1;
+  outline: none;
+}
+
+.slot-edit-add-picker__option .timeline-swatch {
+  margin-right: 0;
+  flex: 0 0 auto;
+}
+
 .slot-edit-add .d-flex {
   align-items: stretch;
 }

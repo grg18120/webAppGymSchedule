@@ -12,6 +12,10 @@
   var addForm = modalEl.querySelector("[data-slot-add-form]");
   var addHint = modalEl.querySelector("[data-slot-add-hint]");
   var addSelect = modalEl.querySelector("#slot_add_client");
+  var addPicker = modalEl.querySelector("[data-slot-add-picker]");
+  var addToggle = modalEl.querySelector("[data-slot-add-toggle]");
+  var addMenu = modalEl.querySelector("[data-slot-add-menu]");
+  var addCurrent = modalEl.querySelector("[data-slot-add-current]");
   var addButton = modalEl.querySelector("[data-slot-add-client]");
   var clientsList = modalEl.querySelector("[data-slot-clients]");
   var clientIdsBox = modalEl.querySelector("[data-slot-client-ids]");
@@ -67,7 +71,7 @@
       end_hour: endHour,
       end_minute: endMinute,
       position_count: positionInput,
-      client_id: addSelect,
+      client_id: addToggle || addSelect,
     };
   }
 
@@ -212,6 +216,108 @@
     });
   }
 
+  function optionName(option) {
+    if (!option) return "";
+    if (option.value && !option.getAttribute("data-name")) {
+      option.setAttribute(
+        "data-name",
+        String(option.textContent || "").replace(/^\s+|\s+$/g, "")
+      );
+    }
+    return option.getAttribute("data-name") || "";
+  }
+
+  function interestedIds() {
+    var ids = {};
+    ((currentSlot && currentSlot.interested) || []).forEach(function (person) {
+      ids[String(person.id)] = true;
+    });
+    return ids;
+  }
+
+  function appendInterestIcon(node) {
+    var icon = document.createElement("span");
+    icon.className = "timeline-swatch timeline-swatch--interest";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = "!";
+    node.appendChild(icon);
+    return icon;
+  }
+
+  function closeAddPicker() {
+    if (!addMenu || !addToggle) return;
+    addMenu.hidden = true;
+    addToggle.setAttribute("aria-expanded", "false");
+  }
+
+  function updateAddPickerLabel() {
+    if (!addToggle || !addCurrent || !addSelect) return;
+    var option = addSelect.options[addSelect.selectedIndex];
+    addCurrent.textContent = "";
+    Array.prototype.slice.call(addToggle.querySelectorAll(".timeline-swatch")).forEach(function (icon) {
+      icon.parentNode.removeChild(icon);
+    });
+    if (!option || !option.value) {
+      addCurrent.textContent = "Select client";
+      return;
+    }
+    var name = optionName(option);
+    addCurrent.textContent = name;
+    if (interestedIds()[option.value]) appendInterestIcon(addToggle);
+  }
+
+  function renderAddPicker() {
+    if (!addMenu || !addSelect) return;
+    addMenu.innerHTML = "";
+    var booked = {};
+    draftClients.forEach(function (client) {
+      booked[String(client.id)] = true;
+    });
+    var interested = interestedIds();
+    var rows = [];
+    Array.prototype.forEach.call(addSelect.options, function (option) {
+      if (!option.value) return;
+      optionName(option);
+      var taken = Boolean(booked[option.value]);
+      option.disabled = taken;
+      if (!taken) rows.push(option);
+    });
+    rows.sort(function (a, b) {
+      var ia = interested[a.value] ? 0 : 1;
+      var ib = interested[b.value] ? 0 : 1;
+      if (ia !== ib) return ia - ib;
+      return optionName(a).localeCompare(optionName(b));
+    });
+    rows.forEach(function (option) {
+      var item = document.createElement("li");
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "slot-edit-add-picker__option tap-target";
+      button.setAttribute("role", "option");
+      button.setAttribute("data-id", option.value);
+      var name = document.createElement("span");
+      name.textContent = optionName(option);
+      button.appendChild(name);
+      if (interested[option.value]) {
+        appendInterestIcon(button);
+        button.setAttribute("aria-label", optionName(option) + ", interested");
+      }
+      if (option.value === addSelect.value) {
+        button.setAttribute("aria-selected", "true");
+      }
+      button.addEventListener("click", function () {
+        addSelect.value = option.value;
+        updateAddPickerLabel();
+        closeAddPicker();
+        clearInvalid();
+        showFlash("");
+      });
+      item.appendChild(button);
+      addMenu.appendChild(item);
+    });
+    updateAddPickerLabel();
+  }
+
   function filterAddClients() {
     if (!addSelect) return;
     var booked = {};
@@ -222,11 +328,13 @@
     var current = addSelect.value;
     Array.prototype.forEach.call(addSelect.options, function (option) {
       if (!option.value) return;
+      optionName(option);
       var taken = Boolean(booked[option.value]);
       option.disabled = taken;
       if (!taken) available += 1;
     });
     if (!current || booked[current]) addSelect.value = "";
+    renderAddPicker();
     var count = positionCount();
     var full = Number.isInteger(count) && draftClients.length >= count;
     var locked = !currentSlot || !currentSlot.can_manage || currentSlot.is_past;
@@ -235,6 +343,7 @@
       addHint,
       !(full && currentSlot && currentSlot.can_manage && !currentSlot.is_past)
     );
+    if (locked || full || !available) closeAddPicker();
   }
 
   function addDraftClient() {
@@ -252,7 +361,7 @@
     var option = addSelect.options[addSelect.selectedIndex];
     draftClients.push({
       id: Number(option.value),
-      name: option.textContent.replace(/^\s+|\s+$/g, ""),
+      name: optionName(option) || String(option.textContent || "").replace(/^\s+|\s+$/g, ""),
     });
     showFlash("");
     clearInvalid();
@@ -509,6 +618,7 @@
     draftClients = [];
     showFlash("");
     clearInvalid();
+    closeAddPicker();
   });
 
   document.querySelectorAll(".timeline__block").forEach(function (block) {
@@ -547,6 +657,30 @@
     document.querySelectorAll("[data-interest-flag]").forEach(function (flag) {
       flag.setAttribute("aria-expanded", "false");
     });
+  });
+
+  if (addToggle) {
+    addToggle.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!addMenu) return;
+      if (addMenu.hidden) {
+        renderAddPicker();
+        addMenu.hidden = false;
+        addToggle.setAttribute("aria-expanded", "true");
+      } else {
+        closeAddPicker();
+      }
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    if (addPicker && addPicker.contains(event.target)) return;
+    closeAddPicker();
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") closeAddPicker();
   });
 
 

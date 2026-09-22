@@ -430,14 +430,36 @@
             <h3 class="slot-edit-people__title">Clients</h3>
             <ul class="slot-edit-clients" data-slot-clients></ul>
             <div class="slot-edit-add" data-slot-add-form>
-              <label class="form-label" for="slot_add_client">Add a client</label>
+              <label class="form-label" for="slot_add_client_toggle">Add a client</label>
               <div class="d-flex flex-wrap gap-2">
-                <select class="form-select tap-target" id="slot_add_client">
-                  <option value="">Select client</option>
-                  {% for client in clients %}
-                  <option value="{{ client.id }}">{{ client.display_name }}</option>
-                  {% endfor %}
-                </select>
+                <div class="slot-edit-add-picker" data-slot-add-picker>
+                  <select class="visually-hidden" id="slot_add_client" data-slot-add-select tabindex="-1" aria-hidden="true">
+                    <option value="">Select client</option>
+                    {% for client in clients %}
+                    <option value="{{ client.id }}">{{ client.display_name }}</option>
+                    {% endfor %}
+                  </select>
+                  <button
+                    id="slot_add_client_toggle"
+                    type="button"
+                    class="form-select tap-target slot-edit-add-picker__toggle"
+                    data-slot-add-toggle
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="slotAddClientMenu"
+                    aria-label="Select client"
+                  >
+                    <span data-slot-add-current>Select client</span>
+                  </button>
+                  <ul
+                    class="slot-edit-add-picker__menu"
+                    id="slotAddClientMenu"
+                    data-slot-add-menu
+                    hidden
+                    role="listbox"
+                    aria-label="Clients"
+                  ></ul>
+                </div>
                 <button type="button" class="btn btn-success tap-target" data-slot-add-client>Add</button>
               </div>
             </div>
