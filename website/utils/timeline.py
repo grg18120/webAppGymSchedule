@@ -73,7 +73,7 @@ def editor_payload(session, actor):
             display_status = "booked"
             display_status_label = "Past booking" if session.is_past else "Your booking"
         elif session.is_full:
-            display_status = "booked"
+            display_status = "full"
             display_status_label = "Full"
         else:
             display_status = "available"

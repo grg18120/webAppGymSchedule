@@ -420,6 +420,7 @@
     currentTrigger.classList.remove(
       "timeline__block--available",
       "timeline__block--booked",
+      "timeline__block--full",
       "timeline__block--cancelled",
       "timeline__block--partial"
     );

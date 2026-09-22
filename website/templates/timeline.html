@@ -45,7 +45,7 @@
 <div class="container py-4">
   <h1 class="h3 text-white">Session timeline</h1>
   {% if user.is_client %}
-  <p class="text-white-50">Dates across, times down. Click a slot to book, cancel, or register interest. Green slots are open. Blue slots are sessions you already booked. Fully booked slots you did not book are marked Full — you can tell staff you want a place.</p>
+  <p class="text-white-50">Dates across, times down. Click a slot to book, cancel, or register interest. Green slots are open. Blue slots are sessions you already booked. Red slots are full — you can tell staff you want a place.</p>
   {% else %}
   <p class="text-white-50">Dates across, times down. Click a slot to edit it. Open slots are green; booked sessions are blue; part-booked slots mix those colors by how many seats are taken. Past slots keep those colors, faded.</p>
   {% endif %}
@@ -237,7 +237,7 @@
     <li><span class="timeline-swatch timeline-swatch--interest" aria-hidden="true">!</span> Client interest</li>
     {% else %}
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Your booking</li>
-    <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Full</li>
+    <li><span class="timeline-swatch timeline-swatch--full" aria-hidden="true"></span> Full</li>
     <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booking</li>
     {% endif %}
   </ul>

@@ -273,6 +273,12 @@
   background: #1565c0;
 }
 
+.timeline-swatch--full {
+  background: #c62828;
+  border: 2px solid #8e0000;
+  box-sizing: border-box;
+}
+
 .timeline-swatch--partial {
   background: linear-gradient(
     to right,
@@ -656,6 +662,12 @@
   color: #ffffff;
 }
 
+.timeline__block--full {
+  background: #c62828;
+  border: 2px solid #8e0000;
+  color: #ffffff;
+}
+
 .timeline__block--past {
   color: rgba(255, 255, 255, 0.92);
 }
@@ -668,6 +680,11 @@
 .timeline__block--booked.timeline__block--past {
   background: rgba(21, 101, 192, 0.22);
   border: 2px solid rgba(21, 101, 192, 0.4);
+}
+
+.timeline__block--full.timeline__block--past {
+  background: rgba(198, 40, 40, 0.22);
+  border: 2px solid rgba(198, 40, 40, 0.4);
 }
 
 .timeline__block--partial {
