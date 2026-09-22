@@ -1550,6 +1550,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"slot_session_date", html)
         self.assertIn(b"slot-edit-schedule", html)
         self.assertIn(b"slot-edit-people", html)
+        self.assertNotIn(b"slot-edit-interest", html)
+        self.assertNotIn(b"data-slot-interested", html)
         self.assertIn(b"data-slot-add-client", html)
         self.assertIn(b'id="slot_add_client"', html)
         self.assertIn(b"data-slot-add-picker", html)
@@ -1877,6 +1879,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b">!<", staff.data)
         self.assertIn(b"Riley Patel", staff.data)
         self.assertIn(b"Interested", staff.data)
+        self.assertNotIn(b"slot-edit-interest", staff.data)
+        self.assertNotIn(b"data-slot-interested", staff.data)
         self.assertIn(b"Client interest", staff.data)
         self.assertEqual(self.client.post(interest_path).status_code, 403)
 
@@ -2171,6 +2175,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"data-slot-add-picker", js)
         self.assertIn(b"timeline-swatch--interest", js)
         self.assertIn(b", interested", js)
+        self.assertNotIn(b"data-slot-interested", js)
+        self.assertNotIn(b"renderInterested", js)
 
     def test_edit_session_json_saves_date_and_clients_together(self):
         from datetime import datetime, timedelta

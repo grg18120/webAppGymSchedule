@@ -29,8 +29,6 @@
   var cancelOwnForm = modalEl.querySelector("[data-slot-cancel-own-form]");
   var interestForm = modalEl.querySelector("[data-slot-interest-form]");
   var interestRemoveForm = modalEl.querySelector("[data-slot-interest-remove-form]");
-  var interestedBox = modalEl.querySelector("[data-slot-interested]");
-  var interestedList = modalEl.querySelector("[data-slot-interested-list]");
   var deleteForm = modalEl.querySelector("[data-slot-delete-form]");
   var cancelAllForm = modalEl.querySelector("[data-slot-cancel-all-form]");
   var deleteBookedForm = modalEl.querySelector("[data-slot-delete-booked-form]");
@@ -454,7 +452,6 @@
     writeClientIds();
     renderClients();
     filterAddClients();
-    renderInterested(slot);
     setHidden(bookForm, !slot.can_book);
     setHidden(cancelOwnForm, !slot.can_cancel_own);
     setHidden(interestForm, !(slot.can_interest && !slot.interested_by_me));
@@ -465,19 +462,6 @@
     modalEl.querySelectorAll('input[name="next"]').forEach(function (input) {
       input.value = nextInput;
     });
-  }
-
-  function renderInterested(slot) {
-    if (!interestedList) return;
-    interestedList.innerHTML = "";
-    var rows = (slot && slot.interested) || [];
-    rows.forEach(function (person) {
-      var item = document.createElement("li");
-      item.className = "slot-edit-clients__item";
-      item.textContent = person.name;
-      interestedList.appendChild(item);
-    });
-    setHidden(interestedBox, !(slot && slot.can_manage && rows.length));
   }
 
   function positionsShort(slot) {
