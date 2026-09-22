@@ -41,6 +41,16 @@ def _last_months(now, count=MONTH_WINDOW):
     return months
 
 
+def _chart_months(now, past_count=MONTH_WINDOW, future_count=1):
+    months = _last_months(now, past_count)
+    year, month = now.year, now.month
+    for _ in range(future_count):
+        nxt = _next_month_start(year, month)
+        months.append((nxt.year, nxt.month))
+        year, month = nxt.year, nxt.month
+    return months
+
+
 def _minutes(session):
     return max(0, session.duration_minutes)
 
@@ -75,7 +85,7 @@ def _empty_bucket():
 
 def _query_sessions(now, months, instructor_id=None, client_id=None):
     window_start = _month_start(*months[0])
-    window_end = _next_month_start(now.year, now.month)
+    window_end = _next_month_start(*months[-1])
     query = GymSession.query.filter(
         GymSession.status != SESSION_CANCELLED,
         GymSession.datetime_start >= window_start,
@@ -130,6 +140,7 @@ def _month_rows(months, buckets, include_open, now):
         row = {
             "label": datetime(year, month, 1).strftime("%b %Y"),
             "is_current": (year, month) == current,
+            "is_future": (year, month) > current,
             "booked": _format_duration(bucket["booked_minutes"]),
             "booked_hours": bucket["booked_minutes"] / 60.0,
             "booked_past_hours": bucket["booked_past_minutes"] / 60.0,
@@ -165,7 +176,7 @@ COLOR_UNBOOKED_FUTURE = "#a5d6a7"
 
 def _chart_columns(row, include_open):
     """Return columns of stacked segments, bottom segment first."""
-    if row.get("is_current"):
+    if row.get("is_current") or row.get("is_future"):
         columns = [
             [
                 {
@@ -236,7 +247,7 @@ def _chart_max_hours(rows, include_open):
 
 
 def _build_chart(rows, include_open):
-    width, height = 680, 280
+    width, height = 720, 280
     pad_l, pad_r, pad_t, pad_b = 48, 16, 28, 44
     plot_w = width - pad_l - pad_r
     plot_h = height - pad_t - pad_b
@@ -291,7 +302,7 @@ def _build_chart(rows, include_open):
                 if bar_h > 0:
                     cursor = y
         summary_parts = [f"{row['label']}: booked {row['booked']}"]
-        if row.get("is_current"):
+        if row.get("is_current") or row.get("is_future"):
             summary_parts.append(
                 f"past booked {_format_hours_short(row.get('booked_past_hours', 0))}, "
                 f"upcoming booked {_format_hours_short(row.get('booked_future_hours', 0))}"
@@ -353,17 +364,18 @@ def _next_label(upcoming):
 
 
 def instructor_dashboard(user, now):
-    months = _last_months(now)
+    history = _last_months(now)
+    months = _chart_months(now)
     sessions = _query_sessions(now, months, instructor_id=user.id)
     buckets = _fill_months(sessions, months, now)
     current = buckets[(now.year, now.month)]
-    booked_values = [buckets[key]["booked_minutes"] for key in months]
-    open_values = [buckets[key]["open_minutes"] for key in months]
+    booked_values = [buckets[key]["booked_minutes"] for key in history]
+    open_values = [buckets[key]["open_minutes"] for key in history]
     upcoming = _upcoming(now, instructor_id=user.id)
     month_rows = _month_rows(months, buckets, include_open=True, now=now)
     return {
         "title": "Your teaching stats",
-        "window_label": f"Last {MONTH_WINDOW} months",
+        "window_label": f"Last {MONTH_WINDOW} months and next month",
         "include_open": True,
         "cards": [
             {"label": "Booked this month", "value": _format_duration(current["booked_minutes"])},
@@ -378,16 +390,17 @@ def instructor_dashboard(user, now):
 
 
 def client_dashboard(user, now):
-    months = _last_months(now)
+    history = _last_months(now)
+    months = _chart_months(now)
     sessions = _query_sessions(now, months, client_id=user.id)
     buckets = _fill_months(sessions, months, now, client_only=True)
     current = buckets[(now.year, now.month)]
-    booked_values = [buckets[key]["booked_minutes"] for key in months]
+    booked_values = [buckets[key]["booked_minutes"] for key in history]
     upcoming = _upcoming(now, client_id=user.id)
     month_rows = _month_rows(months, buckets, include_open=False, now=now)
     return {
         "title": "Your training stats",
-        "window_label": f"Last {MONTH_WINDOW} months",
+        "window_label": f"Last {MONTH_WINDOW} months and next month",
         "include_open": False,
         "cards": [
             {"label": "Booked this month", "value": _format_duration(current["booked_minutes"])},
@@ -450,17 +463,18 @@ def client_hours_report(now):
 
 
 def admin_dashboard(now):
-    months = _last_months(now)
+    history = _last_months(now)
+    months = _chart_months(now)
     sessions = _query_sessions(now, months)
     buckets = _fill_months(sessions, months, now)
     current = buckets[(now.year, now.month)]
-    booked_values = [buckets[key]["booked_minutes"] for key in months]
-    open_values = [buckets[key]["open_minutes"] for key in months]
+    booked_values = [buckets[key]["booked_minutes"] for key in history]
+    open_values = [buckets[key]["open_minutes"] for key in history]
     upcoming = _upcoming(now, admin=True)
     month_rows = _month_rows(months, buckets, include_open=True, now=now)
     return {
         "title": "Gym stats",
-        "window_label": f"Last {MONTH_WINDOW} months",
+        "window_label": f"Last {MONTH_WINDOW} months and next month",
         "include_open": True,
         "cards": [
             {"label": "Users", "value": str(User.query.count())},
