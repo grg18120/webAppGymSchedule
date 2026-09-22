@@ -486,8 +486,9 @@
   modalEl.addEventListener("show.bs.modal", function (event) {
     var trigger = event.relatedTarget;
     if (!trigger) return;
-    currentTrigger = trigger.closest(".timeline__block") || trigger;
-    var raw = trigger.getAttribute("data-slot");
+    currentTrigger =
+      (trigger.closest && trigger.closest(".timeline__block")) || trigger;
+    var raw = currentTrigger.getAttribute("data-slot");
     if (!raw) return;
     var slot;
     try {
