@@ -77,6 +77,9 @@ def _empty_bucket():
         "booked_future_minutes": 0,
         "open_past_minutes": 0,
         "open_future_minutes": 0,
+        "client_minutes": 0,
+        "client_past_minutes": 0,
+        "client_future_minutes": 0,
         "booked_count": 0,
         "open_count": 0,
         "clients": set(),
@@ -113,6 +116,15 @@ def _fill_months(sessions, months, now, client_only=False):
         minutes = _minutes(session)
         is_past = session.datetime_start <= now
         occupants = [client.id for client in session.booked_clients]
+        if client_only:
+            client_minutes = minutes if occupants else 0
+        else:
+            client_minutes = minutes * len(occupants)
+        bucket["client_minutes"] += client_minutes
+        if is_past:
+            bucket["client_past_minutes"] += client_minutes
+        else:
+            bucket["client_future_minutes"] += client_minutes
         if client_only or session.status == SESSION_BOOKED:
             bucket["booked_minutes"] += minutes
             bucket["booked_count"] += 1
@@ -145,6 +157,10 @@ def _month_rows(months, buckets, include_open, now):
             "booked_hours": bucket["booked_minutes"] / 60.0,
             "booked_past_hours": bucket["booked_past_minutes"] / 60.0,
             "booked_future_hours": bucket["booked_future_minutes"] / 60.0,
+            "client": _format_duration(bucket["client_minutes"]),
+            "client_hours": bucket["client_minutes"] / 60.0,
+            "client_past_hours": bucket["client_past_minutes"] / 60.0,
+            "client_future_hours": bucket["client_future_minutes"] / 60.0,
         }
         if include_open:
             row["open"] = _format_duration(bucket["open_minutes"])
@@ -174,9 +190,38 @@ COLOR_UNBOOKED_PAST = "#2e7d32"
 COLOR_UNBOOKED_FUTURE = "#a5d6a7"
 
 
-def _chart_columns(row, include_open):
+def _chart_columns(row, include_open, kind="session"):
     """Return columns of stacked segments, bottom segment first."""
-    if row.get("is_current") or row.get("is_future"):
+    split = row.get("is_current") or row.get("is_future")
+    if kind == "client":
+        if split:
+            return [
+                [
+                    {
+                        "key": "past client hours",
+                        "hours": row.get("client_past_hours", 0.0),
+                        "fill": COLOR_BOOKED_PAST,
+                        "label_fill": "#ffffff",
+                    },
+                    {
+                        "key": "upcoming client hours",
+                        "hours": row.get("client_future_hours", 0.0),
+                        "fill": COLOR_BOOKED_FUTURE,
+                        "label_fill": "#102a3a",
+                    },
+                ]
+            ]
+        return [
+            [
+                {
+                    "key": "client hours",
+                    "hours": row.get("client_hours", 0.0),
+                    "fill": COLOR_BOOKED_PAST,
+                    "label_fill": "#ffffff",
+                }
+            ]
+        ]
+    if split:
         columns = [
             [
                 {
@@ -235,10 +280,10 @@ def _chart_columns(row, include_open):
     return columns
 
 
-def _chart_max_hours(rows, include_open):
+def _chart_max_hours(rows, include_open, kind="session"):
     values = []
     for row in rows:
-        for column in _chart_columns(row, include_open):
+        for column in _chart_columns(row, include_open, kind):
             values.append(sum(item["hours"] for item in column))
     peak = max(values) if values else 0.0
     if peak <= 0:
@@ -246,12 +291,12 @@ def _chart_max_hours(rows, include_open):
     return float(max(1, ceil(peak)))
 
 
-def _build_chart(rows, include_open):
+def _build_chart(rows, include_open, kind="session"):
     width, height = 720, 280
     pad_l, pad_r, pad_t, pad_b = 48, 16, 28, 44
     plot_w = width - pad_l - pad_r
     plot_h = height - pad_t - pad_b
-    max_hours = _chart_max_hours(rows, include_open)
+    max_hours = _chart_max_hours(rows, include_open, kind)
     tick_count = 4
     y_ticks = []
     for index in range(tick_count + 1):
@@ -263,7 +308,7 @@ def _build_chart(rows, include_open):
     group_w = plot_w / count
     groups = []
     for index, row in enumerate(rows):
-        columns = _chart_columns(row, include_open)
+        columns = _chart_columns(row, include_open, kind)
         bar_count = max(1, len(columns))
         inner = group_w * 0.72
         bar_gap = 4 if bar_count > 1 else 0
@@ -301,19 +346,27 @@ def _build_chart(rows, include_open):
                 )
                 if bar_h > 0:
                     cursor = y
-        summary_parts = [f"{row['label']}: booked {row['booked']}"]
-        if row.get("is_current") or row.get("is_future"):
-            summary_parts.append(
-                f"past booked {_format_hours_short(row.get('booked_past_hours', 0))}, "
-                f"upcoming booked {_format_hours_short(row.get('booked_future_hours', 0))}"
-            )
-            if include_open:
+        if kind == "client":
+            summary_parts = [f"{row['label']}: client hours {row.get('client', '0 h 0 min')}"]
+            if row.get("is_current") or row.get("is_future"):
                 summary_parts.append(
-                    f"past unbooked {_format_hours_short(row.get('open_past_hours', 0))}, "
-                    f"upcoming unbooked {_format_hours_short(row.get('open_future_hours', 0))}"
+                    f"past {_format_hours_short(row.get('client_past_hours', 0))}, "
+                    f"upcoming {_format_hours_short(row.get('client_future_hours', 0))}"
                 )
-        elif include_open:
-            summary_parts.append(f"unbooked {row['open']}")
+        else:
+            summary_parts = [f"{row['label']}: booked {row['booked']}"]
+            if row.get("is_current") or row.get("is_future"):
+                summary_parts.append(
+                    f"past booked {_format_hours_short(row.get('booked_past_hours', 0))}, "
+                    f"upcoming booked {_format_hours_short(row.get('booked_future_hours', 0))}"
+                )
+                if include_open:
+                    summary_parts.append(
+                        f"past unbooked {_format_hours_short(row.get('open_past_hours', 0))}, "
+                        f"upcoming unbooked {_format_hours_short(row.get('open_future_hours', 0))}"
+                    )
+            elif include_open:
+                summary_parts.append(f"unbooked {row['open']}")
         groups.append(
             {
                 "label": row["label"],
@@ -334,6 +387,7 @@ def _build_chart(rows, include_open):
         "y_ticks": y_ticks,
         "groups": groups,
         "include_open": include_open,
+        "kind": kind,
     }
 
 
@@ -363,6 +417,30 @@ def _next_label(upcoming):
     return session.datetime_start.strftime("%a %d %b, %H:%M")
 
 
+def _dashboard_charts(month_rows, show_session=True):
+    client_chart = {
+        "id": "client-hours",
+        "title": "Client hours per month",
+        "hint": "Hours clients spent in sessions. Two people in a one-hour class count as two hours. This month stacks past hours under upcoming hours. Next month shows upcoming hours.",
+        "include_open": False,
+        "kind": "client",
+        "chart": _build_chart(month_rows, include_open=False, kind="client"),
+    }
+    charts = [client_chart]
+    session_chart = None
+    if show_session:
+        session_chart = {
+            "id": "session-hours",
+            "title": "Session hours per month",
+            "hint": "Calendar hours of sessions. Unbooked is open time that was not booked. This month stacks past hours under upcoming hours. Next month shows upcoming hours.",
+            "include_open": True,
+            "kind": "session",
+            "chart": _build_chart(month_rows, include_open=True, kind="session"),
+        }
+        charts.append(session_chart)
+    return charts, client_chart, session_chart
+
+
 def instructor_dashboard(user, now):
     history = _last_months(now)
     months = _chart_months(now)
@@ -373,6 +451,7 @@ def instructor_dashboard(user, now):
     open_values = [buckets[key]["open_minutes"] for key in history]
     upcoming = _upcoming(now, instructor_id=user.id)
     month_rows = _month_rows(months, buckets, include_open=True, now=now)
+    charts, client_chart, session_chart = _dashboard_charts(month_rows, show_session=True)
     return {
         "title": "Your teaching stats",
         "window_label": f"Last {MONTH_WINDOW} months and next month",
@@ -384,7 +463,9 @@ def instructor_dashboard(user, now):
             {"label": "Next session", "value": _next_label(upcoming)},
         ],
         "months": month_rows,
-        "chart": _build_chart(month_rows, True),
+        "charts": charts,
+        "client_chart": client_chart["chart"],
+        "chart": session_chart["chart"],
         "upcoming": upcoming,
     }
 
@@ -398,6 +479,7 @@ def client_dashboard(user, now):
     booked_values = [buckets[key]["booked_minutes"] for key in history]
     upcoming = _upcoming(now, client_id=user.id)
     month_rows = _month_rows(months, buckets, include_open=False, now=now)
+    charts, client_chart, _session_chart = _dashboard_charts(month_rows, show_session=False)
     return {
         "title": "Your training stats",
         "window_label": f"Last {MONTH_WINDOW} months and next month",
@@ -409,7 +491,9 @@ def client_dashboard(user, now):
             {"label": "Next session", "value": _next_label(upcoming)},
         ],
         "months": month_rows,
-        "chart": _build_chart(month_rows, False),
+        "charts": charts,
+        "client_chart": client_chart["chart"],
+        "chart": client_chart["chart"],
         "upcoming": upcoming,
     }
 
@@ -472,6 +556,7 @@ def admin_dashboard(now):
     open_values = [buckets[key]["open_minutes"] for key in history]
     upcoming = _upcoming(now, admin=True)
     month_rows = _month_rows(months, buckets, include_open=True, now=now)
+    charts, client_chart, session_chart = _dashboard_charts(month_rows, show_session=True)
     return {
         "title": "Gym stats",
         "window_label": f"Last {MONTH_WINDOW} months and next month",
@@ -498,7 +583,9 @@ def admin_dashboard(now):
             {"label": "Upcoming sessions", "value": str(len(upcoming))},
         ],
         "months": month_rows,
-        "chart": _build_chart(month_rows, True),
+        "charts": charts,
+        "client_chart": client_chart["chart"],
+        "chart": session_chart["chart"],
         "upcoming": upcoming,
     }
 

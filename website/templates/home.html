@@ -33,46 +33,50 @@
       </article>
       {% endfor %}
     </div>
-    {% if dashboard.months and dashboard.chart %}
-    <div class="stat-chart" role="img" aria-labelledby="hours-chart-title" aria-describedby="hours-chart-summary">
+    {% if dashboard.charts %}
+    {% for item in dashboard.charts %}
+    <div class="stat-chart" role="img" aria-labelledby="{{ item.id }}-title" aria-describedby="{{ item.id }}-summary">
       <div class="stat-chart__header">
-        <h3 class="stat-chart__title" id="hours-chart-title">Hours by month</h3>
+        <h3 class="stat-chart__title" id="{{ item.id }}-title">{{ item.title }}</h3>
         <ul class="stat-chart__legend" aria-hidden="true">
+          {% if item.kind == "client" %}
+          <li><span class="stat-chart__swatch stat-chart__swatch--booked-past"></span> Past</li>
+          <li><span class="stat-chart__swatch stat-chart__swatch--booked"></span> Upcoming</li>
+          {% else %}
           <li><span class="stat-chart__swatch stat-chart__swatch--booked-past"></span> Past booked</li>
           <li><span class="stat-chart__swatch stat-chart__swatch--booked"></span> Booked (upcoming)</li>
-          {% if dashboard.include_open %}
           <li><span class="stat-chart__swatch stat-chart__swatch--unbooked-past"></span> Past unbooked</li>
           <li><span class="stat-chart__swatch stat-chart__swatch--unbooked"></span> Unbooked (upcoming)</li>
           {% endif %}
         </ul>
       </div>
-      {% if dashboard.include_open %}
-      <p class="stat-chart__hint">This month stacks past hours under upcoming hours in each column. Next month shows upcoming hours. Unbooked is available time that was not booked.</p>
+      {% if item.hint %}
+      <p class="stat-chart__hint">{{ item.hint }}</p>
       {% endif %}
       <svg
         class="stat-chart__svg"
-        viewBox="0 0 {{ dashboard.chart.width }} {{ dashboard.chart.height }}"
+        viewBox="0 0 {{ item.chart.width }} {{ item.chart.height }}"
         role="presentation"
         focusable="false"
       >
-        {% for tick in dashboard.chart.y_ticks %}
+        {% for tick in item.chart.y_ticks %}
         <line
           class="stat-chart__grid"
-          x1="{{ dashboard.chart.plot_left }}"
-          x2="{{ dashboard.chart.plot_right }}"
+          x1="{{ item.chart.plot_left }}"
+          x2="{{ item.chart.plot_right }}"
           y1="{{ tick.y }}"
           y2="{{ tick.y }}"
         />
-        <text class="stat-chart__axis" x="{{ dashboard.chart.plot_left - 8 }}" y="{{ tick.y + 4 }}" text-anchor="end">{{ tick.value }}</text>
+        <text class="stat-chart__axis" x="{{ item.chart.plot_left - 8 }}" y="{{ tick.y + 4 }}" text-anchor="end">{{ tick.value }}</text>
         {% endfor %}
         <line
           class="stat-chart__axis-line"
-          x1="{{ dashboard.chart.plot_left }}"
-          x2="{{ dashboard.chart.plot_right }}"
-          y1="{{ dashboard.chart.plot_bottom }}"
-          y2="{{ dashboard.chart.plot_bottom }}"
+          x1="{{ item.chart.plot_left }}"
+          x2="{{ item.chart.plot_right }}"
+          y1="{{ item.chart.plot_bottom }}"
+          y2="{{ item.chart.plot_bottom }}"
         />
-        {% for group in dashboard.chart.groups %}
+        {% for group in item.chart.groups %}
         {% for bar in group.bars %}
         {% if bar.height > 0 %}
         <rect
@@ -98,10 +102,11 @@
         <text class="stat-chart__month" x="{{ group.label_x }}" y="{{ group.label_y }}" text-anchor="middle">{{ group.short_label }}</text>
         {% endfor %}
       </svg>
-      <p class="visually-hidden" id="hours-chart-summary">
-        {% for group in dashboard.chart.groups %}{{ group.summary }}. {% endfor %}
+      <p class="visually-hidden" id="{{ item.id }}-summary">
+        {% for group in item.chart.groups %}{{ group.summary }}. {% endfor %}
       </p>
     </div>
+    {% endfor %}
     {% endif %}
   </section>
 
