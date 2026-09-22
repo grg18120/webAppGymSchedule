@@ -379,6 +379,18 @@ class BookingRolesTest(unittest.TestCase):
         self.assertEqual(casey_row["hours"][-1], home_stats._format_duration(casey_row["minutes"][-1]))
         self.assertEqual(len(report["months"]), 6)
         self.assertTrue(report["months"][-1]["is_current"])
+        expected_columns = [
+            sum(row["minutes"][index] for row in report["rows"])
+            for index in range(len(report["months"]))
+        ]
+        self.assertEqual(report["column_minutes"], expected_columns)
+        self.assertEqual(report["grand_minutes"], sum(expected_columns))
+        self.assertEqual(
+            report["column_totals"],
+            [home_stats._format_duration(value) for value in expected_columns],
+        )
+        self.assertEqual(report["grand_total"], home_stats._format_duration(sum(expected_columns)))
+        self.assertGreater(report["column_minutes"][-1], before["column_minutes"][-1])
 
         self.login("instructor@gym.com", "instructor123")
         self.assertEqual(self.client.get("/client-hours").status_code, 403)
@@ -397,10 +409,15 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(casey_row["hours"][-1].encode(), html)
         self.assertIn(casey_row["total"].encode(), html)
         self.assertIn(b"Total", html)
+        self.assertIn(b"<tfoot>", html)
+        self.assertIn(b'scope="row">Total', html)
+        self.assertIn(report["column_totals"][-1].encode(), html)
+        self.assertIn(report["grand_total"].encode(), html)
         self.assertIn(b"Client hours", html)
         status, css = self.static_bytes("/static/css/hours.css")
         self.assertEqual(status, 200)
         self.assertIn(b".hours-table", css)
+        self.assertIn(b".hours-table tfoot", css)
 
     def test_instructor_cannot_book_as_client(self):
         session = GymSession.query.filter_by(status=SESSION_AVAILABLE).first()

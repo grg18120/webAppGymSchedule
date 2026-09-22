@@ -61,7 +61,13 @@
   font-weight: 700;
 }
 
-.hours-table tbody tr:last-child th,
-.hours-table tbody tr:last-child td {
+.hours-table tfoot th,
+.hours-table tfoot td {
+  background: #e8eef2;
+  font-weight: 700;
   border-bottom: 0;
+}
+
+.hours-table tfoot td.is-current {
+  background: #d6e6f7;
 }

@@ -536,11 +536,19 @@ def client_hours_report(now):
                 "total": _format_duration(total_minutes),
             }
         )
+    column_minutes = [
+        sum(row["minutes"][index] for row in rows) for index in range(len(months))
+    ]
+    grand_minutes = sum(column_minutes)
     return {
         "title": "Client booked hours",
         "window_label": f"Last {MONTH_WINDOW} months",
         "months": month_headers,
         "rows": rows,
+        "column_minutes": column_minutes,
+        "column_totals": [_format_duration(value) for value in column_minutes],
+        "grand_minutes": grand_minutes,
+        "grand_total": _format_duration(grand_minutes),
     }
 
 

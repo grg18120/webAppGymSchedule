@@ -37,6 +37,17 @@
         </tr>
         {% endfor %}
       </tbody>
+      {% if report.rows %}
+      <tfoot>
+        <tr>
+          <th scope="row">Total</th>
+          {% for value in report.column_totals %}
+          <td {% if report.months[loop.index0].is_current %}class="is-current"{% endif %}>{{ value }}</td>
+          {% endfor %}
+          <td class="hours-table__total">{{ report.grand_total }}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
     </table>
   </div>
 </div>
