@@ -7,8 +7,6 @@ from website import db
 from website.models import (
     ROLE_CLIENT,
     ROLE_INSTRUCTOR,
-    SESSION_AVAILABLE,
-    SESSION_BOOKED,
     SESSION_CANCELLED,
     GymSession,
     GymSessionBooking,
@@ -116,6 +114,7 @@ def _fill_months(sessions, months, now, client_only=False):
         minutes = _minutes(session)
         is_past = session.datetime_start <= now
         occupants = [client.id for client in session.booked_clients]
+        is_work = bool(occupants)
         if client_only:
             client_minutes = minutes if occupants else 0
         else:
@@ -125,7 +124,7 @@ def _fill_months(sessions, months, now, client_only=False):
             bucket["client_past_minutes"] += client_minutes
         else:
             bucket["client_future_minutes"] += client_minutes
-        if client_only or session.status == SESSION_BOOKED:
+        if client_only or is_work:
             bucket["booked_minutes"] += minutes
             bucket["booked_count"] += 1
             if is_past:
@@ -133,14 +132,13 @@ def _fill_months(sessions, months, now, client_only=False):
             else:
                 bucket["booked_future_minutes"] += minutes
             bucket["clients"].update(occupants)
-        elif not client_only and session.status == SESSION_AVAILABLE:
+        elif not client_only:
             if is_past:
                 bucket["open_minutes"] += minutes
                 bucket["open_past_minutes"] += minutes
                 bucket["open_count"] += 1
             else:
                 bucket["open_future_minutes"] += minutes
-            bucket["clients"].update(occupants)
     return buckets
 
 
@@ -225,13 +223,13 @@ def _chart_columns(row, include_open, kind="session"):
         columns = [
             [
                 {
-                    "key": "past booked",
+                    "key": "past work",
                     "hours": row.get("booked_past_hours", 0.0),
                     "fill": COLOR_BOOKED_PAST,
                     "label_fill": "#ffffff",
                 },
                 {
-                    "key": "upcoming booked",
+                    "key": "upcoming work",
                     "hours": row.get("booked_future_hours", 0.0),
                     "fill": COLOR_BOOKED_FUTURE,
                     "label_fill": "#102a3a",
@@ -259,7 +257,7 @@ def _chart_columns(row, include_open, kind="session"):
     columns = [
         [
             {
-                "key": "booked",
+                "key": "work",
                 "hours": row["booked_hours"],
                 "fill": COLOR_BOOKED_PAST,
                 "label_fill": "#ffffff",
@@ -354,11 +352,11 @@ def _build_chart(rows, include_open, kind="session"):
                     f"upcoming {_format_hours_short(row.get('client_future_hours', 0))}"
                 )
         else:
-            summary_parts = [f"{row['label']}: booked {row['booked']}"]
+            summary_parts = [f"{row['label']}: work {row['booked']}"]
             if row.get("is_current") or row.get("is_future"):
                 summary_parts.append(
-                    f"past booked {_format_hours_short(row.get('booked_past_hours', 0))}, "
-                    f"upcoming booked {_format_hours_short(row.get('booked_future_hours', 0))}"
+                    f"past work {_format_hours_short(row.get('booked_past_hours', 0))}, "
+                    f"upcoming work {_format_hours_short(row.get('booked_future_hours', 0))}"
                 )
                 if include_open:
                     summary_parts.append(
@@ -431,8 +429,8 @@ def _dashboard_charts(month_rows, show_session=True):
     if show_session:
         session_chart = {
             "id": "session-hours",
-            "title": "Session hours per month",
-            "hint": "Calendar hours of sessions. Unbooked is open time that was not booked. This month stacks past hours under upcoming hours. Next month shows upcoming hours.",
+            "title": "Working hours per month",
+            "hint": "Calendar hours of sessions. A session counts as work if at least one client is booked. Unbooked is open time with no clients. This month stacks past hours under upcoming hours. Next month shows upcoming hours.",
             "include_open": True,
             "kind": "session",
             "chart": _build_chart(month_rows, include_open=True, kind="session"),
