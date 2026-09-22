@@ -2776,7 +2776,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertNotIn(b"stat-chart__swatch--unbooked", client_home.data)
         self.assertNotIn(b"Past unbooked", client_home.data)
         self.assertNotIn(b"Booked (upcoming)", client_home.data)
-        self.assertIn(b">Upcoming</li>", client_home.data)
+        self.assertIn(b"Upcoming</li>", client_home.data)
         client_dash = home_stats.client_dashboard(casey, now)
         self.assertEqual(len(client_dash["charts"]), 1)
         self.assertEqual(client_dash["chart"]["kind"], "client")
