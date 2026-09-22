@@ -47,6 +47,7 @@ def visible_sessions(actor, range_start, range_end, instructor_id=None):
             for session in sessions
             if session.is_available
             or session.is_booked_by(actor)
+            or session.is_interested_by(actor)
             or (session.is_full and not session.is_past)
         ]
     return sessions
@@ -74,7 +75,7 @@ def editor_payload(session, actor):
             display_status_label = "Past booking" if session.is_past else "Your booking"
         elif session.is_full:
             display_status = "full"
-            display_status_label = "Full"
+            display_status_label = "Interested" if interested_by_me else "Full"
         else:
             display_status = "available"
             display_status_label = "Past open" if session.is_past else "Open slot"
@@ -106,7 +107,7 @@ def editor_payload(session, actor):
         "is_full": session.is_full,
         "interested_by_me": interested_by_me,
         "can_interest": can_interest,
-        "has_interest": bool(can_manage and session.is_full and session.interests),
+        "has_interest": bool((can_manage and session.interests) or interested_by_me),
         "display_status": display_status,
         "display_status_label": display_status_label,
         "booked_percent": round(
@@ -159,6 +160,7 @@ def editor_payload(session, actor):
             data["cancel_url"] = f"/sessions/{session.id}/cancel"
         if data["can_interest"]:
             data["interest_url"] = f"/sessions/{session.id}/interest"
+        if interested_by_me:
             data["interest_remove_url"] = f"/sessions/{session.id}/withdraw-interest"
     return data
 

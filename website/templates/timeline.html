@@ -20,7 +20,7 @@
     <span class="timeline__block-people">
       <span class="timeline__block-person">{{ session.instructor.display_name }}</span>
     </span>
-    <span class="timeline__block-state" data-slot-state>{% if session.is_booked_by(user) %}Your booking{% elif session.is_full %}Full{% else %}Open{% endif %}</span>
+    <span class="timeline__block-state" data-slot-state>{% if session.is_booked_by(user) %}Your booking{% elif session.is_interested_by(user) %}Interested{% elif session.is_full %}Full{% else %}Open{% endif %}</span>
     {% endif %}
   </span>
   {% if user.is_admin or user.is_instructor %}
@@ -32,7 +32,7 @@
   {% endif %}
   <span class="visually-hidden">
     {% if user.is_client %}
-    {% if session.is_booked_by(user) %}Your booking{% elif session.is_full %}Full{% else %}Open slot{% endif %}
+    {% if session.is_booked_by(user) %}Your booking{% elif session.is_interested_by(user) %}Interested{% elif session.is_full %}Full{% else %}Open slot{% endif %}
     {{ session.datetime_start.strftime('%H:%M') }}–{{ session.datetime_end.strftime('%H:%M') }},
     instructor {{ session.instructor.display_name }}
     {% else %}
@@ -45,7 +45,7 @@
 <div class="container py-4">
   <h1 class="h3 text-white">Session timeline</h1>
   {% if user.is_client %}
-  <p class="text-white-50">Dates across, times down. Click a slot to book, cancel, or register interest. Green slots are open. Blue slots are sessions you already booked. Red slots are full — you can tell staff you want a place.</p>
+  <p class="text-white-50">Dates across, times down. Click a slot to book, cancel, or register interest. Green slots are open. Blue slots are sessions you already booked. Red slots are full — you can tell staff you want a place. A yellow mark is interest you already declared; open that slot or the mark to remove it.</p>
   {% else %}
   <p class="text-white-50">Dates across, times down. Click a slot to edit it. Open slots are green; booked sessions are blue; part-booked slots mix those colors by how many seats are taken. Past slots keep those colors, faded.</p>
   {% endif %}
@@ -238,6 +238,7 @@
     {% else %}
     <li><span class="timeline-swatch timeline-swatch--booked" aria-hidden="true"></span> Your booking</li>
     <li><span class="timeline-swatch timeline-swatch--full" aria-hidden="true"></span> Full</li>
+    <li><span class="timeline-swatch timeline-swatch--interest" aria-hidden="true">!</span> Your interest</li>
     <li><span class="timeline-swatch timeline-swatch--past-booked" aria-hidden="true"></span> Past booking</li>
     {% endif %}
   </ul>
@@ -310,16 +311,31 @@
               data-interest-flag
               aria-expanded="false"
               aria-controls="interest-panel-{{ session.id }}"
-              title="Clients interested"
-              aria-label="Show clients interested in this full slot"
+              title="{% if user.is_client %}Your interest{% else %}Clients interested{% endif %}"
+              aria-label="{% if user.is_client %}Show your interest in this session{% else %}Show clients interested in this full slot{% endif %}"
             >!</button>
             <div class="timeline__interest-panel" id="interest-panel-{{ session.id }}" data-interest-panel hidden>
-              <p class="timeline__interest-panel-title">Interested</p>
+              <p class="timeline__interest-panel-title">{% if user.is_client %}Your interest{% else %}Interested{% endif %}</p>
+              {% if user.is_client %}
+              <p class="timeline__interest-panel-copy">You asked for a place on this session.</p>
+              {% if block.editor.interest_remove_url %}
+              <form
+                method="POST"
+                action="{{ block.editor.interest_remove_url }}"
+                class="timeline__interest-remove"
+                onsubmit="return confirm('Remove your interest in this session?');"
+              >
+                <input type="hidden" name="next" value="{{ timeline_next }}">
+                <button type="submit" class="tap-target">Remove interest</button>
+              </form>
+              {% endif %}
+              {% else %}
               <ul class="timeline__interest-panel-list" data-interest-list>
                 {% for person in block.editor.interested %}
                 <li>{{ person.name }}</li>
                 {% endfor %}
               </ul>
+              {% endif %}
             </div>
             {% endif %}
           </div>

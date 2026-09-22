@@ -1721,6 +1721,7 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"rgba(46, 125, 50, 0.22)", css)
         self.assertIn(b".timeline__block--booked.timeline__block--past", css)
         self.assertIn(b"rgba(21, 101, 192, 0.22)", css)
+        self.assertIn(b".timeline__interest-remove", css)
         self.assertIn(b".timeline__today-badge", css)
         self.assertIn(b"3px solid #ffffff", css)
         self.assertIn(b"0 0 0 2px #fff, 0 0 0 5px #102a3a", css)
@@ -1808,6 +1809,8 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(interest_path.encode(), page.data)
         self.assertIn(b"I'm interested", page.data)
         self.assertNotIn(b"timeline__interest-flag", page.data)
+        self.assertIn(b"Your interest", page.data)
+        self.assertIn(b"timeline-swatch--interest", page.data)
 
         open_try = self.client.post(
             f"/sessions/{open_id}/interest",
@@ -1826,10 +1829,33 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b"Interest registered", marked.data)
         self.assertTrue(db.session.get(GymSession, session_id).is_interested_by(riley))
         self.assertIn(b"Remove interest", marked.data)
+        self.assertIn(b"timeline__interest-flag", marked.data)
+        self.assertIn(b"data-slot-state>Interested", marked.data)
+        self.assertIn(b"You asked for a place", marked.data)
+        self.assertIn(f"/sessions/{session_id}/withdraw-interest".encode(), marked.data)
         self.assertEqual(
             GymSessionInterest.query.filter_by(session_id=session_id, client_id=riley.id).count(),
             1,
         )
+
+        withdrawn = self.client.post(
+            f"/sessions/{session_id}/withdraw-interest",
+            data={"next": "/timeline?start=2099-08-17"},
+            follow_redirects=True,
+        )
+        self.assertEqual(withdrawn.status_code, 200)
+        self.assertIn(b"Interest removed", withdrawn.data)
+        self.assertFalse(db.session.get(GymSession, session_id).is_interested_by(riley))
+        self.assertNotIn(b"timeline__interest-flag", withdrawn.data)
+        self.assertIn(b"I'm interested", withdrawn.data)
+        self.assertIn(b"data-slot-state>Full", withdrawn.data)
+
+        marked = self.client.post(
+            interest_path,
+            data={"next": "/timeline?start=2099-08-17"},
+            follow_redirects=True,
+        )
+        self.assertTrue(db.session.get(GymSession, session_id).is_interested_by(riley))
 
         again = self.client.post(
             interest_path,
@@ -1870,10 +1896,68 @@ class BookingRolesTest(unittest.TestCase):
         self.assertIn(b".timeline__interest-flag", css)
         self.assertIn(b"#ffeb3b", css)
         self.assertIn(b".timeline__interest-panel", css)
+        self.assertIn(b".timeline__interest-remove", css)
+        self.assertIn(b".timeline__interest-panel-copy", css)
         status, js = self.static_bytes("/static/js/timeline-slot-edit.js")
         self.assertEqual(status, 200)
         self.assertIn(b"data-interest-flag", js)
         self.assertIn(b"can_interest", js)
+        self.assertIn(b'state.textContent = "Interested"', js)
+
+    def test_adding_a_client_clears_their_session_interest(self):
+        from datetime import datetime, timedelta
+
+        from website.utils import booking
+
+        instructor = User.query.filter_by(email="instructor@gym.com").first()
+        casey = User.query.filter_by(email="client@gym.com").first()
+        riley = User.query.filter_by(email="riley@gym.com").first()
+        start = datetime(2099, 8, 19, 11, 0)
+        session = GymSession(
+            instructor_id=instructor.id,
+            client_id=casey.id,
+            datetime_start=start,
+            datetime_end=start + timedelta(hours=1),
+            status=SESSION_BOOKED,
+            position_count=1,
+        )
+        db.session.add(session)
+        db.session.flush()
+        db.session.add(GymSessionBooking(session_id=session.id, client_id=casey.id))
+        session.sync_status()
+        db.session.commit()
+
+        ok, message = booking.add_interest(session, riley)
+        self.assertTrue(ok, message)
+        self.assertTrue(session.is_interested_by(riley))
+
+        ok, message, fields = booking.update_session_slot(
+            session,
+            instructor,
+            session.datetime_start,
+            session.datetime_end,
+            2,
+            client_ids=[casey.id, riley.id],
+        )
+        self.assertTrue(ok, message)
+        self.assertEqual(fields, [])
+        refreshed = db.session.get(GymSession, session.id)
+        self.assertTrue(refreshed.is_booked_by(riley))
+        self.assertTrue(refreshed.is_booked_by(casey))
+        self.assertFalse(refreshed.is_interested_by(riley))
+        self.assertEqual(
+            GymSessionInterest.query.filter_by(
+                session_id=session.id, client_id=riley.id
+            ).count(),
+            0,
+        )
+
+        self.login("riley@gym.com", "client123")
+        page = self.client.get("/timeline?start=2099-08-17")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"data-slot-state>Your booking", page.data)
+        self.assertNotIn(b"data-slot-state>Interested", page.data)
+        self.assertNotIn(b"timeline__interest-flag", page.data)
 
     def test_timeline_slot_editor_updates_time_positions_and_clients(self):
         from datetime import datetime, timedelta

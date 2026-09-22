@@ -587,6 +587,8 @@ def _clear_interest(session, client):
     if not session or not client:
         return
     GymSessionInterest.query.filter_by(session_id=session.id, client_id=client.id).delete()
+    db.session.flush()
+    db.session.expire(session, ["interests"])
 
 
 def add_interest(session, client):

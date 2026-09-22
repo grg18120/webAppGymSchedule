@@ -458,6 +458,7 @@
     var state = currentTrigger.querySelector("[data-slot-state]");
     if (state) {
       if (slot.booked_by_me) state.textContent = "Your booking";
+      else if (slot.interested_by_me) state.textContent = "Interested";
       else if (slot.display_status_label === "Full" || (slot.is_full && !slot.booked_by_me))
         state.textContent = "Full";
       else state.textContent = "Open";
